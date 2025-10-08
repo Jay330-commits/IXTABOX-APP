@@ -51,7 +51,6 @@ export default function Map({ stands }: MapProps) {
   const [userLocation, setUserLocation] = useState<L.LatLngLiteral | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const routeRef = useRef<L.Control | null>(null);
   const lastTapRef = useRef<number>(0);
@@ -122,14 +121,6 @@ export default function Map({ stands }: MapProps) {
   return (
     <MapErrorBoundary>
       <div style={{ position: "relative" }} className="map-container">
-        {!isMapReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-2"></div>
-              <p>Loading map...</p>
-            </div>
-          </div>
-        )}
         {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
         {mapError ? (
         <div className="flex items-center justify-center w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -250,10 +241,6 @@ export default function Map({ stands }: MapProps) {
         dragging={false}
         doubleClickZoom={false}
         className="map-element"
-        preferCanvas={true}
-        maxZoom={18}
-        minZoom={3}
-        maxBounds={[[-90, -180], [90, 180]]}
         style={{
           height: fullscreen ? "calc(100vh - 80px)" : "min(500px, calc(100vh - 120px))",
           width: fullscreen ? "100vw" : "100%",
@@ -265,23 +252,11 @@ export default function Map({ stands }: MapProps) {
           minHeight: "300px",
         }}
       >
-        <MapRefBinder onMap={(m) => { mapRef.current = m; }} setIsMapReady={setIsMapReady} />
+        <MapRefBinder onMap={(m) => { mapRef.current = m; }} />
         <InteractionToggler enabled={interactionEnabled} fullscreen={fullscreen} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        eventHandlers={{
-          loading: () => {
-            console.log('Tiles loading...');
-          },
-          load: () => {
-            console.log('Tiles loaded');
-          },
-          error: (error) => {
-            console.error('Tile loading error:', error);
-            setMapError('Map tiles failed to load. Please check your internet connection.');
-          }
-        }}
       />
       {stands.map((s) => (
         <Marker 
@@ -456,20 +431,10 @@ function InteractionToggler({ enabled, fullscreen }: { enabled: boolean; fullscr
   return null;
 }
 
-function MapRefBinder({ onMap, setIsMapReady }: { 
-  onMap: (m: L.Map) => void;
-  setIsMapReady: React.Dispatch<React.SetStateAction<boolean>>;
-}) {
+function MapRefBinder({ onMap }: { onMap: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => {
     onMap(map);
-    // Wait for the map to be properly initialized
-    setTimeout(() => {
-      if (map) {
-        map.invalidateSize();
-        setIsMapReady(true);
-      }
-    }, 100);
-  }, [map, onMap, setIsMapReady]);
+  }, [map, onMap]);
   return null;
 }
