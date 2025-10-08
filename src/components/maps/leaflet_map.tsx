@@ -39,7 +39,7 @@ L.Icon.Default.mergeOptions({
 
 
 type MapProps = {
-  stands: { id: number; lat: number; lng: number; title: string; address: string }[];
+  stands: { id: number; lat: number; lng: number; title: string; address?: string }[];
 };
 
 export default function Map({ stands }: MapProps) {
@@ -237,13 +237,21 @@ export default function Map({ stands }: MapProps) {
         >
           <Tooltip permanent direction="top" offset={[0, -8]} className="custom-tooltip">
             <strong>{s.title}</strong>
-            <br />
-            {s.address}
+            {s.address && (
+              <>
+                <br />
+                {s.address}
+              </>
+            )}
           </Tooltip>
           <Popup>
             <b>{s.title}</b>
-            <br />
-            {s.address}
+            {s.address && (
+              <>
+                <br />
+                {s.address}
+              </>
+            )}
             <br />
             {`Lat: ${s.lat}, Lng: ${s.lng}`}
           </Popup>
