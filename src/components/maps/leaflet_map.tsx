@@ -5,7 +5,6 @@ import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import LoadingSpinner from "../loading/LoadingSpinner";
-import MapErrorBoundary from "./MapErrorBoundary";
 
 // Fix for default icon (handle Next/Turbopack asset shapes)
 // Import as strings; some bundlers return objects. We'll resolve at runtime.
@@ -50,22 +49,10 @@ export default function Map({ stands }: MapProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [userLocation, setUserLocation] = useState<L.LatLngLiteral | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const routeRef = useRef<L.Control | null>(null);
   const lastTapRef = useRef<number>(0);
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
-
-  // Handle map errors
-  useEffect(() => {
-    const handleError = (error: ErrorEvent) => {
-      console.error('Map error:', error);
-      setMapError('Unable to load the map. Please refresh the page or try a different browser.');
-    };
-
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
 
   function handleDoubleActivate() {
     setInteractionEnabled(true);
@@ -119,22 +106,9 @@ export default function Map({ stands }: MapProps) {
   }
 
   return (
-    <MapErrorBoundary>
-      <div style={{ position: "relative" }} className="map-container">
-        {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
-        {mapError ? (
-        <div className="flex items-center justify-center w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <div className="text-center p-4">
-            <p className="text-red-600 dark:text-red-400 mb-2">{mapError}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      ) : !interactionEnabled && !fullscreen && (
+    <div style={{ position: "relative" }}>
+      {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
+      {!interactionEnabled && !fullscreen && (
         <div
           onDoubleClick={handleDoubleActivate}
           onTouchStart={(e) => {
@@ -240,16 +214,14 @@ export default function Map({ stands }: MapProps) {
         scrollWheelZoom={false}
         dragging={false}
         doubleClickZoom={false}
-        className="map-element"
         style={{
-          height: fullscreen ? "calc(100vh - 80px)" : "min(500px, calc(100vh - 120px))",
+          height: fullscreen ? "calc(100vh - 80px)" : "500px",
           width: fullscreen ? "100vw" : "100%",
           position: fullscreen ? ("fixed" as const) : ("relative" as const),
           left: fullscreen ? 0 : undefined,
           right: fullscreen ? 0 : undefined,
           top: fullscreen ? "80px" : undefined,
           zIndex: fullscreen ? 999 : 0,
-          minHeight: "300px",
         }}
       >
         <MapRefBinder onMap={(m) => { mapRef.current = m; }} />
@@ -311,7 +283,6 @@ export default function Map({ stands }: MapProps) {
         </button>
       )}
     </div>
-    </MapErrorBoundary>
   );
 }
 

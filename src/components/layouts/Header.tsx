@@ -24,7 +24,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const pathname = usePathname();
-  const logoPath = "/images/logo/2024 IXTAbox Logo - White.png";
+  const logoPath = "/images/logo/guest-header-icon.png";
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);

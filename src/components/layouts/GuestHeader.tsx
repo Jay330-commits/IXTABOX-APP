@@ -71,7 +71,7 @@ export default function GuestHeader(): JSX.Element {
   const linkGlow =
     "before:absolute before:inset-0 before:rounded-md before:bg-cyan-500/0 hover:before:bg-cyan-500/10 before:blur before:transition-all before:duration-300";
 
-  const logoPath = "/images/logo/2024 IXTAbox Logo - White.png"; // Provided logo path
+  const logoPath = "/images/logo/guest-header-icon.png"; // Provided logo path
 
   const isActive = (href: string) => {
     if (href.startsWith("#")) return activeHash === href; // hash active if section in view or clicked
