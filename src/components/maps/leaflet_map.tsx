@@ -41,13 +41,14 @@ L.Icon.Default.mergeOptions({
 
 import StandDetails from "../bookings/stand";
 
-type MapProps = {
+export type MapProps = {
   stands: {
     id: number;
     lat: number;
     lng: number;
     title: string;
     address: string;
+    description?: string;
     size?: {
       area: number;
       unit: string;
@@ -124,12 +125,13 @@ export default function Map({ stands }: MapProps) {
     }
   }
 
-  const handleBookStand = (standId: string, modelId?: string, startDate?: string) => {
+  const handleBookStand = (standId: string, modelId?: string, startDate?: string, endDate?: string) => {
     try {
       const params = new URLSearchParams();
       params.set('standId', standId);
       if (modelId) params.set('modelId', modelId);
       if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
       router.push(`/guest/bookings?${params.toString()}`);
     } finally {
       setSelectedStand(null);

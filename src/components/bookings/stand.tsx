@@ -21,13 +21,14 @@ interface StandDetailsProps {
     }[];
     nextAvailableDate?: string; // For booked stands
   };
-  onBook?: (standId: string, modelId?: string, startDate?: string) => void;
+  onBook?: (standId: string, modelId?: string, startDate?: string, endDate?: string) => void;
   onClose?: () => void;
 }
 
 const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) => {
   const [selectedModel, setSelectedModel] = React.useState<string>('');
   const [startDate, setStartDate] = React.useState<string>('');
+  const [endDate, setEndDate] = React.useState<string>('');
   
   
   const getStatusColor = (status: string) => {
@@ -143,22 +144,34 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
 
         {/* Booking Date Section */}
         <div className="px-6 py-4 border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">Select Start Date</h3>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            min={stand.status === 'booked' ? stand.nextAvailableDate : new Date().toISOString().split('T')[0]}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
-          />
-          {startDate && (
+          <h3 className="text-sm font-medium text-gray-500 mb-3">Select Dates</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">From</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                min={stand.status === 'booked' ? stand.nextAvailableDate : new Date().toISOString().split('T')[0]}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">To</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || (stand.status === 'booked' ? stand.nextAvailableDate : new Date().toISOString().split('T')[0])}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+              />
+            </div>
+          </div>
+          {startDate && endDate && (
             <p className="mt-2 text-sm text-emerald-600">
-              Selected date: {new Date(startDate).toLocaleDateString('en-US', { 
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
+              {new Date(startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {" "}-{" "}
+              {new Date(endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           )}
           {stand.status === 'booked' && stand.nextAvailableDate && (
@@ -171,11 +184,17 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
         {/* Action Section */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <button
-            onClick={() => onBook && onBook(stand.id, selectedModel, startDate)}
-            disabled={stand.status === 'maintenance' || !startDate || (stand.availableModels && !selectedModel)}
+            onClick={() => onBook && onBook(stand.id, selectedModel, startDate, endDate)}
+            disabled={
+              stand.status === 'maintenance' ||
+              !startDate ||
+              !endDate ||
+              (stand.availableModels && !selectedModel) ||
+              (startDate && endDate ? new Date(endDate) < new Date(startDate) : false)
+            }
             className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
               ${
-                stand.status !== 'maintenance' && startDate && (!stand.availableModels || selectedModel)
+                stand.status !== 'maintenance' && startDate && endDate && (!stand.availableModels || selectedModel) && (new Date(endDate) >= new Date(startDate))
                   ? 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500'
                   : 'bg-gray-400 cursor-not-allowed'
               }
@@ -184,7 +203,9 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
             {stand.status === 'maintenance' 
               ? 'Under Maintenance' 
               : !startDate 
-                ? 'Select a Date'
+                ? 'Select start date'
+                : !endDate
+                  ? 'Select end date'
                 : stand.availableModels && !selectedModel
                   ? 'Select a Model'
                   : 'Book Now'}

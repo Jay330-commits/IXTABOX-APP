@@ -87,6 +87,7 @@ export default function BookingsPage() {
     const standId = searchParams.get('standId');
     const modelId = searchParams.get('modelId');
     const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     if (!standId || !startDate) return mockBookings;
     const stand = mockStands.find(s => s.id.toString() === standId);
     if (!stand) return mockBookings;
@@ -98,7 +99,7 @@ export default function BookingsPage() {
       standId: standId,
       address: stand.address,
       startDate: new Date(startDate).toISOString(),
-      endDate: new Date(new Date(startDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      endDate: endDate ? new Date(endDate).toISOString() : new Date(new Date(startDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
       status: 'pending' as const,
       model,
       pricePerDay: stand.pricePerDay ?? 299.99,

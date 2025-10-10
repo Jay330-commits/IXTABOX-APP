@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { MapProps } from "../../components/maps/leaflet_map";
 import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import { useEffect, useState } from "react";
 
 // Dynamic import prevents SSR issues if you ever move Map to a separate file
-const Map = dynamic(() => import("../../components/maps/leaflet_map"), {
+const Map = dynamic<MapProps>(() => import("../../components/maps/leaflet_map"), {
   ssr: false,
   loading: () => (
     <div className="flex h-[500px] w-full items-center justify-center text-gray-300">Loading map…</div>
@@ -16,7 +17,7 @@ const Map = dynamic(() => import("../../components/maps/leaflet_map"), {
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const stands = [
+  const stands: MapProps['stands'] = [
     {
       id: 1,
       lat: 59.3293,
