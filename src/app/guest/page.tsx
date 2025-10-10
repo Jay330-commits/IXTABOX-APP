@@ -17,7 +17,7 @@ const Map = dynamic<MapProps>(() => import("../../components/maps/leaflet_map"),
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const stands: MapProps['stands'] = [
+  const stands = [
     {
       id: 1,
       lat: 59.3293,
@@ -78,7 +78,7 @@ export default function GuestHome() {
       status: 'available' as const,
       imageUrl: "/images/background/IXTAbox_Buyers_Guide-3_CROP.jpg"
     },
-  ];
+  ] satisfies MapProps['stands'];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
