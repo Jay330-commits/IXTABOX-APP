@@ -12,7 +12,6 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Home", href: "/" },
-  { label: "Features", href: "/#features" },
   { label: "Bookings", href: "/#bookings" },
   { label: "Contact", href: "/#contact" },
   { label: "Login/Register", href: "/auth" },
@@ -114,11 +113,6 @@ export default function Header() {
                   {item.label === "Home" && (
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5z" />
-                    </svg>
-                  )}
-                  {item.label === "Features" && (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 3l3 6 6 .9-4.5 4.2L18 21l-6-3.2L6 21l1.5-6.9L3 9.9 9 9l3-6z" />
                     </svg>
                   )}
                   {item.label === "Bookings" && (

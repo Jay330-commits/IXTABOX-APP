@@ -1,5 +1,6 @@
 "use client";  // <-- THIS IS REQUIRED
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, Tooltip } from "react-leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -38,8 +39,24 @@ L.Icon.Default.mergeOptions({
 
 
 
+import StandDetails from "../bookings/stand";
+
 type MapProps = {
-  stands: { id: number; lat: number; lng: number; title: string; address?: string }[];
+  stands: {
+    id: number;
+    lat: number;
+    lng: number;
+    title: string;
+    address: string;
+    size?: {
+      area: number;
+      unit: string;
+      capacity?: number;
+    };
+    pricePerDay?: number;
+    imageUrl?: string;
+    status?: 'available' | 'booked' | 'maintenance';
+  }[];
 };
 
 export default function Map({ stands }: MapProps) {
@@ -53,6 +70,8 @@ export default function Map({ stands }: MapProps) {
   const routeRef = useRef<L.Control | null>(null);
   const lastTapRef = useRef<number>(0);
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
+  const [selectedStand, setSelectedStand] = useState<MapProps['stands'][0] | null>(null);
+  const router = useRouter();
 
   function handleDoubleActivate() {
     setInteractionEnabled(true);
@@ -105,9 +124,71 @@ export default function Map({ stands }: MapProps) {
     }
   }
 
+  const handleBookStand = (standId: string, modelId?: string, startDate?: string) => {
+    try {
+      const params = new URLSearchParams();
+      params.set('standId', standId);
+      if (modelId) params.set('modelId', modelId);
+      if (startDate) params.set('startDate', startDate);
+      router.push(`/guest/bookings?${params.toString()}`);
+    } finally {
+      setSelectedStand(null);
+    }
+  };
+
   return (
     <div style={{ position: "relative" }}>
       {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
+      {selectedStand && (
+        <div className="fixed inset-0 z-[1003] bg-black/50 flex items-start justify-center pt-24 px-4 pb-4" 
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedStand(null);
+          }}>
+          <div className="max-w-lg w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white rounded-lg shadow-xl" onClick={e => e.stopPropagation()}>
+            <StandDetails
+              stand={{
+                id: selectedStand.id.toString(),
+                title: selectedStand.title,
+                location: {
+                  coordinates: {
+                    lat: selectedStand.lat,
+                    lng: selectedStand.lng
+                  },
+                  address: selectedStand.address
+                },
+             
+                pricePerDay: selectedStand.pricePerDay || 299.99,
+                imageUrl: selectedStand.imageUrl,
+                status: selectedStand.status || 'available',
+                availableModels: [
+                  {
+                    id: 'classic',
+                    name: 'IXTAbox Classic',
+                    priceMultiplier: 1.0
+                  },
+                  {
+                    id: 'pro',
+                    name: 'IXTAbox Pro',
+                    priceMultiplier: 1.5
+                  },
+                  {
+                    id: 'elite',
+                    name: 'IXTAbox Elite',
+                    
+                    priceMultiplier: 2.0
+                  }
+                ],
+                nextAvailableDate: selectedStand.status === 'booked' 
+                  ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Example: 7 days from now
+                  : undefined
+              }}
+              onBook={handleBookStand}
+              onClose={() => setSelectedStand(null)}
+            />
+          </div>
+        </div>
+      )}
       {!interactionEnabled && !fullscreen && (
         <div
           onDoubleClick={handleDoubleActivate}
@@ -234,27 +315,16 @@ export default function Map({ stands }: MapProps) {
         <Marker 
           key={s.id} 
           position={[s.lat, s.lng]}
+          eventHandlers={{
+            click: (e) => {
+              e.originalEvent.stopPropagation();
+              setSelectedStand(s);
+            },
+          }}
         >
           <Tooltip permanent direction="top" offset={[0, -8]} className="custom-tooltip">
-            <strong>{s.title}</strong>
-            {s.address && (
-              <>
-                <br />
-                {s.address}
-              </>
-            )}
+            {s.address}
           </Tooltip>
-          <Popup>
-            <b>{s.title}</b>
-            {s.address && (
-              <>
-                <br />
-                {s.address}
-              </>
-            )}
-            <br />
-            {`Lat: ${s.lat}, Lng: ${s.lng}`}
-          </Popup>
         </Marker>
       ))}
         {userLocation && (

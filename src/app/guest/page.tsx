@@ -17,11 +17,66 @@ export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const stands = [
-    { id: 1, lat: 59.3293, lng: 18.0686, title: "Stockholm Central" }, // Stockholm
-    { id: 2, lat: 59.3326, lng: 18.0649, title: "Kungsträdgården" },
-    { id: 3, lat: 59.3360, lng: 18.0700, title: "Norrmalm" },
-    { id: 4, lat: 59.3255, lng: 18.0711, title: "Gamla Stan" },
-    { id: 5, lat: 59.3420, lng: 18.0735, title: "Östermalm" },
+    {
+      id: 1,
+      lat: 59.3293,
+      lng: 18.0686,
+      title: "Stockholm Central",
+      address: "Central Station, 111 20 Stockholm",
+      size: { area: 25, unit: 'm', capacity: 50 },
+      pricePerDay: 299.99,
+      description: "Prime location at Stockholm Central Station. High foot traffic and excellent visibility.",
+      status: 'available' as const,
+      imageUrl: "/images/background/IXTAbox_-_IXTAbox_-_Taktaltarna_CLASSIC.jpg"
+    },
+    {
+      id: 2,
+      lat: 59.3326,
+      lng: 18.0649,
+      title: "Kungsträdgården",
+      address: "Kungsträdgården, 111 47 Stockholm",
+      size: { area: 20, unit: 'm', capacity: 40 },
+      pricePerDay: 249.99,
+      description: "Beautiful park location with high tourist traffic. Perfect for retail and events.",
+      status: 'available',
+      imageUrl: "/images/background/IXTAbox_Sturdy.jpg"
+    },
+    {
+      id: 3,
+      lat: 59.3360,
+      lng: 18.0700,
+      title: "Norrmalm",
+      address: "Norrmalm District, 111 52 Stockholm",
+      size: { area: 30, unit: 'm', capacity: 60 },
+      pricePerDay: 349.99,
+      description: "Heart of Stockholm's business district. Ideal for corporate presentations.",
+      status: 'maintenance' as const,
+      imageUrl: "/images/background/IXTAbox_2025_ProVSClassic1.jpg"
+    },
+    {
+      id: 4,
+      lat: 59.3255,
+      lng: 18.0711,
+      title: "Gamla Stan",
+      address: "Old Town, 111 29 Stockholm",
+      size: { area: 15, unit: 'm', capacity: 30 },
+      pricePerDay: 199.99,
+      description: "Charming location in Stockholm's historic old town. Perfect for boutique displays.",
+      status: 'booked' as const,
+      imageUrl: "/images/background/IXTAbox_-_Benefits.jpg"
+    },
+    {
+      id: 5,
+      lat: 59.3420,
+      lng: 18.0735,
+      title: "Östermalm",
+      address: "Östermalm District, 114 51 Stockholm",
+      size: { area: 22, unit: 'm', capacity: 45 },
+      pricePerDay: 279.99,
+      description: "Upscale location in Stockholm's premium shopping district.",
+      status: 'available' as const,
+      imageUrl: "/images/background/IXTAbox_Buyers_Guide-3_CROP.jpg"
+    },
   ];
 
   return (

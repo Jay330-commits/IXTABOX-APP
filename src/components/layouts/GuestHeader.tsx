@@ -12,9 +12,9 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Home", href: "/" },
-  { label: "Features", href: "#benefits" },
   { label: "About", href: "#footer" },
   { label: "Contact", href: "#footer" },
+  { label: "Bookings", href: "/guest/bookings" }
 ];
 
 export default function GuestHeader(): JSX.Element {
@@ -74,7 +74,7 @@ export default function GuestHeader(): JSX.Element {
   const logoPath = "/images/logo/guest-header-icon.png"; // Provided logo path
 
   const isActive = (href: string) => {
-    if (href.startsWith("#")) return activeHash === href; // hash active if section in view or clicked
+    if (href.startsWith("#") && pathname === "/") return activeHash === href; // hash active if section in view or clicked
     if (href === "/") return pathname === "/" && !activeHash; // unhighlight Home when a section is active
     const base = href.split("#")[0];
     return base !== "/" && base.length > 0 && pathname.startsWith(base);
@@ -140,11 +140,6 @@ export default function GuestHeader(): JSX.Element {
                     {item.label === "Home" && (
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5z" />
-                      </svg>
-                    )}
-                    {item.label === "Features" && (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 3l3 6 6 1-4.5 4.2L18 21l-6-3.2L6 21l1.5-6.8L3 10l6-1 3-6z" />
                       </svg>
                     )}
                     {item.label === "About" && (
@@ -217,11 +212,6 @@ export default function GuestHeader(): JSX.Element {
                       {item.label === "Home" && (
                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5z" />
-                        </svg>
-                      )}
-                      {item.label === "Features" && (
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 3l3 6 6 1-4.5 4.2L18 21l-6-3.2L6 21l1.5-6.8L3 10l6-1 3-6z" />
                         </svg>
                       )}
                       {item.label === "About" && (
