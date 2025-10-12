@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { JSX } from "react";
@@ -97,13 +98,12 @@ export default function GuestHeader(): JSX.Element {
             </button>
             <Link href="/" className="group flex items-center gap-3">
               <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
-                <img
+                <Image
                   src={encodeURI(logoPath)}
                   alt="InxaBox Portal"
                   width={160}
                   height={90}
-                  decoding="async"
-                  loading="eager"
+                  priority
                   className="h-full w-full object-contain"
                 />
               </span>

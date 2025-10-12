@@ -406,37 +406,6 @@ async function acquireLocation(): Promise<L.LatLngLiteral | null> {
     }
   }
 }
-
-// Removed: using straight-line distance for nearest selection to avoid long detours
-/* async function getNearestStandByOsrm(origin: L.LatLngLiteral, stands: { id: number; lat: number; lng: number; title: string }[]) {
-  try {
-    if (stands.length === 0) return null;
-    // OSRM expects lon,lat
-    const coords = [[origin.lng, origin.lat], ...stands.map((s) => [s.lng, s.lat])]
-      .map((p) => p.join(","))
-      .join(";");
-    const destinations = stands.map((_, i) => i + 1).join(";");
-    const url = `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&destinations=${destinations}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("osrm table failed");
-    const data = await res.json() as { durations?: number[][] };
-    const row = data.durations?.[0];
-    if (!row || row.length !== stands.length) throw new Error("invalid osrm response");
-    let bestIdx = 0;
-    let bestVal = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < row.length; i++) {
-      const d = row[i];
-      if (typeof d === "number" && isFinite(d) && d < bestVal) {
-        bestVal = d;
-        bestIdx = i;
-      }
-    }
-    return stands[bestIdx] ?? null;
-  } catch {
-    return null;
-  }
-} */
-
 function InteractionToggler({ enabled, fullscreen }: { enabled: boolean; fullscreen: boolean }) {
   const map = useMap();
   useEffect(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import type { MapProps } from "../../components/maps/leaflet_map";
 import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
@@ -196,13 +197,31 @@ export default function GuestHome() {
         <section className="px-6 py-12">
           <div className="mx-auto max-w-7xl grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="relative h-52 rounded-xl overflow-hidden border border-white/10">
-              <img src="/images/background/2024_CRDbag_X_IXTAbox_18.jpg" alt="IXTAbox x CRDBAG" className="h-full w-full object-cover scale-100 hover:scale-105 transition-transform duration-500" />
+              <Image 
+                src="/images/background/2024_CRDbag_X_IXTAbox_18.jpg" 
+                alt="IXTAbox x CRDBAG" 
+                fill
+                sizes="(max-width: 640px) 100vw, 33vw"
+                className="object-cover scale-100 hover:scale-105 transition-transform duration-500"
+              />
             </div>
             <div className="relative h-52 rounded-xl overflow-hidden border border-white/10">
-              <img src="/images/background/How_fast_can_you_pack_Thumbnail_500x.jpg" alt="Fast packing" className="h-full w-full object-cover scale-100 hover:scale-105 transition-transform duration-500" />
+              <Image 
+                src="/images/background/How_fast_can_you_pack_Thumbnail_500x.jpg" 
+                alt="Fast packing" 
+                fill
+                sizes="(max-width: 640px) 100vw, 33vw"
+                className="object-cover scale-100 hover:scale-105 transition-transform duration-500"
+              />
             </div>
             <div className="relative h-52 rounded-xl overflow-hidden border border-white/10">
-              <img src="/images/background/DSCF3859.jpg" alt="Adventure ready" className="h-full w-full object-cover scale-100 hover:scale-105 transition-transform duration-500" />
+              <Image 
+                src="/images/background/DSCF3859.jpg" 
+                alt="Adventure ready" 
+                fill
+                sizes="(max-width: 640px) 100vw, 33vw"
+                className="object-cover scale-100 hover:scale-105 transition-transform duration-500"
+              />
             </div>
           </div>
         </section>

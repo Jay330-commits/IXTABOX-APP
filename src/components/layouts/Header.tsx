@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-// Using a plain <img> ensures LAN devices load the logo without Next/Image constraints
 import { useEffect, useMemo, useState } from "react";
 
 type NavItem = {

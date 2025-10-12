@@ -184,7 +184,20 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
         {/* Action Section */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <button
-            onClick={() => onBook && onBook(stand.id, selectedModel, startDate, endDate)}
+            onClick={() => {
+              if (onBook) {
+                onBook(stand.id, selectedModel, startDate, endDate);
+              }
+              // Calculate total price based on days and model multiplier
+              const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
+              const modelMultiplier = selectedModel 
+                ? stand.availableModels?.find(m => m.id === selectedModel)?.priceMultiplier || 1 
+                : 1;
+              const totalPrice = stand.pricePerDay * days * modelMultiplier;
+              
+              // Redirect to payment page with stand details
+              window.location.href = `/payment?amount=${totalPrice}&currency=sek&standId=${stand.id}&startDate=${startDate}&endDate=${endDate}${selectedModel ? `&modelId=${selectedModel}` : ''}`;
+            }}
             disabled={
               stand.status === 'maintenance' ||
               !startDate ||
