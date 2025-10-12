@@ -5,8 +5,9 @@ export async function POST(request: NextRequest) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.error('Missing STRIPE_SECRET_KEY environment variable');
+      console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('STRIPE')));
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { error: 'Server configuration error - Missing Stripe secret key' },
         { status: 500 }
       );
     }
