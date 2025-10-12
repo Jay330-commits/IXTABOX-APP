@@ -165,10 +165,12 @@ export default function GuestHome() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60" />
           <div className="relative z-10 mx-auto max-w-5xl px-6 py-16">
-            <h2 className="text-3xl sm:text-4xl font-bold">Adventure Ready</h2>
-            <p className="mt-3 text-gray-200">
-              For family trips, sports, or professionals—room for bikes, skis, tools, and more.
+            <h2 className="text-3xl sm:text-4xl font-bold"><center>Adventure Ready</center></h2>
+           <center>
+             <p className="mt-3 text-gray-200">
+              For family trips, sports, or professionals-room for bikes, skis, tools, and more.
             </p>
+            </center>
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-200">
               <li className="rounded-lg bg-white/5 border border-white/10 px-4 py-3">LED lighting in and out (Pro)</li>
               <li className="rounded-lg bg-white/5 border border-white/10 px-4 py-3">Crash‑tested fixation device (Pro)</li>
@@ -178,20 +180,20 @@ export default function GuestHome() {
           </div>
         </section>
 
-        {/* Range/Aero callout */}
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-8 shadow-[0_0_24px_rgba(34,211,238,0.25)]">
-            <h3 className="text-2xl font-bold">Improved Aerodynamics</h3>
-            <p className="mt-2 text-gray-200">
-              Reduce drag compared to traditional roof boxes and get better range.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <span className="rounded-full bg-white/10 px-4 py-1 text-sm">Lower turbulence behind car</span>
-              <span className="rounded-full bg-white/10 px-4 py-1 text-sm">Up to better efficiency</span>
-              <span className="rounded-full bg-white/10 px-4 py-1 text-sm">Quieter rides</span>
-            </div>
-          </div>
-        </section>
+<section className="mx-auto max-w-7xl px-6 py-16">
+  <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-8 shadow-[0_0_24px_rgba(34,211,238,0.25)] text-center">
+    <h3 className="text-2xl font-bold">Improved Aerodynamics</h3>
+    <p className="mt-2 text-gray-200">
+      Reduce drag compared to traditional roof boxes and get better range.
+    </p>
+    <div className="mt-6 flex flex-wrap justify-center gap-6">
+      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Lower turbulence behind car</span>
+      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Up to better efficiency</span>
+      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Quieter rides</span>
+    </div>
+  </div>
+</section>
+
 
         {/* Gallery strip with subtle animation */}
         <section className="px-6 py-12">

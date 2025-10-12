@@ -141,10 +141,10 @@ function PaymentContent() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
             {/* Payment Summary */}
-            <div className="lg:col-span-1">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6 sticky top-6">
+            <div className="lg:col-span-1 order-2 lg:order-1">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 lg:sticky lg:top-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Booking Summary</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
@@ -180,7 +180,7 @@ function PaymentContent() {
             </div>
 
             {/* Payment Form */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3 order-1 lg:order-2">
               {clientSecret && (
                 <StripeBankPayment
                   amount={amount}

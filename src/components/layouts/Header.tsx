@@ -76,8 +76,8 @@ export default function Header() {
             </button>
             <Link href="/" className="group flex items-center gap-3">
               <span className="relative inline-flex h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
-                <img
-                  src={encodeURI(logoPath)}
+                <Image
+                  src={logoPath}
                   alt="InxaBox Portal"
                   width={96}
                   height={96}

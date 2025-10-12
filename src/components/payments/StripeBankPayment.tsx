@@ -87,8 +87,8 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
   };
 
   return (
-    <form id="payment-form" onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+    <form id="payment-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Payment Information</h3>
         <PaymentElement 
           id="payment-element"
@@ -98,7 +98,7 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
         />
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Billing Address</h3>
         <AddressElement 
           options={{
@@ -111,7 +111,7 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       <button
         disabled={isLoading || !stripe || !elements}
         id="submit"
-        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)] text-sm sm:text-base"
       >
         <span id="button-text">
           {isLoading ? (
@@ -184,6 +184,8 @@ export default function StripeBankPayment({
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         border: '1px solid rgba(255, 255, 255, 0.2)',
         color: '#ffffff',
+        minHeight: '44px',
+        fontSize: '14px',
       },
       '.Tab:hover': {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -191,6 +193,35 @@ export default function StripeBankPayment({
       '.Tab--selected': {
         backgroundColor: '#06b6d4',
         border: '1px solid #06b6d4',
+      },
+      // Fix Klarna card size
+      '.PaymentMethodIcon': {
+        height: '24px',
+        width: 'auto',
+        maxWidth: '40px',
+      },
+      '.TabIcon': {
+        height: '20px',
+        width: 'auto',
+        maxWidth: '32px',
+      },
+      // Ensure consistent card sizes
+      '.Tab--selected .TabIcon': {
+        height: '20px',
+        width: 'auto',
+        maxWidth: '32px',
+      },
+      // Additional fixes for payment method icons
+      '.Tab img': {
+        height: '20px !important',
+        width: 'auto !important',
+        maxWidth: '32px !important',
+        objectFit: 'contain !important',
+      },
+      '.Tab svg': {
+        height: '20px !important',
+        width: 'auto !important',
+        maxWidth: '32px !important',
       },
     },
   };
@@ -201,8 +232,8 @@ export default function StripeBankPayment({
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-gray-800/50 border border-white/10 rounded-xl p-8">
+    <div className="w-full">
+      <div className="bg-gray-800/50 border border-white/10 rounded-xl p-4 sm:p-6 lg:p-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-white mb-2">Secure Payment</h2>
           <p className="text-gray-300">

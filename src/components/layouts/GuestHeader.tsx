@@ -72,7 +72,7 @@ export default function GuestHeader(): JSX.Element {
   const linkGlow =
     "before:absolute before:inset-0 before:rounded-md before:bg-cyan-500/0 hover:before:bg-cyan-500/10 before:blur before:transition-all before:duration-300";
 
-  const logoPath = "/images/logo/guest-header-icon.png"; // Provided logo path
+  const logoPath = "/images/logo/guest-header-icon1.png"; // Provided logo path
 
   const isActive = (href: string) => {
     if (href.startsWith("#") && pathname === "/") return activeHash === href; // hash active if section in view or clicked
@@ -98,14 +98,15 @@ export default function GuestHeader(): JSX.Element {
             </button>
             <Link href="/" className="group flex items-center gap-3">
               <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
-                <Image
-                  src={encodeURI(logoPath)}
-                  alt="InxaBox Portal"
-                  width={160}
-                  height={90}
-                  priority
-                  className="h-full w-full object-contain"
-                />
+              <Image
+                    src={encodeURI(logoPath)}
+                    alt="InxaBox Portal"
+                    width={160}
+                    height={90}
+                    unoptimized
+                    priority
+                    className="object-contain mx-auto h-auto max-w-[200px] sm:max-w-[240px]"
+                  />
               </span>
               {/* Brand text removed as requested */}
             </Link>
