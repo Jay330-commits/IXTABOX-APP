@@ -37,7 +37,7 @@ const mockBookings = [
     endDate: '2025-10-18T10:00:00',
     status: 'confirmed' as const,
     model: {
-      name: 'IXTAbox Pro',
+      name: 'IXTAbox Pro 190',
       description: 'Premium model with advanced features',
       priceMultiplier: 1.5,
     },
@@ -51,7 +51,7 @@ const mockBookings = [
     endDate: '2025-10-22T10:00:00',
     status: 'pending' as const,
     model: {
-      name: 'IXTAbox Classic',
+      name: 'IXTAbox Pro 175',
       description: 'Standard model with essential features',
       priceMultiplier: 1.0,
     },
@@ -91,9 +91,9 @@ export default function BookingsPageClient() {
     if (!standId || !startDate) return mockBookings;
     const stand = mockStands.find(s => s.id.toString() === standId);
     if (!stand) return mockBookings;
-    const model = modelId === 'pro' ? { name: 'IXTAbox Pro', description: 'Premium model with advanced features', priceMultiplier: 1.5 }
+    const model = modelId === 'pro' ? { name: 'IXTAbox Pro 185', description: 'Premium model with advanced features', priceMultiplier: 1.5 }
       : modelId === 'elite' ? { name: 'IXTAbox Elite', description: 'Elite tier with maximum capacity', priceMultiplier: 2.0 }
-      : { name: 'IXTAbox Classic', description: 'Standard model with essential features', priceMultiplier: 1.0 };
+      : { name: 'IXTAbox Pro 175', description: 'Standard model with essential features', priceMultiplier: 1.0 };
     const generated = {
       id: `new-${Date.now()}`,
       standId: standId,

@@ -19,6 +19,8 @@ function PaymentContent() {
   const standId = searchParams.get('standId') || '';
   const startDate = searchParams.get('startDate') || '';
   const endDate = searchParams.get('endDate') || '';
+  const startTime = searchParams.get('startTime') || '';
+  const endTime = searchParams.get('endTime') || '';
   const modelId = searchParams.get('modelId') || '';
   const bookingId = searchParams.get('bookingId') || '';
 
@@ -38,6 +40,8 @@ function PaymentContent() {
               modelId,
               startDate,
               endDate,
+              startTime,
+              endTime,
               bookingId,
               source: 'booking-payment',
             },
@@ -58,7 +62,7 @@ function PaymentContent() {
     };
 
     createPaymentIntent();
-  }, [amount, currency, standId, modelId, startDate, endDate, bookingId]);
+  }, [amount, currency, standId, modelId, startDate, endDate, startTime, endTime, bookingId]);
 
   const handlePaymentSuccess = (paymentIntent: PaymentIntent) => {
     console.log('Payment succeeded:', paymentIntent);
@@ -157,11 +161,13 @@ function PaymentContent() {
                       <span className="text-white">{modelId}</span>
                     </div>
                   )}
-                  {startDate && endDate && (
+                  {(startDate || endDate) && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Dates:</span>
+                      <span className="text-gray-400">When:</span>
                       <span className="text-white">
-                        {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                        {startDate ? new Date(startDate).toLocaleDateString() : '—'} {startTime ? `@ ${startTime}` : ''}
+                        {` to `}
+                        {endDate ? new Date(endDate).toLocaleDateString() : '—'} {endTime ? `@ ${endTime}` : ''}
                       </span>
                     </div>
                   )}

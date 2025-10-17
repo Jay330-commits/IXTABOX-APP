@@ -7,6 +7,7 @@ import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import { useEffect, useState } from "react";
 
+
 // Dynamic import prevents SSR issues if you ever move Map to a separate file
 const Map = dynamic<MapProps>(() => import("../../components/maps/leaflet_map"), {
   ssr: false,
@@ -107,10 +108,10 @@ export default function GuestHome() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="#benefits"
+                href="#videos"
                 className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
               >
-                Explore Benefits
+                How To Use
               </a>
               <a
                 href="#map"
@@ -156,6 +157,55 @@ export default function GuestHome() {
             </div>
           </div>
         </section>
+
+        {/* Videos Section */}
+<section id="videos" className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
+  <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center">IXTAbox Tutorials</h2>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {/* Video 1 */}
+    <div className="relative overflow-hidden rounded-lg shadow-md border border-white/10 transform transition-transform hover:scale-105 duration-300">
+      <div className="aspect-[9/16] sm:aspect-video">
+        <iframe
+          className="w-full h-full"
+          src="https://www.youtube.com/embed/IbOvWJSCvVQ"
+          title="IXTAbox - MOUNTING AND DISMOUNTING - Backbox Tutorials"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    </div>
+
+    {/* Video 2 */}
+    <div className="relative overflow-hidden rounded-lg shadow-md border border-white/10 transform transition-transform hover:scale-105 duration-300">
+      <div className="aspect-[16/9] sm:aspect-video">
+        <iframe
+          className="w-full h-full"
+          src="https://www.youtube.com/embed/haZaoAEw23c"
+          title="Packa För Äventyr med IXTAbox"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    </div>
+
+    {/* Video 3 */}
+    <div className="relative overflow-hidden rounded-lg shadow-md border border-white/10 transform transition-transform hover:scale-105 duration-300">
+      <div className="aspect-[9/16] sm:aspect-video">
+        <iframe
+          className="w-full h-full"
+          src="https://www.youtube.com/embed/ELLwTaNqxgg"
+          title="IXTAbox - ADJUSTING THE HEIGHT - Backbox Tutorials"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  </div>
+</section>
+
 
         {/* Full-bleed background section */}
         <section className="relative overflow-hidden" style={{ minHeight: 420 }}>
@@ -232,7 +282,7 @@ export default function GuestHome() {
         <section className="px-6 pb-16">
           <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
             <h3 className="text-2xl font-bold">Ready to elevate your storage?</h3>
-            <p className="mt-2 text-gray-300">Join the IXTAbox journey and pack it all—smart, safe, and in style.</p>
+            <p className="mt-2 text-gray-300">Join the IXTAbox journey and pack it all-smart, safe, and in style.</p>
             <div className="mt-6 flex justify-center">
               <a href="/auth/register" className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]">
                 Get Started

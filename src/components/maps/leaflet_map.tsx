@@ -166,19 +166,13 @@ export default function Map({ stands }: MapProps) {
                 availableModels: [
                   {
                     id: 'classic',
-                    name: 'IXTAbox Classic',
+                    name: 'IXTAbox pro 175',
                     priceMultiplier: 1.0
                   },
                   {
                     id: 'pro',
-                    name: 'IXTAbox Pro',
+                    name: 'IXTAbox Pro 190',
                     priceMultiplier: 1.5
-                  },
-                  {
-                    id: 'elite',
-                    name: 'IXTAbox Elite',
-                    
-                    priceMultiplier: 2.0
                   }
                 ],
                 nextAvailableDate: selectedStand.status === 'booked' 

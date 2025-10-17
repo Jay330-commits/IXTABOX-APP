@@ -1,22 +1,21 @@
 "use client";
 
-import { useState } from 'react';
 import PaymentButton from './PaymentButton';
 
 // Example component showing how to integrate payments into your booking flow
 export default function PaymentExample() {
-  const [selectedStand, setSelectedStand] = useState({
+  const selectedStand = {
     id: '1',
     title: 'Stockholm Central',
     address: 'Central Station, 111 20 Stockholm',
     pricePerDay: 299.99,
-  });
+  };
 
-  const [bookingDetails, setBookingDetails] = useState({
+  const bookingDetails = {
     startDate: '2024-02-01',
     endDate: '2024-02-03',
     model: { name: 'IXTAbox Pro', priceMultiplier: 1.2 },
-  });
+  };
 
   // Calculate total amount
   const calculateTotal = () => {

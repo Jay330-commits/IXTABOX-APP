@@ -29,6 +29,15 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
   const [selectedModel, setSelectedModel] = React.useState<string>('');
   const [startDate, setStartDate] = React.useState<string>('');
   const [endDate, setEndDate] = React.useState<string>('');
+  const [startTime, setStartTime] = React.useState<string>('');
+  const [endTime, setEndTime] = React.useState<string>('');
+
+  const isTimeOrderValid = React.useMemo(() => {
+    if (!startDate || !endDate || !startTime || !endTime) return true;
+    const start = new Date(`${startDate}T${startTime}`);
+    const end = new Date(`${endDate}T${endTime}`);
+    return end > start;
+  }, [startDate, endDate, startTime, endTime]);
   
   
   const getStatusColor = (status: string) => {
@@ -142,44 +151,77 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
           </div>
         )}
 
-        {/* Booking Date Section */}
         <div className="px-6 py-4 border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">Select Dates</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">From</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                min={stand.status === 'booked' ? stand.nextAvailableDate : new Date().toISOString().split('T')[0]}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">To</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || (stand.status === 'booked' ? stand.nextAvailableDate : new Date().toISOString().split('T')[0])}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
-              />
-            </div>
-          </div>
-          {startDate && endDate && (
-            <p className="mt-2 text-sm text-emerald-600">
-              {new Date(startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-              {" "}-{" "}
-              {new Date(endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          )}
-          {stand.status === 'booked' && stand.nextAvailableDate && (
-            <p className="mt-2 text-sm text-gray-500">
-              Next available from: {new Date(stand.nextAvailableDate).toLocaleDateString()}
-            </p>
-          )}
-        </div>
+  <h3 className="text-sm font-medium text-gray-500 mb-3">Select Booking Period</h3>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">From</label>
+      <input
+        type="datetime-local"
+        value={startDate ? `${startDate}T${startTime}` : ''}
+        onChange={(e) => {
+          const [date, time] = e.target.value.split('T');
+          setStartDate(date);
+          setStartTime(time);
+        }}
+        min={
+          stand.status === 'booked'
+            ? stand.nextAvailableDate
+            : new Date().toISOString().slice(0, 16)
+        }
+        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                   focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+      />
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">To</label>
+      <input
+        type="datetime-local"
+        value={endDate ? `${endDate}T${endTime}` : ''}
+        onChange={(e) => {
+          const [date, time] = e.target.value.split('T');
+          setEndDate(date);
+          setEndTime(time);
+        }}
+        min={
+          startDate
+            ? `${startDate}T${startTime || '00:00'}`
+            : new Date().toISOString().slice(0, 16)
+        }
+        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                   focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+      />
+    </div>
+  </div>
+
+  {!isTimeOrderValid && (
+    <p className="mt-2 text-sm text-red-600">End time must be after start time.</p>
+  )}
+  {startDate && endDate && (
+    <p className="mt-2 text-sm text-emerald-600">
+      {new Date(`${startDate}T${startTime}`).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}{" "}
+      –{" "}
+      {new Date(`${endDate}T${endTime}`).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </p>
+  )}
+  {stand.status === 'booked' && stand.nextAvailableDate && (
+    <p className="mt-2 text-sm text-gray-500">
+      Next available from: {new Date(stand.nextAvailableDate).toLocaleDateString()}
+    </p>
+  )}
+</div>
 
         {/* Action Section */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
@@ -196,12 +238,15 @@ const StandDetails: React.FC<StandDetailsProps> = ({ stand, onBook, onClose }) =
               const totalPrice = stand.pricePerDay * days * modelMultiplier;
               
               // Redirect to payment page with stand details
-              window.location.href = `/payment?amount=${totalPrice}&currency=sek&standId=${stand.id}&startDate=${startDate}&endDate=${endDate}${selectedModel ? `&modelId=${selectedModel}` : ''}`;
+              window.location.href = `/payment?amount=${totalPrice}&currency=sek&standId=${stand.id}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}${selectedModel ? `&modelId=${selectedModel}` : ''}`;
             }}
             disabled={
               stand.status === 'maintenance' ||
               !startDate ||
               !endDate ||
+              !startTime ||
+              !endTime ||
+              !isTimeOrderValid ||
               (stand.availableModels && !selectedModel) ||
               (startDate && endDate ? new Date(endDate) < new Date(startDate) : false)
             }
