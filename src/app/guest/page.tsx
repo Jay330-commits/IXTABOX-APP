@@ -88,40 +88,51 @@ export default function GuestHome() {
       <main className="">
         {/* Hero with animated overlay and parallax background */}
         <section
-          className="relative flex items-center justify-center overflow-hidden"
-          style={{ minHeight: 560 }}
-        >
-          <div
-            className="absolute inset-0 bg-center bg-cover"
-            style={{
-              backgroundImage: "url(/images/background/back.jpg)",
-              backgroundAttachment: "fixed",
-            }}
-          />
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative z-10 mx-auto max-w-5xl px-6 py-20 text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-              The Smart Storage Solution
-            </h1>
-            <p className="mt-4 text-lg text-gray-200">
-              IXTAbox is now equipped with rental solution for those who do not wish to buy one.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href="#videos"
-                className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
-              >
-                How To Use
-              </a>
-              <a
-                href="#map"
-                className="inline-flex items-center justify-center rounded-full border border-cyan-500/60 bg-cyan-500/10 px-6 py-3 text-base font-semibold text-cyan-200 hover:text-white hover:bg-cyan-500/20 transition-colors"
-              >
-                Book Now!
-              </a>
-            </div>
-          </div>
-        </section>
+  className="relative flex items-center justify-center overflow-hidden"
+  style={{ minHeight: 560 }}
+>
+  <div
+    className="absolute inset-0 bg-center bg-cover"
+    style={{
+      backgroundImage: "url(/images/background/back.jpg)",
+      backgroundAttachment: "fixed",
+    }}
+  />
+  <div className="absolute inset-0 bg-black/50" />
+  <div className="relative z-10 mx-auto max-w-5xl px-6 py-20 text-center">
+    <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
+      Rear Cargo Box, Redefined for Life & Adventure
+    </h1>
+
+    {/* Comparison line using Unicode */}
+    <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4 text-lg font-semibold">
+      <div className="flex items-center gap-2 text-gray-400">
+        <span>Roof Box</span>
+        <span className="text-red-500">❌</span>
+      </div>
+      <div className="flex items-center gap-2 text-gray-100">
+        <span>IXTAbox</span>
+        <span className="text-green-500">✔️</span>
+      </div>
+    </div>
+
+    <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+      <a
+        href="#videos"
+        className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+      >
+        How To Use
+      </a>
+      <a
+        href="#map"
+        className="inline-flex items-center justify-center rounded-full border border-cyan-500/60 bg-cyan-500/10 px-6 py-3 text-base font-semibold text-cyan-200 hover:text-white hover:bg-cyan-500/20 transition-colors"
+      >
+        Book Now!
+      </a>
+    </div>
+  </div>
+</section>
+
 
         {/* Map section (moved just below hero) */}
         <section id="map" className="px-6 py-12">

@@ -76,35 +76,25 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Overview Summary with Background */}
-      <div className="relative overflow-hidden rounded-xl border border-cyan-400/20">
-        <div
-          className="absolute inset-0 bg-center bg-cover"
-          style={{
-            backgroundImage: "url(/images/background/IXTAbox_2025_ProVSClassic1.jpg)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/90 to-gray-900/85" />
-        
-        <div className="relative p-6">
-          <h2 className="text-xl font-bold mb-4">All Stands Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Total Stands</p>
-              <p className="text-2xl font-bold text-cyan-300">{mockStands.length}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Today&apos;s Bookings</p>
-              <p className="text-2xl font-bold text-cyan-300">{totalBookingsToday}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-cyan-300">{totalRevenue.toLocaleString()} kr</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Avg Occupancy</p>
-              <p className="text-2xl font-bold text-cyan-300">{averageOccupancy}%</p>
-            </div>
+      {/* Overview Summary */}
+      <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
+        <h2 className="text-xl font-bold mb-4">All Stands Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Total Stands</p>
+            <p className="text-2xl font-bold text-cyan-300">{mockStands.length}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Today&apos;s Bookings</p>
+            <p className="text-2xl font-bold text-cyan-300">{totalBookingsToday}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Monthly Revenue</p>
+            <p className="text-2xl font-bold text-cyan-300">${totalRevenue.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Avg Occupancy</p>
+            <p className="text-2xl font-bold text-cyan-300">{averageOccupancy}%</p>
           </div>
         </div>
       </div>
@@ -122,25 +112,12 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {mockStands.map((stand, index) => {
-            const backgroundImages = [
-              '/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP1.jpg',
-              '/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP2.jpg',
-              '/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP3.jpg',
-            ];
-            return (
+          {mockStands.map((stand) => (
             <div
               key={stand.id}
-              className="relative border border-white/10 rounded-lg overflow-hidden hover:border-cyan-400/40 transition-all cursor-pointer group"
+              className="border border-white/10 rounded-lg p-5 bg-white/5 hover:border-cyan-400/40 transition-all cursor-pointer group"
               onClick={() => onSelectStand && onSelectStand(stand.id)}
             >
-              <div
-                className="absolute inset-0 bg-center bg-cover opacity-10 group-hover:opacity-20 transition-opacity"
-                style={{
-                  backgroundImage: `url(${backgroundImages[index % backgroundImages.length]})`,
-                }}
-              />
-              <div className="relative bg-gradient-to-br from-white/5 to-transparent p-5">
               {/* Stand Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -168,7 +145,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">Monthly Revenue</span>
                   <span className="text-lg font-bold text-cyan-300">
-                    {stand.monthlyRevenue.toLocaleString()} kr
+                    ${stand.monthlyRevenue.toLocaleString()}
                   </span>
                 </div>
 
@@ -202,10 +179,8 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               <button className="w-full mt-4 py-2 bg-white/5 border border-white/10 rounded-md text-sm font-medium text-gray-300 hover:bg-white/10 hover:border-cyan-400/40 hover:text-cyan-300 transition-all">
                 View Detailed Statistics →
               </button>
-              </div>
             </div>
-            );
-          })}
+          ))}
         </div>
       </div>
 
@@ -250,7 +225,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
                       >
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                           <div className="bg-gray-950 border border-cyan-400/40 text-cyan-300 text-xs rounded py-1 px-2 whitespace-nowrap">
-                            {stand.monthlyRevenue.toLocaleString()} kr
+                            ${stand.monthlyRevenue.toLocaleString()}
                           </div>
                         </div>
                       </div>

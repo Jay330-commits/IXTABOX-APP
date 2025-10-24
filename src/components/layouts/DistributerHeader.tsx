@@ -25,10 +25,11 @@ interface DistributerHeaderProps {
 
 export default function DistributerHeader({ activeSection, onSectionChange }: DistributerHeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const logoPath = "/images/logo/guest-header-icon.png";
+  const logoPath = "/images/logo/new.png";
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -36,6 +37,23 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-mobile-account-menu]')) {
+        setMobileUserMenuOpen(false);
+      }
+    };
+    
+    if (mobileUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileUserMenuOpen]);
 
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add("dark");
@@ -218,12 +236,46 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             </svg>
             Upgrade
           </button>
-          <span className="h-6 w-6 flex items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
-              <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4Z" />
-            </svg>
-          </span>
-          <button onClick={() => onSectionChange("account")} className="text-xs text-gray-200 hover:text-white">Account</button>
+          
+          {/* Account icon with dropdown */}
+          <div className="relative flex items-center" data-mobile-account-menu>
+            <button
+              onClick={() => setMobileUserMenuOpen((v) => !v)}
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 transition-all"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4Z" />
+              </svg>
+            </button>
+            
+            {mobileUserMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-44 rounded-md border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3001]">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onSectionChange("profile");
+                      setMobileUserMenuOpen(false);
+                    }}
+                    className={`${linkBase} ${linkGlow} block w-full text-left`}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSectionChange("settings");
+                      setMobileUserMenuOpen(false);
+                    }}
+                    className={`${linkBase} ${linkGlow} block w-full text-left`}
+                  >
+                    Settings
+                  </button>
+                  <button className={`${linkBase} ${linkGlow} block w-full text-left`}>
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -246,19 +298,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
         <div className="relative h-full w-72 bg-gray-950 border-r border-white/10 shadow-2xl shadow-black/60 overflow-y-auto">
           {/* Sidebar Header */}
           <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10">
-                <Image
-                  src={encodeURI(logoPath)}
-                  alt="IXTAbox"
-                  width={40}
-                  height={40}
-                  unoptimized
-                  className="object-contain"
-                />
-              </span>
-              <span className="text-white font-semibold text-sm">IXTAbox Partner</span>
-            </div>
+            <span className="text-white font-semibold text-lg">IXTAbox Partner</span>
             <button
               aria-label="Close menu"
               onClick={() => setMobileOpen(false)}
@@ -308,48 +348,6 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Upgrade Account
-              </button>
-              <button
-                onClick={() => setDarkMode((v) => !v)}
-                className={`inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 hover:text-white hover:bg-white/10 transition-colors ${neonFocus}`}
-              >
-                {darkMode ? (
-                  <>
-                    <svg className="h-5 w-5 mr-2 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.364-7.364l-1.414 1.414M8.05 16.95l-1.414 1.414m12.728 0l-1.414-1.414M8.05 7.05 6.636 5.636" />
-                    </svg>
-                    Light Mode
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5 mr-2 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                    Dark Mode
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  onSectionChange("profile");
-                  setMobileOpen(false);
-                }}
-                className={`inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 hover:text-white hover:bg-white/10 transition-colors ${neonFocus}`}
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => {
-                  onSectionChange("settings");
-                  setMobileOpen(false);
-                }}
-                className={`inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 hover:text-white hover:bg-white/10 transition-colors ${neonFocus}`}
-              >
-                Settings
-              </button>
-              <button className={`inline-flex items-center justify-center rounded-md border border-red-500/50 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 hover:text-white hover:bg-red-500/20 transition-colors ${neonFocus}`}>
-                Logout
               </button>
             </div>
           </div>

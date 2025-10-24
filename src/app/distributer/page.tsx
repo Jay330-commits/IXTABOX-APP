@@ -35,7 +35,7 @@ const statsData: StatCard[] = [
   },
   {
     title: 'Earnings Overview',
-    value: '14,850 kr',
+    value: '$14,850',
     change: '+8% this month',
     changeType: 'positive',
     icon: 'earnings',
@@ -168,62 +168,46 @@ export default function DistributerDashboard() {
       default:
         return (
           <>
-            {/* Hero Section with Background */}
-            <div className="relative overflow-hidden mb-8">
-              <div
-                className="absolute inset-0 bg-center bg-cover"
-                style={{
-                  backgroundImage: "url(/images/background/IXTAbox_Hero_Shot_Summer_2025.jpg)",
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/90 to-gray-900/80" />
-              
-              <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-                <div className="mb-8">
-                  <h1 className="text-4xl font-bold mb-3 text-white">
-                    Welcome back, Partner Name!
-                  </h1>
-                  <p className="text-cyan-300 text-lg">
-                    Track your stands&apos; performance and business metrics in real-time.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Stats Section */}
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2">
+                  Welcome back, Partner Name!
+                </h1>
+                <p className="text-gray-300">
+                  Track your stands&apos; performance and business metrics in real-time.
+                </p>
+              </div>
+
               {/* Stats Cards */}
               <div className="mb-8 overflow-x-auto lg:overflow-visible">
                 <div className="flex lg:grid lg:grid-cols-4 gap-6 px-2 lg:px-0">
                   {statsData.map((stat, index) => (
                     <div
                       key={index}
-                      className="relative bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto hover:border-cyan-400/40 transition-all overflow-hidden group"
+                      className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto hover:bg-white/10 transition-colors"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="text-cyan-300">{getIconSvg(stat.icon)}</div>
-                          <div
-                            className={`text-xs font-semibold px-2 py-1 rounded ${
-                              stat.changeType === 'positive'
-                                ? 'bg-green-500/20 text-green-400'
-                                : stat.changeType === 'negative'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-blue-500/20 text-blue-400'
-                            }`}
-                          >
-                            {stat.changeType === 'positive' && '↑'}
-                            {stat.changeType === 'negative' && '↓'}
-                          </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-cyan-300">{getIconSvg(stat.icon)}</div>
+                        <div
+                          className={`text-xs font-semibold px-2 py-1 rounded ${
+                            stat.changeType === 'positive'
+                              ? 'bg-green-500/20 text-green-400'
+                              : stat.changeType === 'negative'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-blue-500/20 text-blue-400'
+                          }`}
+                        >
+                          {stat.changeType === 'positive' && '↑'}
+                          {stat.changeType === 'negative' && '↓'}
                         </div>
-
-                        <h3 className="text-xs lg:text-sm text-gray-400 mb-1">{stat.title}</h3>
-                        <p className="text-xl lg:text-2xl font-bold text-cyan-300 mb-2">
-                          {stat.value}
-                        </p>
-                        <p className="text-xs text-gray-400">{stat.change}</p>
                       </div>
+
+                      <h3 className="text-xs lg:text-sm text-gray-400 mb-1">{stat.title}</h3>
+                      <p className="text-xl lg:text-2xl font-bold text-cyan-300 mb-2">
+                        {stat.value}
+                      </p>
+                      <p className="text-xs text-gray-400">{stat.change}</p>
                     </div>
                   ))}
                 </div>

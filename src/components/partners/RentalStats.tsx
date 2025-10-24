@@ -116,9 +116,10 @@ export default function RentalStats() {
         <div className="border border-white/10 rounded-lg p-4 bg-white/5">
           <p className="text-sm text-gray-400 mb-1">Total Earnings (YTD)</p>
           <p className="text-3xl font-bold text-cyan-300">
+            $
             {currentStandData.monthlyEarnings
               .reduce((sum, val) => sum + val, 0)
-              .toLocaleString()} kr
+              .toLocaleString()}
           </p>
           <p className="text-xs text-green-400 mt-1">↑ 8% from last year</p>
         </div>
@@ -142,7 +143,7 @@ export default function RentalStats() {
                       {/* Tooltip */}
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                         <div className="bg-gray-950 border border-cyan-400/40 text-cyan-300 text-xs rounded py-1 px-2 whitespace-nowrap">
-                          {earning.toLocaleString()} kr
+                          ${earning.toLocaleString()}
                         </div>
                       </div>
                     </div>
@@ -158,16 +159,19 @@ export default function RentalStats() {
           {/* Y-axis labels */}
           <div className="flex justify-between mt-4 pt-4 border-t border-white/10">
             <div className="text-xs text-gray-400">
-              <span className="font-semibold text-cyan-300">Min:</span> {Math.min(...currentStandData.monthlyEarnings).toLocaleString()} kr
+              <span className="font-semibold text-cyan-300">Min:</span> $
+              {Math.min(...currentStandData.monthlyEarnings).toLocaleString()}
             </div>
             <div className="text-xs text-gray-400">
-              <span className="font-semibold text-cyan-300">Avg:</span> {Math.round(
+              <span className="font-semibold text-cyan-300">Avg:</span> $
+              {Math.round(
                 currentStandData.monthlyEarnings.reduce((sum, val) => sum + val, 0) /
                   currentStandData.monthlyEarnings.length
-              ).toLocaleString()} kr
+              ).toLocaleString()}
             </div>
             <div className="text-xs text-gray-400">
-              <span className="font-semibold text-cyan-300">Max:</span> {Math.max(...currentStandData.monthlyEarnings).toLocaleString()} kr
+              <span className="font-semibold text-cyan-300">Max:</span> $
+              {Math.max(...currentStandData.monthlyEarnings).toLocaleString()}
             </div>
           </div>
         </div>

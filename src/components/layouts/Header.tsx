@@ -22,7 +22,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const pathname = usePathname();
-  const logoPath = "/images/logo/guest-header-icon.png";
+  const logoPath = "/images/logo/new.png";
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -59,55 +59,56 @@ export default function Header() {
   };
 
   return (
-    <header className={containerClasses + " isolate"}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-full items-center justify-between gap-4">
-          {/* Left: Logo + mobile menu button */}
-          <div className="flex items-center gap-3">
-            <button
-              aria-label="Open menu"
-              className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-              onClick={() => setMobileOpen(true)}
-            >
-              <svg
-                className="h-6 w-6"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+    <>
+      <header className={containerClasses + " isolate"}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-full items-center justify-between gap-4">
+            {/* Left: Logo + mobile menu button */}
+            <div className="flex items-center gap-3">
+              <button
+                aria-label="Open menu"
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                onClick={() => setMobileOpen(true)}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <Link href="/" className="group flex items-center gap-3">
-              <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
-                <Image
-                  src={encodeURI(logoPath)}
-                  alt="InxaBox Portal"
-                  width={160}
-                  height={90}
-                  unoptimized
-                  priority
-                  className="object-contain mx-auto h-auto max-w-[200px] sm:max-w-[240px]"
-                />
-              </span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1.5">
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 ${
-                    active
-                      ? "bg-cyan-600/20 border-cyan-400/40 text-white"
-                      : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
-                  }`}
+                <svg
+                  className="h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <Link href="/" className="group flex items-center gap-3">
+                <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
+                  <Image
+                    src={encodeURI(logoPath)}
+                    alt="InxaBox Portal"
+                    width={160}
+                    height={90}
+                    unoptimized
+                    priority
+                    className="object-contain mx-auto h-auto max-w-[200px] sm:max-w-[240px]"
+                  />
+                </span>
+              </Link>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-1.5">
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 ${
+                      active
+                        ? "bg-cyan-600/20 border-cyan-400/40 text-white"
+                        : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
+                    }`}
+                  >
                   <span className="opacity-80">
                     {item.label === "Home" && (
                       <svg
@@ -217,42 +218,41 @@ export default function Header() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </header>
 
       {/* Mobile Menu */}
-      <div
-        className={`fixed inset-0 z-[2500] transform transition-transform duration-300 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="absolute inset-0 bg-black/80" onClick={() => setMobileOpen(false)} />
-        <div className="relative h-full w-72 bg-gray-950 border-r border-white/10 shadow-2xl shadow-black/60">
-          <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-            <span className="text-white font-semibold">InxaBox Portal</span>
-            <button
-              aria-label="Close menu"
-              onClick={() => setMobileOpen(false)}
-              className="p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4 flex flex-col gap-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-[10001]">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-72 bg-gray-950 border-r border-white/10 shadow-2xl shadow-black/60 overflow-y-auto">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
+              <span className="text-white font-semibold text-lg">InxaBox Portal</span>
+              <button
+                aria-label="Close menu"
                 onClick={() => setMobileOpen(false)}
-                className={`${linkBase} ${linkGlow} rounded-md block`}
+                className="p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5"
               >
-                {item.label}
-              </Link>
-            ))}
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 flex flex-col gap-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`${linkBase} ${linkGlow} rounded-md block`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 }

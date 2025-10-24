@@ -62,6 +62,12 @@ const mockBookings = [
 export default function BookingsPageClient() {
   const searchParams = useSearchParams();
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchReference, setSearchReference] = useState('');
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchResults, setSearchResults] = useState<typeof mockBookings>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   const handleBookingClick = (bookingId: string) => {
     setSelectedBooking(bookingId);
@@ -81,6 +87,47 @@ export default function BookingsPageClient() {
     // Handle booking modification
     console.log('Modifying booking:', selectedBooking);
     setSelectedBooking(null);
+  };
+
+  const handleSearch = async () => {
+    if (!searchEmail || !searchReference) {
+      setSearchError('Please enter both email and booking reference');
+      return;
+    }
+
+    setSearching(true);
+    setSearchError('');
+
+    try {
+      // In a real app, this would be an API call
+      // Simulating API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock search - find bookings matching email and reference
+      const results = mockBookings.filter(booking => 
+        booking.id === searchReference
+      );
+
+      if (results.length === 0) {
+        setSearchError('No bookings found with the provided details');
+        setSearchResults([]);
+      } else {
+        setSearchResults(results);
+        setSearchMode(true);
+      }
+    } catch (error) {
+      setSearchError('An error occurred while searching. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchEmail('');
+    setSearchReference('');
+    setSearchMode(false);
+    setSearchResults([]);
+    setSearchError('');
   };
 
   const bookings = useMemo(() => {
@@ -115,8 +162,10 @@ export default function BookingsPageClient() {
   }, [bookings]);
 
   const currentBooking = selectedBooking 
-    ? bookings.find(b => b.id === selectedBooking)
+    ? (searchMode ? searchResults : bookings).find(b => b.id === selectedBooking)
     : null;
+
+  const displayBookings = searchMode ? searchResults : bookings;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -124,7 +173,82 @@ export default function BookingsPageClient() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Bookings</h1>
-          <p className="text-gray-300">Manage your IXTAbox rentals and bookings</p>
+          <p className="text-gray-300">Search and manage your IXTAbox rentals</p>
+        </div>
+
+        {/* Search Section */}
+        <div className="mb-8 bg-white/5 border border-white/10 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <svg className="h-5 w-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            Search Your Booking
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">Enter your email and booking reference number to find your reservation</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                className="w-full px-4 py-2 rounded-md bg-gray-900 border border-white/10 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-cyan-500/60 focus:border-cyan-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Booking Reference</label>
+              <input
+                type="text"
+                value={searchReference}
+                onChange={(e) => setSearchReference(e.target.value)}
+                placeholder="e.g., 1 or 2"
+                className="w-full px-4 py-2 rounded-md bg-gray-900 border border-white/10 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-cyan-500/60 focus:border-cyan-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {searchError && (
+            <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {searchError}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {searching ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                  </svg>
+                  Search Booking
+                </>
+              )}
+            </button>
+            {searchMode && (
+              <button
+                onClick={handleClearSearch}
+                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-gray-200 hover:bg-white/10 transition-colors"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -166,11 +290,23 @@ export default function BookingsPageClient() {
           {/* Bookings List Section */}
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">All Bookings</h2>
-              <BookingList
-                bookings={bookings}
-                onBookingClick={handleBookingClick}
-              />
+              <h2 className="text-xl font-semibold mb-4">
+                {searchMode ? 'Search Results' : 'All Bookings'}
+              </h2>
+              {displayBookings.length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="h-12 w-12 text-gray-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  <p className="text-gray-400">No bookings found</p>
+                </div>
+              ) : (
+                <BookingList
+                  bookings={displayBookings}
+                  onBookingClick={handleBookingClick}
+                />
+              )}
             </section>
           </div>
         </div>

@@ -140,39 +140,29 @@ export default function InventoryManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Inventory Overview with Background */}
-      <div className="relative overflow-hidden border border-cyan-400/20 rounded-xl">
-        <div
-          className="absolute inset-0 bg-center bg-cover"
-          style={{
-            backgroundImage: "url(/images/background/IXTAbox_-_IXTAbox_-_Taktaltarna_CLASSIC.jpg)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/90 to-gray-900/85" />
-        
-        <div className="relative p-6">
-          <h2 className="text-2xl font-bold mb-4">Inventory Overview</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Total IXTAboxes</p>
-              <p className="text-2xl font-bold text-cyan-300">{stats.totalBoxes}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Available</p>
-              <p className="text-2xl font-bold text-green-400">{stats.availableBoxes}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Rented</p>
-              <p className="text-2xl font-bold text-blue-400">{stats.rentedBoxes}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Reserved</p>
-              <p className="text-2xl font-bold text-purple-400">{stats.reservedBoxes}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Maintenance</p>
-              <p className="text-2xl font-bold text-yellow-400">{stats.maintenanceBoxes}</p>
-            </div>
+      {/* Inventory Overview */}
+      <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
+        <h2 className="text-2xl font-bold mb-4">Inventory Overview</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Total IXTAboxes</p>
+            <p className="text-2xl font-bold text-cyan-300">{stats.totalBoxes}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Available</p>
+            <p className="text-2xl font-bold text-green-400">{stats.availableBoxes}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Rented</p>
+            <p className="text-2xl font-bold text-blue-400">{stats.rentedBoxes}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Reserved</p>
+            <p className="text-2xl font-bold text-purple-400">{stats.reservedBoxes}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Maintenance</p>
+            <p className="text-2xl font-bold text-yellow-400">{stats.maintenanceBoxes}</p>
           </div>
         </div>
       </div>

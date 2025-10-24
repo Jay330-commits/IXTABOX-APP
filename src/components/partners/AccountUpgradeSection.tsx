@@ -20,7 +20,7 @@ const upgradeOptions = [
     title: 'Hybrid',
     description: 'Perfect balance of flexibility and ownership. Mix leasing with owning options to maximize your investment.',
     features: ['Flexible terms', 'Mixed ownership', 'Scalable model', 'Up to 5 stands'],
-    price: '2,990 kr/month',
+    price: '$299/month',
     recommended: true,
   },
   {
@@ -28,7 +28,7 @@ const upgradeOptions = [
     title: 'Leasing',
     description: 'Pay per rental cycle with minimal upfront costs. Ideal for testing new markets or seasonal operations.',
     features: ['Low initial cost', 'No maintenance fees', 'Flexible contracts', 'Up to 3 stands'],
-    price: '1,990 kr/month',
+    price: '$199/month',
     recommended: false,
   },
   {
@@ -36,7 +36,7 @@ const upgradeOptions = [
     title: 'Owning',
     description: 'Full ownership of your stands. Maximize long-term returns and have complete control over your assets.',
     features: ['Full ownership', 'Maximum ROI', 'Asset appreciation', 'Unlimited stands'],
-    price: '4,990 kr/month',
+    price: '$499/month',
     recommended: false,
   },
 ];
@@ -44,40 +44,30 @@ const upgradeOptions = [
 export default function AccountUpgradeSection() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Current Account Status with Background */}
-      <div className="relative overflow-hidden border border-cyan-400/20 rounded-xl">
-        <div
-          className="absolute inset-0 bg-center bg-cover"
-          style={{
-            backgroundImage: "url(/images/background/IXTAbox_-_Benefits.jpg)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/90 to-gray-900/85" />
-        
-        <div className="relative p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Current Account</h2>
-              <p className="text-gray-300">Manage your partnership plan and stands</p>
-            </div>
-            <span className="px-4 py-2 bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 text-sm font-semibold rounded-full">
-              {currentAccount.type}
-            </span>
+      {/* Current Account Status */}
+      <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Current Account</h2>
+            <p className="text-gray-300">Manage your partnership plan and stands</p>
           </div>
+          <span className="px-4 py-2 bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 text-sm font-semibold rounded-full">
+            {currentAccount.type}
+          </span>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Account Type</p>
-              <p className="text-xl font-bold text-cyan-300">{currentAccount.type}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Member Since</p>
-              <p className="text-xl font-bold text-gray-200">{currentAccount.since}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Active Stands</p>
-              <p className="text-xl font-bold text-cyan-300">{currentAccount.activeStands}</p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Account Type</p>
+            <p className="text-xl font-bold text-cyan-300">{currentAccount.type}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Member Since</p>
+            <p className="text-xl font-bold text-gray-200">{currentAccount.since}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Active Stands</p>
+            <p className="text-xl font-bold text-cyan-300">{currentAccount.activeStands}</p>
           </div>
         </div>
       </div>
