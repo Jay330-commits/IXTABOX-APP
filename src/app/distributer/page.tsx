@@ -168,27 +168,19 @@ export default function DistributerDashboard() {
       default:
         return (
           <>
-            {/* Stats Section */}
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">
-                  Welcome back, Partner Name!
-                </h1>
-                <p className="text-gray-300">
-                  Track your stands&apos; performance and business metrics in real-time.
-                </p>
-              </div>
+            {/* Stats Section - Hidden on mobile */}
+            <div className="hidden lg:block mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 
               {/* Stats Cards */}
-              <div className="mb-8 overflow-x-auto lg:overflow-visible">
-                <div className="flex lg:grid lg:grid-cols-4 gap-6 px-2 lg:px-0">
+              <div className="mb-8">
+                <div className="grid grid-cols-4 gap-6">
                   {statsData.map((stat, index) => (
                     <div
                       key={index}
-                      className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto hover:bg-white/10 transition-colors"
+                      className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <div className="text-cyan-300">{getIconSvg(stat.icon)}</div>
+                        <div className="text-cyan-300 w-8 h-8">{getIconSvg(stat.icon)}</div>
                         <div
                           className={`text-xs font-semibold px-2 py-1 rounded ${
                             stat.changeType === 'positive'
@@ -203,13 +195,259 @@ export default function DistributerDashboard() {
                         </div>
                       </div>
 
-                      <h3 className="text-xs lg:text-sm text-gray-400 mb-1">{stat.title}</h3>
-                      <p className="text-xl lg:text-2xl font-bold text-cyan-300 mb-2">
+                      <h3 className="text-sm text-gray-400 mb-1">{stat.title}</h3>
+                      <p className="text-2xl font-bold text-cyan-300 mb-2">
                         {stat.value}
                       </p>
-                      <p className="text-xs text-gray-400">{stat.change}</p>
+                      <p className="text-sm text-gray-400">{stat.change}</p>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modern Real-time Box Inventory Table */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold">Box Inventory & Movement</h2>
+                    <p className="text-sm text-gray-400 mt-1">Real-time tracking of all boxes across stands</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-400">Live Updates</span>
+                    <button className="text-cyan-300 hover:text-cyan-200 text-sm font-medium ml-4">
+                      Export Data →
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Modern Excel-like Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Box ID</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Type</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Current Location</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Status</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Customer</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Start Time</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Duration</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Revenue</th>
+                        <th className="text-left py-4 px-3 text-gray-300 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Active Booking */}
+                      <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span className="font-mono text-cyan-300">#IXTA-001</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-cyan-500/20 rounded flex items-center justify-center">
+                              <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                            <span className="text-white">IXTAbox Pro</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">Stockholm Central</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+                            In Use
+                          </span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">John Doe</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-300">Jan 15, 14:30</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">3 days</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="font-semibold text-green-400">$899.97</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <button className="text-cyan-300 hover:text-cyan-200 text-xs">
+                            Track →
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Pending Booking */}
+                      <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                            <span className="font-mono text-cyan-300">#IXTA-002</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-yellow-500/20 rounded flex items-center justify-center">
+                              <svg className="w-3 h-3 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                            <span className="text-white">IXTAbox Classic</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">Kungsträdgården</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium">
+                            Scheduled
+                          </span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">Jane Smith</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-300">Jan 20, 09:00</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">1 day</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="font-semibold text-yellow-400">$249.99</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <button className="text-cyan-300 hover:text-cyan-200 text-xs">
+                            Prepare →
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Available Box */}
+                      <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                            <span className="font-mono text-cyan-300">#IXTA-003</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center">
+                              <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                            <span className="text-white">IXTAbox Pro</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">Norrmalm</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium">
+                            Available
+                          </span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <button className="text-cyan-300 hover:text-cyan-200 text-xs">
+                            Book →
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Maintenance Box */}
+                      <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                            <span className="font-mono text-cyan-300">#IXTA-004</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-orange-500/20 rounded flex items-center justify-center">
+                              <svg className="w-3 h-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                            <span className="text-white">IXTAbox Classic</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">Service Center</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs font-medium">
+                            Maintenance
+                          </span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-300">Jan 18, 16:00</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-white">2 days</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-gray-400">-</span>
+                        </td>
+                        <td className="py-4 px-3">
+                          <button className="text-cyan-300 hover:text-cyan-200 text-xs">
+                            Repair →
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer with Summary */}
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-6">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <span className="text-gray-300">1 Active</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                        <span className="text-gray-300">1 Scheduled</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                        <span className="text-gray-300">1 Available</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                        <span className="text-gray-300">1 Maintenance</span>
+                      </div>
+                    </div>
+                    <div className="text-cyan-300 font-semibold">
+                      Total Revenue: $1,149.96
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

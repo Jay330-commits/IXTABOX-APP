@@ -79,7 +79,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
       {/* Overview Summary */}
       <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
         <h2 className="text-xl font-bold mb-4">All Stands Overview</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
             <p className="text-sm text-gray-400 mb-1">Total Stands</p>
             <p className="text-2xl font-bold text-cyan-300">{mockStands.length}</p>
@@ -111,17 +111,17 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex lg:grid lg:grid-cols-3 overflow-x-auto lg:overflow-x-visible gap-3 lg:gap-6 pb-4">
           {mockStands.map((stand) => (
             <div
               key={stand.id}
-              className="border border-white/10 rounded-lg p-5 bg-white/5 hover:border-cyan-400/40 transition-all cursor-pointer group"
+              className="border border-white/10 rounded-lg p-3 lg:p-5 bg-white/5 hover:border-cyan-400/40 transition-all cursor-pointer group flex-shrink-0 w-72 lg:w-auto lg:flex-shrink"
               onClick={() => onSelectStand && onSelectStand(stand.id)}
             >
               {/* Stand Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-cyan-300 group-hover:text-cyan-200 transition-colors">
+                  <h3 className="font-semibold text-sm lg:text-lg text-cyan-300 group-hover:text-cyan-200 transition-colors">
                     {stand.name}
                   </h3>
                   <p className="text-xs text-gray-400 mt-1">{stand.location}</p>
@@ -136,27 +136,27 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               </div>
 
               {/* Key Metrics */}
-              <div className="space-y-3 mb-4">
+              <div className="space-y-2 lg:space-y-3 mb-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Today&apos;s Bookings</span>
-                  <span className="text-lg font-bold text-cyan-300">{stand.todayBookings}</span>
+                  <span className="text-xs lg:text-sm text-gray-400">Today&apos;s Bookings</span>
+                  <span className="text-sm lg:text-lg font-bold text-cyan-300">{stand.todayBookings}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Monthly Revenue</span>
-                  <span className="text-lg font-bold text-cyan-300">
+                  <span className="text-xs lg:text-sm text-gray-400">Monthly Revenue</span>
+                  <span className="text-sm lg:text-lg font-bold text-cyan-300">
                     ${stand.monthlyRevenue.toLocaleString()}
                   </span>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-400">Occupancy Rate</span>
-                    <span className="text-sm font-semibold text-cyan-300">{stand.occupancyRate}%</span>
+                    <span className="text-xs lg:text-sm text-gray-400">Occupancy Rate</span>
+                    <span className="text-xs lg:text-sm font-semibold text-cyan-300">{stand.occupancyRate}%</span>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-gray-700 rounded-full h-1.5 lg:h-2">
                     <div
-                      className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 lg:h-2 rounded-full transition-all"
                       style={{ width: `${stand.occupancyRate}%` }}
                     />
                   </div>
@@ -164,9 +164,9 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               </div>
 
               {/* Additional Stats */}
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+              <div className="pt-3 lg:pt-4 border-t border-white/10 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-400">Total Bookings:</span>
+                  <span className="text-gray-400">Total:</span>
                   <span className="font-semibold text-gray-200">{stand.totalBookings}</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -176,8 +176,8 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               </div>
 
               {/* View Details Button */}
-              <button className="w-full mt-4 py-2 bg-white/5 border border-white/10 rounded-md text-sm font-medium text-gray-300 hover:bg-white/10 hover:border-cyan-400/40 hover:text-cyan-300 transition-all">
-                View Detailed Statistics →
+              <button className="w-full mt-3 lg:mt-4 py-1.5 lg:py-2 bg-white/5 border border-white/10 rounded-md text-xs lg:text-sm font-medium text-gray-300 hover:bg-white/10 hover:border-cyan-400/40 hover:text-cyan-300 transition-all">
+                View Details →
               </button>
             </div>
           ))}
