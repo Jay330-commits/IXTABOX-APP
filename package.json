@@ -52,6 +52,7 @@
     "typescript": "^5"
   },
   "prisma": {
-    "schema": "src/lib/prisma/schema.prisma"
+    "schema": "src/lib/prisma/schema.prisma",
+    "seed": "node prisma/seed.js"
   }
 }
