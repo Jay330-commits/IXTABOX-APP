@@ -1,3 +1,5 @@
+"use client";
+
 import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 

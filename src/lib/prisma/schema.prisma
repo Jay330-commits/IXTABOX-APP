@@ -1,0 +1,367 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+enum Role {
+  GUEST 
+  CUSTOMER
+  DISTRIBUTOR
+  ADMIN
+}
+
+enum StandStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum ContractType {
+  HYBRID
+  LEASING
+  OWNING
+  BASIC
+
+  @@map("contracttype")
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+// ======================================================
+// USERS (Core authentication and identity)
+// ======================================================
+model User {
+  id        String   @id @default(uuid())
+  fullName  String   @map("full_name")
+  email     String   @unique
+  phone     String?
+  address   Json?
+  role      Role     @default(GUEST)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer     Customer?
+  distributor  Distributor?
+  admin        Admin?
+  reviews      Review[]
+  notifications Notification[]
+  paymentMethods PaymentMethod[]
+
+  @@map("users")
+}
+
+// ======================================================
+// CUSTOMERS
+// ======================================================
+model Customer {
+  id             String  @id @default(uuid())
+  userId         String  @unique @map("user_id")
+  loyaltyPoints  Int     @default(0) @map("loyalty_points")
+  preferences    Json?
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@map("customers")
+}
+
+// ======================================================
+// DISTRIBUTORS
+// ======================================================
+model Distributor {
+  id                    String        @id @default(uuid())
+  userId                String        @unique @map("user_id")
+  companyName           String        @map("company_name")
+  regNumber             String        @map("reg_number")
+  website               String?
+  contactPerson         String        @map("contact_person")
+  businessType          String        @map("business_type")
+  yearsInBusiness       String?       @map("years_in_business")
+  expectedMonthlyBookings String?     @map("expected_monthly_bookings")
+  marketingChannels     String[]      @default([]) @map("marketing_channels")
+  businessDescription   String?       @map("business_description")
+  contractType          ContractType  @default(HYBRID) @map("contract_type")
+  active                Boolean       @default(true)
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stands     Stand[]
+  contracts  Contract[]
+  promotions Promotion[]
+  financials DistributorFinancial?
+
+  @@map("distributors")
+}
+
+// ======================================================
+// ADMINS
+// ======================================================
+model Admin {
+  id           String @id @default(uuid())
+  userId       String @unique @map("user_id")
+  accessLevel  Int    @default(1) @map("access_level")
+  permissions  Json   @default("[]")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+// ======================================================
+// STANDS
+// ======================================================
+model Stand {
+  id         String      @id @default(uuid())
+  name       String
+  location   String?
+  coordinates Json?
+  status     StandStatus @default(AVAILABLE)
+  capacity   Int         @default(1)
+  features   Json?
+  pricing    Json?
+  ownerId    String      @map("owner_id")
+
+  // Relations
+  owner    Distributor @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  reviews  Review[]
+
+  @@map("stands")
+}
+
+// ======================================================
+// PAYMENTS
+// ======================================================
+model Payment {
+  id                     String        @id @default(uuid())
+  amount                 Decimal       @db.Decimal(10, 2)
+  currency               String        @default("SEK")
+  status                 PaymentStatus @default(PENDING)
+  stripePaymentIntentId  String?       @unique @map("stripe_payment_intent_id")
+  stripeCustomerId       String?       @map("stripe_customer_id")
+  createdAt              DateTime      @default(now()) @map("created_at")
+  completedAt            DateTime?     @map("completed_at")
+
+  // Relations
+  booking         Booking?
+  contractPayment ContractPayment?
+
+  @@map("payments")
+}
+
+// ======================================================
+// BOOKINGS
+// ======================================================
+model Booking {
+  id          String        @id @default(uuid())
+  customerId  String        @map("customer_id")
+  standId     String        @map("stand_id")
+  paymentId   String        @unique @map("payment_id")
+  startDate   DateTime      @map("start_date")
+  endDate     DateTime      @map("end_date")
+  totalAmount Decimal       @db.Decimal(10, 2) @map("total_amount")
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  stand    Stand    @relation(fields: [standId], references: [id], onDelete: Cascade)
+  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("bookings")
+}
+
+// ======================================================
+// REVIEWS
+// ======================================================
+model Review {
+  id        String   @id @default(uuid())
+  standId   String   @map("stand_id")
+  userId    String   @map("user_id")
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  stand Stand @relation(fields: [standId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+// ======================================================
+// NOTIFICATIONS
+// ======================================================
+model Notification {
+  id              String           @id @default(uuid())
+  userId          String           @map("user_id")
+  type            NotificationType
+  title           String
+  message         String?
+  read            Boolean          @default(false)
+  relatedBookingId String?         @map("related_booking_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ======================================================
+// DISTRIBUTOR FINANCIALS
+// ======================================================
+model DistributorFinancial {
+  id             String   @id @default(uuid())
+  distributorId  String   @unique @map("distributor_id")
+  totalEarnings  Decimal  @default(0) @map("total_earnings")
+  pendingPayout  Decimal  @default(0) @map("pending_payout")
+  totalBookings  Int      @default(0) @map("total_bookings")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  distributor Distributor @relation(fields: [distributorId], references: [id], onDelete: Cascade)
+
+  @@map("distributor_financials")
+}
+
+// ======================================================
+// CONTRACTS
+// ======================================================
+model Contract {
+  id        String        @id @default(uuid())
+  distributorId String    @map("distributor_id")
+  type      ContractType
+  startDate DateTime      @map("start_date")
+  endDate   DateTime      @map("end_date")
+  terms     Json?
+  status    ContractStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  distributor     Distributor      @relation(fields: [distributorId], references: [id], onDelete: Cascade)
+  contractPayment ContractPayment?
+
+  @@map("contracts")
+}
+
+// ======================================================
+// CONTRACT PAYMENTS
+// ======================================================
+model ContractPayment {
+  id        String  @id @default(uuid())
+  contractId String @unique @map("contract_id")
+  paymentId String @unique @map("payment_id")
+  amount    Decimal @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("contract_payments")
+}
+
+// ======================================================
+// PAYMENT METHODS
+// ======================================================
+model PaymentMethod {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  type           String
+  provider       String?
+  lastFour       String?   @map("last_four")
+  expirationDate DateTime? @map("expiration_date")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payment_methods")
+}
+
+// ======================================================
+// PROMOTIONS
+// ======================================================
+model Promotion {
+  id            String       @id @default(uuid())
+  distributorId String       @map("distributor_id")
+  code          String       @unique
+  description   String?
+  discountType  DiscountType @map("discount_type")
+  discountValue Decimal      @map("discount_value")
+  maxUses       Int          @default(0) @map("max_uses")
+  startDate     DateTime     @map("start_date")
+  endDate       DateTime     @map("end_date")
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  distributor Distributor @relation(fields: [distributorId], references: [id], onDelete: Cascade)
+
+  @@map("promotions")
+}
+
+// ======================================================
+// PLATFORM SETTINGS
+// ======================================================
+model PlatformSetting {
+  id        String   @id @default(uuid())
+  settingKey String  @unique @map("setting_key")
+  value     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}

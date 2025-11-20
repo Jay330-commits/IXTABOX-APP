@@ -115,7 +115,7 @@ export default function BookingsPageClient() {
         setSearchResults(results);
         setSearchMode(true);
       }
-    } catch (error) {
+    } catch {
       setSearchError('An error occurred while searching. Please try again.');
     } finally {
       setSearching(false);

@@ -25,7 +25,7 @@ interface PaymentData {
 const mockPayments: PaymentData[] = [
   {
     id: 'pay-001',
-    description: 'Monthly Partnership Fee - January 2024',
+    description: 'Monthly Distributorship Fee - January 2024',
     amount: 2500,
     dueDate: '2024-01-15',
     status: 'paid',
@@ -34,7 +34,7 @@ const mockPayments: PaymentData[] = [
   },
   {
     id: 'pay-002',
-    description: 'Monthly Partnership Fee - February 2024',
+    description: 'Monthly Distributorship Fee - February 2024',
     amount: 2500,
     dueDate: '2024-02-15',
     status: 'paid',
@@ -43,7 +43,7 @@ const mockPayments: PaymentData[] = [
   },
   {
     id: 'pay-003',
-    description: 'Monthly Partnership Fee - March 2024',
+    description: 'Monthly Distributorship Fee - March 2024',
     amount: 2500,
     dueDate: '2024-03-15',
     status: 'pending',
@@ -69,7 +69,7 @@ const mockPayments: PaymentData[] = [
 ];
 
 const mockContractData: ContractData = {
-  contractType: 'Hybrid Partnership',
+  contractType: 'Hybrid Distributorship',
   startDate: 'January 15, 2024',
   endDate: 'January 14, 2026',
   renewalStatus: 'Active',
@@ -105,7 +105,7 @@ export default function Contracts() {
     <div className="bg-white/5 border border-white/10 rounded-xl p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-2">Contract & Payments</h2>
-        <p className="text-gray-300">View and manage your partnership agreements and payments.</p>
+        <p className="text-gray-300">View and manage your distributorship agreements and payments.</p>
       </div>
 
       {/* Tab Navigation */}

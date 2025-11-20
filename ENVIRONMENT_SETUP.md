@@ -1,0 +1,46 @@
+# Environment Setup Guide
+
+## Required Environment Variables
+
+Create a `.env.local` file in your project root with the following variables:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Database Configuration
+DATABASE_URL=your_database_connection_string
+
+# JWT Configuration (optional, has defaults)
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+```
+
+## How to Get Supabase Credentials
+
+1. Go to [supabase.com](https://supabase.com)
+2. Create a new project or select an existing one
+3. Go to Settings > API
+4. Copy the Project URL and anon/public key
+5. Paste them into your `.env.local` file
+
+## Database Setup
+
+1. In your Supabase project, go to Settings > Database
+2. Copy the connection string
+3. Replace `[YOUR-PASSWORD]` with your actual database password
+4. Paste it as the `DATABASE_URL` in your `.env.local` file
+
+## After Setting Up Environment Variables
+
+1. Restart your development server: `npm run dev`
+2. The registration should now work properly
+
+## Troubleshooting
+
+If you're still getting errors:
+1. Check the browser console for detailed error messages
+2. Check the terminal where you're running `npm run dev` for server-side errors
+3. Make sure all environment variables are correctly set
+4. Ensure your Supabase project is active and accessible

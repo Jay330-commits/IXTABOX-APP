@@ -43,7 +43,7 @@ import StandDetails from "../bookings/stand";
 
 export type MapProps = {
   stands: {
-    id: number;
+    id: string;
     lat: number;
     lng: number;
     title: string;
@@ -150,7 +150,7 @@ export default function Map({ stands }: MapProps) {
           <div className="max-w-lg w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white rounded-lg shadow-xl" onClick={e => e.stopPropagation()}>
             <StandDetails
               stand={{
-                id: selectedStand.id.toString(),
+                id: selectedStand.id,
                 title: selectedStand.title,
                 location: {
                   coordinates: {
@@ -352,8 +352,8 @@ export default function Map({ stands }: MapProps) {
   );
 }
 
-function getNearestStand(origin: L.LatLngLiteral, stands: { id: number; lat: number; lng: number; title: string }[]) {
-  let best = null as null | { id: number; lat: number; lng: number; title: string };
+function getNearestStand(origin: L.LatLngLiteral, stands: { id: string; lat: number; lng: number; title: string }[]) {
+  let best = null as null | { id: string; lat: number; lng: number; title: string };
   let bestD = Infinity;
   for (const s of stands) {
     const d = haversine(origin.lat, origin.lng, s.lat, s.lng);

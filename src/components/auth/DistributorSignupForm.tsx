@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 interface FormData {
+  contractType: 'HYBRID' | 'LEASING' | 'OWNING' | '';
   fullName: string;
   email: string;
   phone: string;
@@ -21,20 +22,21 @@ interface FormData {
   businessDescription: string;
 }
 
-interface PartnerStep {
+interface DistributorStep {
   id: number;
   title: string;
   description: string;
 }
 
-interface PartnerSignupFormProps {
+interface DistributorSignupFormProps {
   onSubmit?: (data: FormData) => void;
   className?: string;
 }
 
-export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerSignupFormProps) {
-  const [currentStep, setCurrentStep] = useState(1);
+export default function DistributorSignupForm({ onSubmit, className = "" }: DistributorSignupFormProps) {
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormData>({
+    contractType: '',
     fullName: "",
     email: "",
     phone: "",
@@ -52,8 +54,16 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
     businessDescription: "",
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const partnerSteps: PartnerStep[] = [
+  const distributorSteps: DistributorStep[] = [
+    {
+      id: 0,
+      title: "Choose Business Model",
+      description: "Select the business model that fits your needs"
+    },
     {
       id: 1,
       title: "Company Information",
@@ -66,7 +76,7 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
     },
     {
       id: 3,
-      title: "Partnership Goals",
+      title: "Distributorship Goals",
       description: "Help us understand your needs"
     },
     {
@@ -92,39 +102,217 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
   };
 
   const nextStep = () => {
-    if (currentStep < partnerSteps.length) {
+    // If on step 0 (business model selection), require contractType to be selected
+    if (currentStep === 0 && !formData.contractType) {
+      alert("Please select a business model to continue.");
+      return;
+    }
+    
+    if (currentStep < distributorSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setSuccess(false);
 
+    // Validation
     if (!termsAccepted) {
-      alert("You must accept the terms and conditions.");
+      setError("You must accept the terms and conditions.");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match.");
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!formData.contractType) {
+      setError("Please select a business model.");
       return;
     }
 
+    // If custom onSubmit is provided, use it
     if (onSubmit) {
       onSubmit(formData);
-    } else {
-      console.log("Partner Sign-Up Data:", formData);
-      alert("Partner application submitted successfully! We'll review your application and get back to you within 2 business days.");
+      return;
+    }
+
+    // Otherwise, call the API
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/register/distributor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          companyName: formData.companyName,
+          regNumber: formData.regNumber,
+          businessAddress: formData.businessAddress,
+          website: formData.website,
+          contactPerson: formData.contactPerson,
+          businessType: formData.businessType,
+          yearsInBusiness: formData.yearsInBusiness,
+          expectedMonthlyBookings: formData.expectedMonthlyBookings,
+          marketingChannels: formData.marketingChannels,
+          businessDescription: formData.businessDescription,
+          contractType: formData.contractType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.message || 'Registration failed. Please try again.');
+        return;
+      }
+
+      setSuccess(true);
+      // Optionally redirect after successful registration
+      // You might want to redirect to a distributor dashboard or login page
+      setTimeout(() => {
+        window.location.href = '/auth/login?registered=distributor';
+      }, 3000);
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Distributor registration error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const renderPartnerStep = () => {
+  const businessModels = [
+    {
+      id: 'HYBRID',
+      title: 'Hybrid',
+      description: 'Perfect balance of flexibility and ownership. Mix leasing with owning options to maximize your investment.',
+      features: ['Flexible terms', 'Mixed ownership', 'Scalable model', 'Up to 5 stands'],
+      price: '$299/month',
+      recommended: true,
+    },
+    {
+      id: 'LEASING',
+      title: 'Leasing',
+      description: 'Pay per rental cycle with minimal upfront costs. Ideal for testing new markets or seasonal operations.',
+      features: ['Low initial cost', 'No maintenance fees', 'Flexible contracts', 'Up to 3 stands'],
+      price: '$199/month',
+      recommended: false,
+    },
+    {
+      id: 'OWNING',
+      title: 'Owning',
+      description: 'Full ownership of your stands. Maximize long-term returns and have complete control over your assets.',
+      features: ['Full ownership', 'Maximum ROI', 'Asset appreciation', 'Unlimited stands'],
+      price: '$499/month',
+      recommended: false,
+    },
+  ];
+
+  const renderDistributorStep = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-white mb-2">Choose Your Business Model</h2>
+              <p className="text-gray-300">Select the business model that best fits your needs</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {businessModels.map((model) => {
+                const isSelected = formData.contractType === model.id;
+                return (
+                  <div
+                    key={model.id}
+                    onClick={() => handleChange("contractType", model.id)}
+                    className={`border rounded-lg p-6 transition-all cursor-pointer relative ${
+                      isSelected
+                        ? 'border-cyan-400/60 bg-cyan-500/10 ring-2 ring-cyan-400/40'
+                        : model.recommended
+                        ? 'border-cyan-400/40 bg-white/5 hover:border-cyan-400/60 hover:bg-white/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    {model.recommended && (
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          RECOMMENDED
+                        </span>
+                      </div>
+                    )}
+
+                    {isSelected && (
+                      <div className="absolute -top-3 right-3">
+                        <span className="bg-green-500/20 text-green-400 border border-green-400/40 text-xs font-bold px-3 py-1 rounded-full">
+                          SELECTED
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold mb-2 text-cyan-300">{model.title}</h3>
+                      <p className="text-2xl font-bold text-white mb-2">{model.price}</p>
+                      <p className="text-gray-300 min-h-[60px]">{model.description}</p>
+                    </div>
+
+                    <ul className="space-y-2 mb-6">
+                      {model.features.map((feature, index) => (
+                        <li key={index} className="flex items-center text-sm text-gray-300">
+                          <svg
+                            className="w-4 h-4 mr-2 text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className={`w-full py-3 px-4 rounded-md font-medium text-center transition-colors ${
+                      isSelected
+                        ? 'bg-cyan-500 text-white shadow-[0_0_24px_rgba(34,211,238,0.45)]'
+                        : model.recommended
+                        ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 hover:bg-cyan-600/30'
+                        : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                    }`}>
+                      {isSelected ? 'Selected' : 'Select ' + model.title}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {formData.contractType && (
+              <div className="mt-6 bg-cyan-500/10 border border-cyan-400/20 rounded-lg p-4">
+                <p className="text-sm text-gray-200">
+                  <span className="font-semibold text-cyan-300">Great choice!</span> You&apos;ve selected the{' '}
+                  <span className="font-semibold">{businessModels.find(m => m.id === formData.contractType)?.title}</span> model. 
+                  Click &quot;Next Step&quot; to continue with your registration.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
       case 1:
         return (
           <div className="space-y-6">
@@ -189,13 +377,14 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex flex-col gap-2 text-gray-200">
-                <span className="font-medium">Contact Person*</span>
+                <span className="font-medium">Full Name*</span>
                 <input
                   className={inputClass}
-                  value={formData.contactPerson}
-                  onChange={(e) => handleChange("contactPerson", e.target.value)}
+                  value={formData.fullName}
+                  onChange={(e) => handleChange("fullName", e.target.value)}
                   placeholder="John Doe"
                   required
+                  disabled={isLoading || success}
                 />
               </label>
               <label className="flex flex-col gap-2 text-gray-200">
@@ -207,6 +396,31 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
                   onChange={(e) => handleChange("email", e.target.value)}
                   placeholder="email@example.com"
                   required
+                  disabled={isLoading || success}
+                />
+              </label>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-2 text-gray-200">
+                <span className="font-medium">Contact Person*</span>
+                <input
+                  className={inputClass}
+                  value={formData.contactPerson}
+                  onChange={(e) => handleChange("contactPerson", e.target.value)}
+                  placeholder="John Doe"
+                  required
+                  disabled={isLoading || success}
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-gray-200">
+                <span className="font-medium">Phone Number</span>
+                <input
+                  className={inputClass}
+                  value={formData.phone}
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  placeholder="+46 70 123 4567"
+                  disabled={isLoading || success}
                 />
               </label>
             </div>
@@ -262,7 +476,7 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Partnership Goals</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Distributorship Goals</h2>
               <p className="text-gray-300">Help us understand your needs</p>
             </div>
             
@@ -300,7 +514,7 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
             </div>
             
             <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-3">Partner Benefits</h3>
+              <h3 className="text-lg font-semibold text-white mb-3">Distributor Benefits</h3>
               <ul className="space-y-2 text-gray-300">
                 <li className="flex items-center space-x-2">
                   <span className="text-cyan-400">✓</span>
@@ -366,6 +580,10 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
                   <span className="text-gray-400">Expected Bookings:</span>
                   <p className="text-white">{formData.expectedMonthlyBookings}</p>
                 </div>
+                <div>
+                  <span className="text-gray-400">Business Model:</span>
+                  <p className="text-white">{businessModels.find(m => m.id === formData.contractType)?.title || 'Not selected'}</p>
+                </div>
                 {formData.marketingChannels.length > 0 && (
                   <div className="md:col-span-2">
                     <span className="text-gray-400">Marketing Channels:</span>
@@ -410,7 +628,7 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
                 <Link href="/terms" className="text-cyan-400 underline">
                   terms and conditions
                 </Link>{" "}
-                and agree to the partner agreement.
+                and agree to the distributor agreement.
               </span>
             </label>
           </div>
@@ -424,23 +642,36 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
   return (
     <div className={`w-full max-w-4xl bg-gray-900/90 rounded-xl p-4 md:p-8 shadow-2xl shadow-black/60 ${className}`}>
       <h1 className="text-3xl font-bold text-white mb-8 text-center">
-        Become a Partner
+        Become a Distributor
       </h1>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-6 p-4 bg-green-900/50 border border-green-500 rounded-lg text-green-200 text-sm">
+          <p className="font-semibold mb-2">Registration Successful!</p>
+          <p>Your distributor application has been submitted successfully. Redirecting to login page...</p>
+        </div>
+      )}
 
       <div className="space-y-8">
         {/* Progress Steps */}
         <div className="flex justify-center px-4">
           <div className="flex items-center space-x-2 md:space-x-4 max-w-full overflow-x-auto">
-            {partnerSteps.map((step, index) => (
+            {distributorSteps.map((step, index) => (
               <div key={step.id} className="flex items-center flex-shrink-0">
                 <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-300 ${
                   currentStep >= step.id
                     ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
                     : "bg-white/10 text-gray-400"
                 }`}>
-                  {currentStep > step.id ? "✓" : step.id}
+                  {currentStep > step.id ? "✓" : step.id + 1}
                 </div>
-                {index < partnerSteps.length - 1 && (
+                {index < distributorSteps.length - 1 && (
                   <div className={`w-8 md:w-16 h-1 mx-1 md:mx-2 transition-all duration-300 ${
                     currentStep > step.id ? "bg-gradient-to-r from-cyan-500 to-blue-500" : "bg-white/10"
                   }`} />
@@ -452,7 +683,9 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
 
         {/* Step Content */}
         <form onSubmit={handleSubmit}>
-          {renderPartnerStep()}
+          <fieldset disabled={isLoading || success}>
+            {renderDistributorStep()}
+          </fieldset>
           
           {/* Navigation Buttons */}
           <div className="flex flex-col md:flex-row justify-between gap-4 mt-8">
@@ -461,9 +694,9 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
               <button
                 type="button"
                 onClick={prevStep}
-                disabled={currentStep === 1}
+                disabled={currentStep === 0 || isLoading}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  currentStep === 1
+                  currentStep === 0 || isLoading
                     ? "bg-white/5 text-gray-400 cursor-not-allowed"
                     : "bg-white/10 text-white hover:bg-white/20"
                 }`}
@@ -474,10 +707,10 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
               </button>
               
               <span className="text-sm text-gray-300">
-                Step {currentStep} of {partnerSteps.length}
+                Step {currentStep + 1} of {distributorSteps.length}
               </span>
               
-              {currentStep < partnerSteps.length ? (
+              {currentStep < distributorSteps.length - 1 ? (
                 <button
                   type="button"
                   onClick={nextStep}
@@ -490,7 +723,8 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
               ) : (
                 <button
                   type="submit"
-                  className="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center justify-center hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-500/30"
+                  disabled={isLoading || success}
+                  className="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center justify-center hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -504,9 +738,9 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
               <button
                 type="button"
                 onClick={prevStep}
-                disabled={currentStep === 1}
+                disabled={currentStep === 0 || isLoading}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                  currentStep === 1
+                  currentStep === 0 || isLoading
                     ? "bg-white/5 text-gray-400 cursor-not-allowed"
                     : "bg-white/10 text-white hover:bg-white/20"
                 }`}
@@ -514,20 +748,22 @@ export default function PartnerSignupForm({ onSubmit, className = "" }: PartnerS
                 Previous
               </button>
               
-              {currentStep < partnerSteps.length ? (
+              {currentStep < distributorSteps.length - 1 ? (
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-cyan-500/30"
+                  disabled={isLoading}
+                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Next Step
                 </button>
               ) : (
                 <button
                   type="submit"
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-500/30"
+                  disabled={isLoading || success}
+                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  Submit Application
+                  {isLoading ? 'Submitting...' : success ? 'Submitted!' : 'Submit Application'}
                 </button>
               )}
             </div>

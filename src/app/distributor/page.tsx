@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Contracts from '@/components/partners/Contracts';
-import MarketingTools from '@/components/partners/MarketingTools';
-import RentalStats from '@/components/partners/RentalStats';
-import AccountUpgradeSection from '@/components/partners/AccountUpgradeSection';
-import StandsOverview from '@/components/partners/StandsOverview';
-import InventoryManagement from '@/components/partners/InventoryManagement';
+import Contracts from '@/components/distributors/Contracts';
+import MarketingTools from '@/components/distributors/MarketingTools';
+import RentalStats from '@/components/distributors/RentalStats';
+import AccountUpgradeSection from '@/components/distributors/AccountUpgradeSection';
+import StandsOverview from '@/components/distributors/StandsOverview';
+import InventoryManagement from '@/components/distributors/InventoryManagement';
 import DistributerHeader from '@/components/layouts/DistributerHeader';
 import Footer from '@/components/layouts/Footer';
 

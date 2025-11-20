@@ -2,14 +2,109 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import type { MapProps } from "../../components/maps/leaflet_map";
+import type { MapProps } from "../../components/maps/googlemap";
 import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
-import { useEffect, useState } from "react";
+import FadeInSection from "@/components/animations/FadeInSection";
+import AnimatedCounter from "@/components/animations/AnimatedCounter";
+import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
+import { useEffect, useRef, useState, useMemo } from "react";
+
+const STAT_METRICS = [
+  {
+    label: "Stands deployed",
+    value: 128,
+    suffix: "+",
+    description: "Active IXTAbox locations across the Nordics.",
+  },
+  {
+    label: "Average install time",
+    value: 42,
+    suffix: " min",
+    description: "From arrival on site to first booking ready.",
+  },
+  {
+    label: "Fleet uptime",
+    value: 99.4,
+    suffix: "%",
+    decimals: 1,
+    description: "Remote monitoring keeps every stand online.",
+  },
+  {
+    label: "Customer satisfaction",
+    value: 97,
+    suffix: "%", 
+    description: "Based on post-rental experience surveys.",
+  },
+] as const;
+
+const JOURNEY_STEPS = [
+  {
+    icon: "🧭",
+    title: "Discover & configure",
+    highlight: "Day 1",
+    description:
+      "Choose the IXTAbox model, layout, and accessories that fit your activation. Our configurator recommends power, signage, and staffing plans.",
+  },
+  {
+    icon: "🚚",
+    title: "Delivered & installed",
+    highlight: "Week 1",
+    description:
+      "Certified teams position the stand, calibrate sensors, and hand over the keys. Training takes under an hour with remote support on standby.",
+  },
+  {
+    icon: "📣",
+    title: "Launch & promote",
+    highlight: "Week 2",
+    description:
+      "Sync your campaign calendar, automate bookings, and go live with ready-made content kits for social, email, and on-site signage.",
+  },
+  {
+    icon: "📊",
+    title: "Measure & optimise",
+    highlight: "Week 4+",
+    description:
+      "Track engagement, dwell time, and conversions in real time. Use insights to rotate inventory, upsell services, or add new sites.",
+  },
+] as const;
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "IXTAbox helped us transform a sleepy parking lot into an always-on brand experience. Footfall doubled, and we now run paid workshops straight from the stand.",
+    name: "Anna Lind",
+    role: "Head of Retail Innovation",
+    company: "Volta Mobility",
+    highlight: "Booked out three months in advance",
+    stats: ["+25% conversion vs. traditional pop-ups", "Zero downtime since installation"],
+    initials: "AL",
+  },
+  {
+    quote:
+      "Our customers love the convenience. IXTAbox keeps gear safe, charged, and ready. Integrating with our CRM was surprisingly smooth, giving us clearer demand signals.",
+    name: "Jonas Persson",
+    role: "Commercial Director",
+    company: "NordTrail Adventures",
+    highlight: "70% repeat booking rate",
+    stats: ["4.8/5 customer satisfaction per trip", "3 new markets launched in 90 days"],
+    initials: "JP",
+  },
+  {
+    quote:
+      "The rollout playbook made the launch feel effortless. The analytics dashboard shows us precisely when to restock and how to price premium add-ons.",
+    name: "Sara Holm",
+    role: "Operations Lead",
+    company: "UrbanMove Collective",
+    highlight: "Premium offering sold out in 48 hours",
+    stats: ["+18% basket size with accessories", "Live health checks every 5 minutes"],
+    initials: "SH",
+  },
+] as const;
 
 
 // Dynamic import prevents SSR issues if you ever move Map to a separate file
-const Map = dynamic<MapProps>(() => import("../../components/maps/leaflet_map"), {
+const Map = dynamic<MapProps>(() => import("../../components/maps/googlemap"), {
   ssr: false,
   loading: () => (
     <div className="flex h-[500px] w-full items-center justify-center text-gray-300">Loading map…</div>
@@ -18,69 +113,135 @@ const Map = dynamic<MapProps>(() => import("../../components/maps/leaflet_map"),
 
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const stands = [
-    {
-      id: 1,
-      lat: 59.3293,
-      lng: 18.0686,
-      title: "Stockholm Central",
-      address: "Central Station, 111 20 Stockholm",
-      size: { area: 25, unit: 'm', capacity: 50 },
-      pricePerDay: 299.99,
-      description: "Prime location at Stockholm Central Station. High foot traffic and excellent visibility.",
-      status: 'available' as const,
-      imageUrl: "/images/background/IXTAbox_-_IXTAbox_-_Taktaltarna_CLASSIC.jpg"
-    },
-    {
-      id: 2,
-      lat: 59.3326,
-      lng: 18.0649,
-      title: "Kungsträdgården",
-      address: "Kungsträdgården, 111 47 Stockholm",
-      size: { area: 20, unit: 'm', capacity: 40 },
-      pricePerDay: 249.99,
-      description: "Beautiful park location with high tourist traffic. Perfect for retail and events.",
-      status: 'available',
-      imageUrl: "/images/background/IXTAbox_Sturdy.jpg"
-    },
-    {
-      id: 3,
-      lat: 59.3360,
-      lng: 18.0700,
-      title: "Norrmalm",
-      address: "Norrmalm District, 111 52 Stockholm",
-      size: { area: 30, unit: 'm', capacity: 60 },
-      pricePerDay: 349.99,
-      description: "Heart of Stockholm's business district. Ideal for corporate presentations.",
-      status: 'maintenance' as const,
-      imageUrl: "/images/background/IXTAbox_2025_ProVSClassic1.jpg"
-    },
-    {
-      id: 4,
-      lat: 59.3255,
-      lng: 18.0711,
-      title: "Gamla Stan",
-      address: "Old Town, 111 29 Stockholm",
-      size: { area: 15, unit: 'm', capacity: 30 },
-      pricePerDay: 199.99,
-      description: "Charming location in Stockholm's historic old town. Perfect for boutique displays.",
-      status: 'booked' as const,
-      imageUrl: "/images/background/IXTAbox_-_Benefits.jpg"
-    },
-    {
-      id: 5,
-      lat: 59.3420,
-      lng: 18.0735,
-      title: "Östermalm",
-      address: "Östermalm District, 114 51 Stockholm",
-      size: { area: 22, unit: 'm', capacity: 45 },
-      pricePerDay: 279.99,
-      description: "Upscale location in Stockholm's premium shopping district.",
-      status: 'available' as const,
-      imageUrl: "/images/background/IXTAbox_Buyers_Guide-3_CROP.jpg"
-    },
-  ] satisfies MapProps['stands'];
+  const [stands, setStands] = useState<MapProps["stands"]>([]);
+  const [isLoadingStands, setIsLoadingStands] = useState(true);
+  const [standsError, setStandsError] = useState<string | null>(null);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [testimonialProgress, setTestimonialProgress] = useState(0);
+  const [showFilterForm, setShowFilterForm] = useState(false);
+  const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
+    startDate: '',
+    endDate: '',
+    boxModel: 'all',
+  });
+  const autoplayStartRef = useRef<number | null>(null);
+  const testimonialCount = Number(TESTIMONIALS.length);
+  const mapSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMounted(true);
+
+    async function loadStands() {
+      try {
+        setIsLoadingStands(true);
+        const response = await fetch("/api/stands");
+        if (!response.ok) {
+          throw new Error(`Unexpected response: ${response.status}`);
+        }
+        const data = await response.json();
+        const fetchedStands = Array.isArray(data?.stands) ? (data.stands as MapProps["stands"]) : [];
+        if (!cancelled) {
+          setStands(fetchedStands);
+          setStandsError(null);
+        }
+      } catch (error) {
+        console.error("Failed to load stands:", error);
+        if (!cancelled) {
+          setStandsError("Unable to load stands right now. Please try again later.");
+          setStands([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingStands(false);
+        }
+      }
+    }
+
+    loadStands();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (testimonialCount === 0) return;
+
+    let animationFrame: number;
+    const duration = 7000;
+
+    const tick = (timestamp: number) => {
+      if (autoplayStartRef.current === null) {
+        autoplayStartRef.current = timestamp;
+      }
+
+      const elapsed = timestamp - autoplayStartRef.current;
+      const progress = Math.min(1, elapsed / duration);
+      setTestimonialProgress(progress * 100);
+
+      if (elapsed >= duration) {
+        setActiveTestimonial((prev) => (prev + 1) % testimonialCount);
+        autoplayStartRef.current = timestamp;
+        setTestimonialProgress(0);
+      }
+
+      animationFrame = requestAnimationFrame(tick);
+    };
+
+    animationFrame = requestAnimationFrame(tick);
+
+    return () => {
+      autoplayStartRef.current = null;
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [testimonialCount]);
+
+  const handleSelectTestimonial = (index: number) => {
+    setActiveTestimonial(index);
+    setTestimonialProgress(0);
+    autoplayStartRef.current = typeof performance !== "undefined" ? performance.now() : null;
+  };
+
+  const handleBookBoxClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setShowFilterForm(true);
+    // Scroll to map section
+    setTimeout(() => {
+      const mapElement = document.getElementById('map');
+      if (mapElement) {
+        mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const handleFilterChange = (filter: BookingFilter) => {
+    setBookingFilter(filter);
+  };
+
+  // Filter stands based on booking filter
+  const filteredStands = useMemo(() => {
+    if (!bookingFilter.startDate || !bookingFilter.endDate) {
+      return stands;
+    }
+
+    return stands.filter((stand) => {
+      // Filter by status - only show available stands
+      if (stand.status !== 'available') {
+        return false;
+      }
+
+      // In a real app, you would check bookings API to see if the stand is available
+      // for the selected date range. For now, we'll just filter by status.
+      // TODO: Add API call to check availability for date range
+      // const startDate = new Date(bookingFilter.startDate);
+      // const endDate = new Date(bookingFilter.endDate);
+
+      return true;
+    });
+  }, [stands, bookingFilter]);
+
+  const activeStory = TESTIMONIALS[activeTestimonial] ?? TESTIMONIALS[0];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -88,61 +249,157 @@ export default function GuestHome() {
       <main className="">
         {/* Hero with animated overlay and parallax background */}
         <section
-  className="relative flex items-center justify-center overflow-hidden"
-  style={{ minHeight: 560 }}
->
-  <div
-    className="absolute inset-0 bg-center bg-cover"
-    style={{
-      backgroundImage: "url(/images/background/back.jpg)",
-      backgroundAttachment: "fixed",
-    }}
-  />
-  <div className="absolute inset-0 bg-black/50" />
-  <div className="relative z-10 mx-auto max-w-5xl px-6 py-20 text-center">
-    <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-      Rear Cargo Box, Redefined for Life & Adventure
-    </h1>
-
-    {/* Comparison line using Unicode */}
-    <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4 text-lg font-semibold">
-      <div className="flex items-center gap-2 text-gray-400">
-        <span>Roof Box</span>
-        <span className="text-red-500">❌</span>
-      </div>
-      <div className="flex items-center gap-2 text-gray-100">
-        <span>IXTAbox</span>
-        <span className="text-green-500">✔️</span>
-      </div>
-    </div>
-
-    <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-      <a
-        href="#videos"
-        className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
-      >
-        How To Use
-      </a>
-      <a
-        href="#map"
-        className="inline-flex items-center justify-center rounded-full border border-cyan-500/60 bg-cyan-500/10 px-6 py-3 text-base font-semibold text-cyan-200 hover:text-white hover:bg-cyan-500/20 transition-colors"
-      >
-        Book Now!
-      </a>
-    </div>
-  </div>
-</section>
-
-
-        {/* Map section (moved just below hero) */}
-        <section id="map" className="px-6 py-12">
-          <h2 className="text-3xl font-bold mb-4">Find Our Stands</h2>
-          <div className="w-full" style={{ minHeight: 500 }}>
-            {mounted ? <Map stands={stands} /> : null}
+          className="relative flex items-center justify-center overflow-hidden"
+          style={{ minHeight: 560 }}
+        >
+          <div
+            className="absolute inset-0 bg-center bg-cover"
+            style={{
+              backgroundImage: "url(/images/background/back.jpg)",
+              backgroundAttachment: "fixed",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
+          <div className="absolute inset-0">
+            <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
+            <div className="absolute -right-32 bottom-16 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl animate-[pulse_6s_ease-in-out_infinite]" />
           </div>
+          <FadeInSection className="relative z-10 mx-auto max-w-5xl px-6 py-24 text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200">
+              Swedish engineered
+            </span>
+            <h1 className="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
+              Rear Cargo Box,
+              <span className="bg-gradient-to-r from-cyan-300 via-white to-cyan-200 bg-clip-text text-transparent">
+                {" "}
+                redefined for life & adventure
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-3xl text-lg text-gray-200/90">
+              Bring full-scale retail, event, and rental experiences to any site. IXTAbox deploys in
+              minutes, powers itself, and keeps your brand front-and-center in every journey.
+            </p>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-lg font-semibold">
+              <div className="flex items-center gap-2 text-gray-400">
+                <span>Roof Box</span>
+                <span className="text-red-500">❌</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-100">
+                <span>IXTAbox</span>
+                <span className="text-green-500">✔️</span>
+              </div>
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+              <a
+                href="#videos"
+                className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-8 py-3 text-base font-semibold text-white shadow-[0_0_30px_rgba(34,211,238,0.55)] transition-all hover:-translate-y-[1px] hover:bg-cyan-400"
+              >
+                See how it works
+              </a>
+              <a
+                href="#map"
+                onClick={handleBookBoxClick}
+                className="inline-flex items-center justify-center rounded-full border border-cyan-500/60 bg-cyan-500/10 px-8 py-3 text-base font-semibold text-cyan-200 transition-all hover:-translate-y-[1px] hover:bg-cyan-500/20 hover:text-white"
+              >
+                Book a box!!
+              </a>
+            </div>
+          </FadeInSection>
         </section>
 
+        <FadeInSection>
+          <section className="mx-auto max-w-6xl px-6 py-16">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-[0_25px_120px_rgba(15,23,42,0.45)] backdrop-blur">
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-2 xl:grid-cols-4">
+                {STAT_METRICS.map((metric, index) => {
+                  const decimals = "decimals" in metric ? metric.decimals ?? 0 : 0;
+                  return (
+                    <div key={metric.label} className="flex flex-col gap-3">
+                      <span className="text-xs uppercase tracking-[0.25em] text-cyan-200/80">
+                        {String(index + 1).padStart(2, "0")} • {metric.label}
+                      </span>
+                      <AnimatedCounter
+                        value={metric.value}
+                        suffix={metric.suffix}
+                        decimals={decimals}
+                        className="text-4xl font-black text-white md:text-5xl"
+                      />
+                      <p className="text-sm text-gray-300/90">{metric.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
+
+        {/* Map section (moved just below hero) */}
+        <FadeInSection>
+        <section id="map" ref={mapSectionRef} className="px-6 py-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-3xl font-bold">Find Our Stands</h2>
+            {!showFilterForm && (
+              <button
+                onClick={() => {
+                  setShowFilterForm(true);
+                  setTimeout(() => {
+                    const mapElement = document.getElementById('map');
+                    if (mapElement) {
+                      mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }, 100);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/60 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition-all hover:-translate-y-[1px] hover:bg-cyan-500/20 hover:text-white"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filter Stands
+              </button>
+            )}
+          </div>
+          
+          <div className="w-full relative" style={{ minHeight: 500 }}>
+            {standsError ? (
+              <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
+                {standsError}
+              </div>
+            ) : isLoadingStands ? (
+              <div className="flex h-full items-center justify-center text-gray-300">Loading stands…</div>
+            ) : filteredStands.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 text-center text-gray-200">
+                {bookingFilter.startDate && bookingFilter.endDate
+                  ? `No stands available for the selected dates. Please try different dates.`
+                  : "No stands available right now. Please check back soon."}
+              </div>
+            ) : mounted ? (
+              <Map 
+                stands={filteredStands} 
+                filterForm={
+                  showFilterForm ? (
+                    <BookingFilterForm
+                      onFilterChange={handleFilterChange}
+                      onClose={() => setShowFilterForm(false)}
+                      isMapOverlay={true}
+                    />
+                  ) : undefined
+                }
+                filterValues={{
+                  startDate: bookingFilter.startDate,
+                  endDate: bookingFilter.endDate,
+                  boxModel: bookingFilter.boxModel,
+                }}
+              />
+            ) : null}
+          </div>
+        </section>
+        </FadeInSection>
+
         {/* Three pillars */}
+        <FadeInSection>
         <section id="benefits" className="mx-auto max-w-7xl px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors">
@@ -168,8 +425,54 @@ export default function GuestHome() {
             </div>
           </div>
         </section>
+        </FadeInSection>
+
+        <FadeInSection>
+          <section className="mx-auto max-w-7xl px-6 py-16">
+            <div className="grid gap-12 lg:grid-cols-[320px_minmax(0,1fr)]">
+              <div>
+                <span className="inline-flex items-center rounded-full border border-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-cyan-200">
+                  your journey
+                </span>
+                <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
+                  From idea to on-site experience — IXTAbox keeps the momentum.
+                </h2>
+                <p className="mt-3 text-gray-300/90">
+                  Every deployment follows a tested playbook. Work with our launch team or plug into
+                  your own operations and unlock new revenue in days.
+                </p>
+              </div>
+              <div className="space-y-6">
+                {JOURNEY_STEPS.map((step, idx) => (
+                  <div
+                    key={step.title}
+                    className="relative flex gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-6 shadow-[0_16px_60px_rgba(8,47,73,0.25)]"
+                  >
+                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-cyan-500/20 text-xl">
+                      {step.icon}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-semibold text-white">{step.title}</h3>
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/90">
+                          {step.highlight}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-300/90">{step.description}</p>
+                      <div className="mt-4 flex items-center gap-1 text-[11px] uppercase tracking-[0.3em] text-gray-400/70">
+                        <span className="h-[1px] w-6 bg-cyan-400/40" />
+                        Step {idx + 1}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
 
         {/* Videos Section */}
+        <FadeInSection>
 <section id="videos" className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
   <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center">IXTAbox Tutorials</h2>
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -216,9 +519,94 @@ export default function GuestHome() {
     </div>
   </div>
 </section>
+        </FadeInSection>
 
+
+        <FadeInSection>
+          <section className="px-6 py-16">
+            <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/85 via-slate-900/60 to-cyan-900/50 p-10 shadow-[0_25px_120px_rgba(8,97,164,0.25)] backdrop-blur">
+              <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="flex flex-col gap-6">
+                  <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200">
+                    customer stories
+                  </span>
+                  <blockquote className="text-2xl font-semibold text-white md:text-3xl">
+                    “{activeStory.quote}”
+                  </blockquote>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300/90">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-base font-semibold text-white">
+                        {activeStory.initials}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-white">
+                          {activeStory.name} · {activeStory.role}
+                        </p>
+                        <p className="text-xs uppercase tracking-[0.25em] text-gray-400/90">
+                          {activeStory.company}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.3em] text-cyan-200">
+                      {activeStory.highlight}
+                    </span>
+                  </div>
+                  <ul className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {activeStory.stats.map((stat) => (
+                      <li
+                        key={stat}
+                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200"
+                      >
+                        <span className="h-2 w-2 rounded-full bg-cyan-300" />
+                        {stat}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex flex-col justify-between gap-6">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.35em] text-gray-400/80">hear more</p>
+                    <p className="mt-2 text-base text-gray-300/90">
+                      Rotate through real deployments to learn how teams grow revenue, improve CX,
+                      and operate at scale with IXTAbox.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex gap-2">
+                      {TESTIMONIALS.map((testimonial, idx) => (
+                        <button
+                          key={testimonial.initials}
+                          type="button"
+                          onClick={() => handleSelectTestimonial(idx)}
+                          className={`h-10 w-10 rounded-full border transition-all focus:outline-none ${
+                            idx === activeTestimonial
+                              ? "border-cyan-300 bg-cyan-500/30 text-white"
+                              : "border-white/10 bg-white/5 text-gray-300 hover:border-cyan-300/60"
+                          }`}
+                        >
+                          {testimonial.initials}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-gray-400/80">
+                      {String(activeTestimonial + 1).padStart(2, "0")} /{" "}
+                      {String(testimonialCount).padStart(2, "0")}
+                    </div>
+                  </div>
+                  <div className="h-1 w-full rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-cyan-300 to-white transition-[width]"
+                      style={{ width: `${testimonialProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
 
         {/* Full-bleed background section */}
+        <FadeInSection>
         <section className="relative overflow-hidden" style={{ minHeight: 420 }}>
           <div
             className="absolute inset-0 bg-center bg-cover"
@@ -240,24 +628,28 @@ export default function GuestHome() {
             </ul>
           </div>
         </section>
+        </FadeInSection>
 
-<section className="mx-auto max-w-7xl px-6 py-16">
-  <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-8 shadow-[0_0_24px_rgba(34,211,238,0.25)] text-center">
-    <h3 className="text-2xl font-bold">Improved Aerodynamics</h3>
-    <p className="mt-2 text-gray-200">
-      Reduce drag compared to traditional roof boxes and get better range.
-    </p>
-    <div className="mt-6 flex flex-wrap justify-center gap-6">
-      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Lower turbulence behind car</span>
-      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Up to better efficiency</span>
-      <span className="rounded-full bg-white/10 px-6 py-2 text-base">Quieter rides</span>
-    </div>
-  </div>
-</section>
+        <FadeInSection>
+          <section className="mx-auto max-w-7xl px-6 py-16">
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-8 shadow-[0_0_24px_rgba(34,211,238,0.25)] text-center">
+              <h3 className="text-2xl font-bold">Improved Aerodynamics</h3>
+              <p className="mt-2 text-gray-200">
+                Reduce drag compared to traditional roof boxes and get better range.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-6">
+                <span className="rounded-full bg-white/10 px-6 py-2 text-base">Lower turbulence behind car</span>
+                <span className="rounded-full bg-white/10 px-6 py-2 text-base">Up to better efficiency</span>
+                <span className="rounded-full bg-white/10 px-6 py-2 text-base">Quieter rides</span>
+              </div>
+            </div>
+          </section>
+        </FadeInSection>
 
 
         {/* Gallery strip with subtle animation */}
-        <section className="px-6 py-12">
+        <FadeInSection>
+          <section className="px-6 py-12">
           <div className="mx-auto max-w-7xl grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="relative h-52 rounded-xl overflow-hidden border border-white/10">
               <Image 
@@ -287,10 +679,12 @@ export default function GuestHome() {
               />
             </div>
           </div>
-        </section>
+          </section>
+        </FadeInSection>
 
         {/* CTA footer */}
-        <section className="px-6 pb-16">
+        <FadeInSection>
+          <section className="px-6 pb-16">
           <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
             <h3 className="text-2xl font-bold">Ready to elevate your storage?</h3>
             <p className="mt-2 text-gray-300">Join the IXTAbox journey and pack it all-smart, safe, and in style.</p>
@@ -300,7 +694,8 @@ export default function GuestHome() {
               </a>
             </div>
           </div>
-        </section>
+          </section>
+        </FadeInSection>
       </main>
       <Footer />
     </div>

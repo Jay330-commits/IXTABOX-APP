@@ -12,9 +12,22 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "#footer" },
-  { label: "Bookings", href: "/guest/bookings" }
+  { 
+    label: "Rent IXTAbox", 
+    href: "#map"
+  },
+  { 
+    label: "About", 
+    href: "#footer"
+  },
+  { 
+    label: "Bookings", 
+    href: "/guest/bookings"
+  },
+  { 
+    label: "Help", 
+    href: "/support"
+  }
 ];
 
 export default function GuestHeader(): JSX.Element {
@@ -25,7 +38,7 @@ export default function GuestHeader(): JSX.Element {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 10);
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -59,19 +72,13 @@ export default function GuestHeader(): JSX.Element {
 
   const containerClasses = useMemo(
     () =>
-      `sticky top-0 z-[10000] transition-colors duration-300 h-20 ${
-        isScrolled ? "backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.35)]" : "backdrop-blur-sm"
-      } ${mobileOpen ? "bg-gray-950" : "bg-gray-900"} border-b border-white/10 overflow-visible relative`,
-    [isScrolled, mobileOpen]
+      `sticky top-0 z-[10000] transition-all duration-500 ${
+        isScrolled 
+          ? "bg-gray-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border-b border-white/5" 
+          : "bg-gray-900/80 backdrop-blur-md border-b border-white/5"
+      }`,
+    [isScrolled]
   );
-
-  const neonFocus = "focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-0";
-  const linkBase =
-    "px-3 py-2 text-sm font-semibold tracking-wide text-gray-200 hover:text-white transition-colors duration-200 relative rounded-md";
-  const linkGlow =
-    "before:absolute before:inset-0 before:rounded-md before:bg-cyan-500/0 hover:before:bg-cyan-500/10 before:blur before:transition-all before:duration-300";
-
-  const logoPath = "/images/logo/new.png";
 
   const isActive = (href: string) => {
     if (href.startsWith("#") && pathname === "/") return activeHash === href;
@@ -80,132 +87,134 @@ export default function GuestHeader(): JSX.Element {
     return base !== "/" && base.length > 0 && pathname.startsWith(base);
   };
 
+  const logoPath = "/images/logo/new.png";
+
   return (
     <>
-      <header className={containerClasses + " isolate"}>
+      <header className={containerClasses}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-full items-center justify-between gap-4">
-            {/* Left: Logo / Brand */}
-            <div className="flex items-center gap-3">
-              <button
-                aria-label="Open menu"
-                className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-                onClick={() => setMobileOpen(true)}
-              >
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <Link href="/" className="group flex items-center gap-3">
-                <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
-                  <Image
-                    src={encodeURI(logoPath)}
-                    alt="InxaBox Portal"
-                    width={160}
-                    height={90}
-                    unoptimized
-                    priority
-                    className="object-contain mx-auto h-auto w-full max-w-[120px] sm:max-w-[140px] md:max-w-[160px]"
-                  />
-                </span>
-              </Link>
-            </div>
+          <div className="flex h-20 items-center justify-between">
+            {/* Logo */}
+            <Link 
+              href="/" 
+              className="group flex items-center transition-transform hover:scale-105 duration-200"
+              onClick={(e) => {
+                if (pathname === "/") {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  setActiveHash("");
+                }
+              }}
+            >
+              <div className="relative h-12 w-32 sm:h-14 sm:w-36 md:h-16 md:w-40 flex items-center justify-center">
+                <Image
+                  src={encodeURI(logoPath)}
+                  alt="IXTAbox"
+                  width={160}
+                  height={90}
+                  unoptimized
+                  priority
+                  className="object-contain h-full w-full transition-opacity group-hover:opacity-90"
+                />
+              </div>
+            </Link>
 
-            {/* Center: Nav (desktop) */}
-            <nav className="hidden lg:flex items-center gap-1.5">
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => {
                 const active = isActive(item.href);
                 return (
                   <Link
                     key={item.label}
-                  href={item.href}
-                  onClick={(e) => {
-                    if (item.href.startsWith("#")) {
-                      e.preventDefault();
-                      const el = document.querySelector(item.href);
-                      if (el) (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
-                      setActiveHash(item.href);
-                    }
-                  }}
-                  aria-current={active ? "page" : undefined}
-                  className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 ${
-                    active
-                      ? "bg-cyan-600/20 border-cyan-400/40 text-white"
-                      : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
-                  }`}
-                >
-                  <span className="opacity-80">
-                    {item.label === "Home" && (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5z" />
-                      </svg>
+                    href={item.href}
+                    onClick={(e) => {
+                      if (item.href.startsWith("#")) {
+                        e.preventDefault();
+                        const el = document.querySelector(item.href);
+                        if (el) {
+                          (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                        setActiveHash(item.href);
+                      }
+                    }}
+                    aria-current={active ? "page" : undefined}
+                    className={`
+                      relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg
+                      ${active
+                        ? "text-cyan-300"
+                        : "text-gray-300 hover:text-white"
+                      }
+                      group
+                    `}
+                  >
+                    <span className="relative z-10">
+                      {item.label}
+                    </span>
+                    {active && (
+                      <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
                     )}
-                    {item.label === "About" && (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 16v-4M12 8h.01" />
-                      </svg>
-                    )}
-                      {item.label === "Bookings" && (
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                          <path d="M16 2v4M8 2v4M3 10h18" />
-                        </svg>
-                      )}
-                  </span>
-                  <span className="relative z-10">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+                    <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </Link>
+                );
+              })}
+            </nav>
 
-          {/* Right: Actions (Partner CTA + Auth) */}
-          <div className="hidden lg:flex items-center gap-2">
-            <Link
-              href="/auth/signup?role=partner"
-              className={`inline-flex items-center justify-center rounded-full border border-cyan-400/40 bg-white/5 px-3 py-1.5 text-sm font-semibold text-cyan-200 hover:text-white hover:bg-white/10 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.35)] ${neonFocus}`}
-            >
-              <svg className="h-4 w-4 mr-1.5 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 11l4 4 8-8" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l5-5 4 4 8-8" />
-              </svg>
-              Become a Partner
-            </Link>
-            <Link
-              href="/auth/login"
-              className={`inline-flex items-center justify-center rounded-full border border-cyan-500/50 bg-cyan-500/10 px-3 py-1.5 text-sm font-semibold text-cyan-200 hover:text-white hover:bg-cyan-500/20 transition-colors ${neonFocus}`}
-            >
-              Login
-            </Link>
-            <Link
-              href="/auth/signup?role=customer"
-              className={`inline-flex items-center justify-center rounded-full bg-cyan-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)] ${neonFocus}`}
-            >
-              Sign Up
-            </Link>
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex items-center gap-3">
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-sm font-semibold text-gray-200 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/5"
+              >
+                Login
+              </Link>
+              
+              <Link
+                href="/auth/signup?role=distributor"
+                className="px-4 py-2 text-sm font-semibold text-cyan-200 hover:text-white transition-all duration-200 rounded-lg border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/10"
+              >
+                Become A Partner
+              </Link>
+              
+              <Link
+                href="/auth/signup?role=customer"
+                className="px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 rounded-lg transition-all duration-200 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-105"
+              >
+                Sign Up
+              </Link>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              aria-label="Toggle menu"
+              className="lg:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+              onClick={() => setMobileOpen(true)}
+            >
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile slide-in sidebar from left */}
+      {/* Mobile Menu */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-[10001]">
-          {/* Backdrop overlay */}
+          {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black/80" 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" 
             onClick={() => setMobileOpen(false)} 
           />
           
-          {/* Sidebar */}
-          <div className="absolute left-0 top-0 h-full w-72 bg-gray-950 border-r border-white/10 shadow-2xl shadow-black/60 overflow-y-auto">
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-              <span className="text-white font-semibold text-lg">IXTAbox</span>
+          {/* Menu Panel */}
+          <div className="absolute right-0 top-0 h-full w-80 bg-gray-900/98 backdrop-blur-xl border-l border-white/10 shadow-2xl overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 h-20 border-b border-white/10">
+              <span className="text-xl font-bold text-white">Menu</span>
               <button
                 aria-label="Close menu"
                 onClick={() => setMobileOpen(false)}
-                className="p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
               >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -213,8 +222,8 @@ export default function GuestHeader(): JSX.Element {
               </button>
             </div>
 
-            {/* Navigation Links */}
-            <div className="p-4">
+            {/* Navigation */}
+            <div className="px-6 py-6">
               <nav className="flex flex-col gap-2">
                 {navItems.map((item) => {
                   const active = isActive(item.href);
@@ -226,69 +235,51 @@ export default function GuestHeader(): JSX.Element {
                         if (item.href.startsWith("#")) {
                           e.preventDefault();
                           const el = document.querySelector(item.href);
-                          if (el) (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                          if (el) {
+                            (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
                           setActiveHash(item.href);
                         }
                         setMobileOpen(false);
                       }}
-                      aria-current={active ? "page" : undefined}
-                      className={`px-3 py-2 text-sm font-semibold tracking-wide text-gray-200 hover:text-white transition-colors duration-200 relative rounded-md border inline-flex items-center gap-3 w-full ${
-                        active
-                          ? "bg-cyan-600/20 border-cyan-400/40 text-white"
-                          : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
-                      }`}
+                      className={`
+                        flex items-center px-4 py-3 rounded-lg transition-all duration-200
+                        ${active
+                          ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                        }
+                      `}
                     >
-                      <span className="opacity-80">
-                        {item.label === "Home" && (
-                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5z" />
-                          </svg>
-                        )}
-                        {item.label === "About" && (
-                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 16v-4M12 8h.01" />
-                          </svg>
-                        )}
-                        {item.label === "Bookings" && (
-                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                            <path d="M16 2v4M8 2v4M3 10h18" />
-                          </svg>
-                        )}
-                      </span>
-                      <span className="relative z-10">{item.label}</span>
+                      <span className="font-medium">{item.label}</span>
                     </Link>
                   );
                 })}
               </nav>
 
-              {/* Action Buttons */}
-              <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-4">
-                <Link
-                  href="/auth/signup?role=partner"
-                  onClick={() => setMobileOpen(false)}
-                  className="inline-flex items-center justify-center rounded-full border border-cyan-400/40 bg-white/5 px-4 py-2.5 text-sm font-semibold text-cyan-200 hover:text-white hover:bg-white/10 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.35)]"
-                >
-                  <svg className="h-5 w-5 mr-2 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 11l4 4 8-8" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l5-5 4 4 8-8" />
-                  </svg>
-                  Become a Partner
-                </Link>
+              {/* Actions */}
+              <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
                 <Link
                   href="/auth/login"
                   onClick={() => setMobileOpen(false)}
-                  className="inline-flex items-center justify-center rounded-full border border-cyan-500/50 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 hover:text-white hover:bg-cyan-500/20 transition-colors"
+                  className="flex items-center justify-center px-4 py-3 rounded-lg text-gray-200 hover:text-white hover:bg-white/5 transition-colors border border-white/10"
                 >
-                  Login
+                  <span className="font-semibold">Login</span>
                 </Link>
+                
+                <Link
+                  href="/auth/signup?role=distributor"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center px-4 py-3 rounded-lg text-cyan-200 hover:text-white transition-colors border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/10"
+                >
+                  <span className="font-semibold">Become a Partner</span>
+                </Link>
+                
                 <Link
                   href="/auth/signup?role=customer"
                   onClick={() => setMobileOpen(false)}
-                  className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+                  className="flex items-center justify-center px-4 py-3 rounded-lg text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/25"
                 >
-                  Sign Up
+                  <span className="font-semibold">Sign Up</span>
                 </Link>
               </div>
             </div>

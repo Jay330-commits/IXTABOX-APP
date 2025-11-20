@@ -94,8 +94,19 @@ function PaymentContent() {
       console.error('Failed to update payment with contact info:', error);
     }
     
-    // Redirect to success page or handle success
-    window.location.href = `/payment/success?payment_intent=${paymentIntent.id}&email=${encodeURIComponent(customerEmail)}`;
+    // Redirect to success page with booking details for unlock code generation
+    const params = new URLSearchParams({
+      payment_intent: paymentIntent.id,
+      email: customerEmail,
+    });
+    
+    if (standId) params.append('standId', standId);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (startTime) params.append('startTime', startTime);
+    if (endTime) params.append('endTime', endTime);
+    
+    window.location.href = `/payment/success?${params.toString()}`;
   };
 
   const handlePaymentError = (error: StripeError) => {
