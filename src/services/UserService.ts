@@ -1,4 +1,4 @@
-import { User, Role } from '../prisma-client/client';
+import { User, Role } from '@prisma/client';
 import { BaseService } from './BaseService';
 
 export interface CreateUserData {

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../prisma-client/client';
+import { User } from '@prisma/client';
 import { UserService, CreateUserData, AuthResult } from './UserService';
 import { BaseService } from './BaseService';
 

@@ -1,5 +1,5 @@
 import 'server-only';
-import { Distributor, ContractType, User } from '../prisma-client/client';
+import { Distributor, ContractType, User } from '@prisma/client';
 import { BaseService } from './BaseService';
 
 export interface CreateDistributorData {

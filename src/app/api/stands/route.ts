@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
-import { StandStatus } from '@/prisma-client/client';
+import { StandStatus } from '@prisma/client';
 
 type ApiStand = {
   id: string;
