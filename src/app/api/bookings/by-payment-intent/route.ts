@@ -39,17 +39,6 @@ export async function POST(request: NextRequest) {
                 location: true,
               },
             },
-            customer: {
-              include: {
-                user: {
-                  select: {
-                    fullName: true,
-                    email: true,
-                    phone: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -81,11 +70,6 @@ export async function POST(request: NextRequest) {
         endDate: booking.endDate.toISOString(),
         totalAmount: booking.totalAmount.toString(),
         status: booking.status,
-        customer: {
-          name: booking.customer.user.fullName,
-          email: booking.customer.user.email,
-          phone: booking.customer.user.phone,
-        },
       },
       payment: {
         id: payment.id,

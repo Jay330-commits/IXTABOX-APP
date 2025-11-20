@@ -52,7 +52,7 @@ export async function GET() {
       },
     });
 
-    const normalized: ApiStand[] = stands
+    const normalized = stands
       .map((stand) => {
         const coordinates = isRecord(stand.coordinates) ? stand.coordinates : undefined;
         const lat = toNumber(coordinates?.lat);
@@ -104,7 +104,7 @@ export async function GET() {
           status: STATUS_MAP[stand.status] ?? 'available',
         } satisfies ApiStand;
       })
-      .filter((stand): stand is ApiStand => Boolean(stand));
+      .filter(Boolean);
 
     return NextResponse.json({ stands: normalized });
   } catch (error) {

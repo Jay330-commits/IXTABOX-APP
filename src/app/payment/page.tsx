@@ -111,7 +111,7 @@ function PaymentContent() {
 
   const handlePaymentError = (error: StripeError) => {
     console.error('Payment failed:', error);
-    setError(error.message || 'Payment failed');
+    setError(error.message || 'Payment failed. Please try again.');
   };
 
   if (loading) {

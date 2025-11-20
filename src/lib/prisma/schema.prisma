@@ -103,7 +103,6 @@ model Customer {
 
   // Relations
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookings Booking[]
 
   @@map("customers")
 }
@@ -199,7 +198,6 @@ model Payment {
 // ======================================================
 model Booking {
   id          String        @id @default(uuid())
-  customerId  String        @map("customer_id")
   standId     String        @map("stand_id")
   paymentId   String        @unique @map("payment_id")
   startDate   DateTime      @map("start_date")
@@ -209,7 +207,6 @@ model Booking {
   createdAt   DateTime      @default(now()) @map("created_at")
 
   // Relations
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   stand    Stand    @relation(fields: [standId], references: [id], onDelete: Cascade)
   payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 

@@ -72,9 +72,10 @@ export class UserService extends BaseService {
         }
 
         return user;
-      } catch (enumError: any) {
+      } catch (enumError: unknown) {
         // If enum type doesn't exist, use raw SQL with text role
-        if (enumError?.message?.includes('type') && enumError?.message?.includes('does not exist')) {
+        const error = enumError as Error;
+        if (error?.message?.includes('type') && error?.message?.includes('does not exist')) {
           // Escape values for safe SQL insertion
           const escapedId = params.id.replace(/'/g, "''");
           const escapedFullName = params.fullName.replace(/'/g, "''");
@@ -158,9 +159,10 @@ export class UserService extends BaseService {
         // This ensures separation of concerns and allows for proper validation
 
         return user;
-      } catch (enumError: any) {
+      } catch (enumError: unknown) {
         // If enum type doesn't exist, use raw SQL with text role
-        if (enumError?.message?.includes('type') && enumError?.message?.includes('does not exist')) {
+        const error = enumError as Error;
+        if (error?.message?.includes('type') && error?.message?.includes('does not exist')) {
           // Escape values for safe SQL insertion
           const escapedId = params.id.replace(/'/g, "''");
           const escapedFullName = params.fullName.replace(/'/g, "''");

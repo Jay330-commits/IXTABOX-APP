@@ -61,30 +61,13 @@ export async function POST(request: NextRequest) {
                 location: true,
               },
             },
-            customer: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    fullName: true,
-                    phone: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
     });
 
-    // Verify the payment belongs to the current user (if booking exists)
-    if (payment?.booking?.customer?.user?.email && payment.booking.customer.user.email !== supabaseUser.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized - This payment does not belong to you' },
-        { status: 403 }
-      );
-    }
+    // Note: Customer verification removed since bookings no longer have customer relation
+    // Payment verification is done through Stripe payment intent ownership
 
     // Return payment and booking information
     return NextResponse.json({

@@ -75,12 +75,15 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       },
     });
 
-    if (error.type === 'card_error' || error.type === 'validation_error') {
-      setMessage(error.message || 'An unexpected error occurred.');
-      onError?.(error);
-    } else {
-      setMessage('An unexpected error occurred.');
-      onError?.(error);
+    // Only handle errors if they exist (payment success returns no error)
+    if (error) {
+      if (error.type === 'card_error' || error.type === 'validation_error') {
+        setMessage(error.message || 'An unexpected error occurred.');
+        onError?.(error);
+      } else {
+        setMessage('An unexpected error occurred.');
+        onError?.(error);
+      }
     }
 
     setIsLoading(false);
