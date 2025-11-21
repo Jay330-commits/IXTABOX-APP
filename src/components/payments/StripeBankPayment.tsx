@@ -39,6 +39,17 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       return;
     }
 
+    // Only check payment status if we're returning from Stripe redirect
+    // Check for payment_intent and payment_intent_client_secret in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReturningFromStripe = urlParams.has('payment_intent') && urlParams.has('payment_intent_client_secret');
+
+    if (!isReturningFromStripe) {
+      // User just landed on payment page, don't auto-redirect
+      return;
+    }
+
+    // User is returning from Stripe redirect, check the payment status
     stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
       switch (paymentIntent?.status) {
         case 'succeeded':
@@ -68,6 +79,9 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
     setIsLoading(true);
     setMessage(null);
 
+    // Add smooth scroll to top for better mobile UX
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
@@ -84,6 +98,12 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
         setMessage('An unexpected error occurred.');
         onError?.(error);
       }
+      
+      // Smooth scroll to error message
+      setTimeout(() => {
+        const errorElement = document.getElementById('payment-message');
+        errorElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
 
     setIsLoading(false);
@@ -91,8 +111,11 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
 
   return (
     <form id="payment-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Payment Information</h3>
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6 transition-all duration-300 hover:border-white/20">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-sm font-bold">1</div>
+          Payment Information
+        </h3>
         <PaymentElement 
           id="payment-element"
           options={{
@@ -101,8 +124,11 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
         />
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Billing Address</h3>
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6 transition-all duration-300 hover:border-white/20">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-sm font-bold">2</div>
+          Billing Address
+        </h3>
         <AddressElement 
           options={{
             mode: 'billing',
@@ -114,16 +140,21 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       <button
         disabled={isLoading || !stripe || !elements}
         id="submit"
-        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)] text-sm sm:text-base"
+        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition-all duration-300 shadow-[0_0_24px_rgba(34,211,238,0.45)] hover:shadow-[0_0_32px_rgba(34,211,238,0.6)] transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
       >
         <span id="button-text">
           {isLoading ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-              Processing...
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+              <span className="animate-pulse">Processing payment...</span>
             </div>
           ) : (
-            `Pay ${amount.toFixed(2)} ${currency.toUpperCase()}`
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Pay {amount.toFixed(2)} {currency.toUpperCase()}
+            </span>
           )}
         </span>
       </button>
@@ -131,13 +162,24 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       {message && (
         <div 
           id="payment-message" 
-          className={`p-4 rounded-lg ${
+          className={`p-4 rounded-lg animate-slideDown ${
             message.includes('succeeded') 
               ? 'bg-green-500/20 border border-green-500/50 text-green-200' 
               : 'bg-red-500/20 border border-red-500/50 text-red-200'
           }`}
         >
-          {message}
+          <div className="flex items-center gap-2">
+            {message.includes('succeeded') ? (
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span>{message}</span>
+          </div>
         </div>
       )}
     </form>

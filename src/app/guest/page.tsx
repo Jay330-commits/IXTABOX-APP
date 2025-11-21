@@ -103,18 +103,25 @@ const TESTIMONIALS = [
 ] as const;
 
 
-// Dynamic import prevents SSR issues if you ever move Map to a separate file
+// Dynamic import with lazy loading - only loads when user scrolls near the map
 const Map = dynamic<MapProps>(() => import("../../components/maps/googlemap"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[500px] w-full items-center justify-center text-gray-300">Loading map…</div>
+    <div className="flex h-[500px] w-full items-center justify-center text-gray-300 animate-pulse">
+      <div className="text-center">
+        <div className="relative inline-block mb-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-500/20 border-t-cyan-500"></div>
+        </div>
+        <p className="text-lg">Loading map...</p>
+      </div>
+    </div>
   ),
 });
 
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
   const [stands, setStands] = useState<MapProps["stands"]>([]);
-  const [isLoadingStands, setIsLoadingStands] = useState(true);
+  const [isLoadingStands, setIsLoadingStands] = useState(false);
   const [standsError, setStandsError] = useState<string | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [testimonialProgress, setTestimonialProgress] = useState(0);
@@ -124,13 +131,43 @@ export default function GuestHome() {
     endDate: '',
     boxModel: 'all',
   });
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
   const autoplayStartRef = useRef<number | null>(null);
   const testimonialCount = Number(TESTIMONIALS.length);
   const mapSectionRef = useRef<HTMLDivElement | null>(null);
 
+  // Intersection Observer to lazy load map when user scrolls near it
   useEffect(() => {
-    let cancelled = false;
     setMounted(true);
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !shouldLoadMap) {
+            setShouldLoadMap(true);
+          }
+        });
+      },
+      { rootMargin: '400px' } // Start loading 400px before it comes into view
+    );
+
+    const mapSection = mapSectionRef.current;
+    if (mapSection) {
+      observer.observe(mapSection);
+    }
+
+    return () => {
+      if (mapSection) {
+        observer.unobserve(mapSection);
+      }
+    };
+  }, [shouldLoadMap]);
+
+  // Only load stands data when map should be loaded
+  useEffect(() => {
+    if (!shouldLoadMap) return;
+
+    let cancelled = false;
 
     async function loadStands() {
       try {
@@ -163,7 +200,7 @@ export default function GuestHome() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [shouldLoadMap]);
 
   useEffect(() => {
     if (testimonialCount === 0) return;
@@ -247,24 +284,29 @@ export default function GuestHome() {
     <div className="min-h-screen bg-gray-900 text-white">
       <GuestHeader />
       <main className="">
-        {/* Hero with animated overlay and parallax background */}
+        {/* Hero with optimized background image */}
         <section
-          className="relative flex items-center justify-center overflow-hidden"
+          className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
           style={{ minHeight: 560 }}
         >
-          <div
-            className="absolute inset-0 bg-center bg-cover"
-            style={{
-              backgroundImage: "url(/images/background/back.jpg)",
-              backgroundAttachment: "fixed",
-            }}
+          {/* Optimized background using Next.js Image */}
+          <Image
+            src="/images/background/back.jpg"
+            alt="IXTAbox Hero"
+            fill
+            priority
+            quality={85}
+            sizes="100vw"
+            className="object-cover object-center"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA5QAAAAA//2Q=="
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80 z-10" />
+          <div className="absolute inset-0 z-10">
             <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
             <div className="absolute -right-32 bottom-16 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl animate-[pulse_6s_ease-in-out_infinite]" />
           </div>
-          <FadeInSection className="relative z-10 mx-auto max-w-5xl px-6 py-24 text-center">
+          <FadeInSection className="relative z-20 mx-auto max-w-5xl px-6 py-24 text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200">
               Swedish engineered
             </span>
@@ -608,12 +650,20 @@ export default function GuestHome() {
         {/* Full-bleed background section */}
         <FadeInSection>
         <section className="relative overflow-hidden" style={{ minHeight: 420 }}>
-          <div
-            className="absolute inset-0 bg-center bg-cover"
-            style={{ backgroundImage: "url(/images/background/DSCF3859.jpg)", backgroundAttachment: "fixed" }}
+          {/* Lazy loaded optimized background */}
+          <Image
+            src="/images/background/DSCF3859.jpg"
+            alt="IXTAbox Features Background"
+            fill
+            quality={75}
+            sizes="100vw"
+            className="object-cover object-center"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA5QAAAAA//2Q=="
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60" />
-          <div className="relative z-10 mx-auto max-w-5xl px-6 py-16">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60 z-10" />
+          <div className="relative z-20 mx-auto max-w-5xl px-6 py-16">
             <h2 className="text-3xl sm:text-4xl font-bold"><center>Adventure Ready</center></h2>
            <center>
              <p className="mt-3 text-gray-200">

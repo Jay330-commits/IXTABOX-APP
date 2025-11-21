@@ -12,12 +12,15 @@ function PaymentContent() {
   const [clientSecret, setClientSecret] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [isProcessingSuccess, setIsProcessingSuccess] = useState(false);
   
   // Notification preferences
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [emailNotification, setEmailNotification] = useState(true);
   const [smsNotification, setSmsNotification] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   
   // Get booking details from URL params or state
   const amount = parseFloat(searchParams.get('amount') || '299.99');
@@ -73,6 +76,22 @@ function PaymentContent() {
   const handlePaymentSuccess = async (paymentIntent: PaymentIntent) => {
     console.log('Payment succeeded:', paymentIntent);
     
+    // Verify payment is actually succeeded before redirecting
+    if (paymentIntent.status !== 'succeeded') {
+      console.warn('Payment status is not succeeded:', paymentIntent.status);
+      return;
+    }
+
+    // Validate customer email before proceeding
+    if (!customerEmail || !customerEmail.includes('@')) {
+      setError('Please provide a valid email address before completing payment.');
+      setEmailError('Valid email required');
+      return;
+    }
+
+    // Show processing overlay with smooth transition
+    setIsProcessingSuccess(true);
+    
     // Update payment intent with customer contact and notification preferences
     try {
       await fetch('/api/create-payment-intent', {
@@ -94,6 +113,9 @@ function PaymentContent() {
       console.error('Failed to update payment with contact info:', error);
     }
     
+    // Small delay for smooth transition
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
     // Redirect to success page with booking details for unlock code generation
     const params = new URLSearchParams({
       payment_intent: paymentIntent.id,
@@ -109,9 +131,39 @@ function PaymentContent() {
     window.location.href = `/payment/success?${params.toString()}`;
   };
 
-  const handlePaymentError = (error: StripeError) => {
+  // Real-time email validation
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailError('');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  // Real-time phone validation
+  const validatePhone = (phone: string) => {
+    if (!phone) {
+      setPhoneError('');
+      return;
+    }
+    const phoneRegex = /^[+]?[\d\s-()]+$/;
+    if (!phoneRegex.test(phone) || phone.replace(/\D/g, '').length < 8) {
+      setPhoneError('Please enter a valid phone number');
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  const handlePaymentError = (error: StripeError | null | undefined) => {
     console.error('Payment failed:', error);
-    setError(error.message || 'Payment failed. Please try again.');
+    // Safely extract error message from StripeError
+    const errorMessage = error?.message || error?.type || 'Payment failed. Please try again.';
+    setError(errorMessage);
   };
 
   if (loading) {
@@ -119,9 +171,17 @@ function PaymentContent() {
       <div className="min-h-screen bg-gray-900 text-white">
         <GuestHeader />
         <main className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-            <p className="text-gray-300">Setting up secure payment...</p>
+          <div className="text-center animate-fadeIn">
+            <div className="relative inline-block">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500/20 border-t-cyan-500 mx-auto mb-6"></div>
+              <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-cyan-500/10 animate-pulse"></div>
+            </div>
+            <p className="text-lg text-gray-300 mb-2 animate-pulse">Setting up secure payment...</p>
+            <div className="flex items-center justify-center gap-1 mt-4">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+            </div>
           </div>
         </main>
         <Footer />
@@ -173,13 +233,34 @@ function PaymentContent() {
     <div className="min-h-screen bg-gray-900 text-white">
       <GuestHeader />
       
-      <main className="py-8 sm:py-16">
+      {/* Success Processing Overlay */}
+      {isProcessingSuccess && (
+        <div className="fixed inset-0 z-50 bg-gray-900/95 backdrop-blur-sm flex items-center justify-center animate-fadeIn">
+          <div className="text-center">
+            <div className="relative inline-block mb-6">
+              <div className="w-20 h-20 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin"></div>
+              <svg className="absolute inset-0 m-auto w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2 animate-pulse">Payment Successful!</h2>
+            <p className="text-gray-300">Preparing your booking details...</p>
+            <div className="flex items-center justify-center gap-1 mt-6">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <main className="py-8 sm:py-16 animate-fadeIn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 sm:mb-12">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-4 animate-slideDown">
               Complete Your Payment
             </h1>
-            <p className="text-sm sm:text-base text-gray-300">
+            <p className="text-sm sm:text-base text-gray-300 animate-slideDown" style={{animationDelay: '100ms'}}>
               Secure payment powered by Stripe
             </p>
           </div>
@@ -240,24 +321,64 @@ function PaymentContent() {
                 <div className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">Email Address *</label>
-                    <input
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      required
-                      className="w-full px-3 py-2 text-sm rounded-md bg-gray-900 border border-white/10 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-cyan-500/60 focus:border-cyan-500 transition-colors"
-                    />
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => {
+                          setCustomerEmail(e.target.value);
+                          validateEmail(e.target.value);
+                        }}
+                        onBlur={(e) => validateEmail(e.target.value)}
+                        placeholder="your.email@example.com"
+                        required
+                        className={`w-full px-3 py-2 text-sm rounded-md bg-gray-900 border text-gray-100 placeholder-gray-500 focus:ring-2 transition-all duration-200 ${
+                          emailError 
+                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
+                            : customerEmail && !emailError
+                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                        }`}
+                      />
+                      {customerEmail && !emailError && (
+                        <svg className="absolute right-3 top-2.5 w-5 h-5 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    {emailError && (
+                      <p className="text-red-400 text-xs mt-1 animate-slideDown">{emailError}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">Phone Number (optional)</label>
-                    <input
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="+46 70 123 4567"
-                      className="w-full px-3 py-2 text-sm rounded-md bg-gray-900 border border-white/10 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-cyan-500/60 focus:border-cyan-500 transition-colors"
-                    />
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => {
+                          setCustomerPhone(e.target.value);
+                          validatePhone(e.target.value);
+                        }}
+                        onBlur={(e) => validatePhone(e.target.value)}
+                        placeholder="+46 70 123 4567"
+                        className={`w-full px-3 py-2 text-sm rounded-md bg-gray-900 border text-gray-100 placeholder-gray-500 focus:ring-2 transition-all duration-200 ${
+                          phoneError 
+                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
+                            : customerPhone && !phoneError
+                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                        }`}
+                      />
+                      {customerPhone && !phoneError && (
+                        <svg className="absolute right-3 top-2.5 w-5 h-5 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    {phoneError && (
+                      <p className="text-red-400 text-xs mt-1 animate-slideDown">{phoneError}</p>
+                    )}
                   </div>
 
                   <div className="border-t border-white/10 pt-3 sm:pt-4 mt-3 sm:mt-4">
