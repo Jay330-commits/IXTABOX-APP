@@ -13,19 +13,20 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { 
-    label: "Rent IXTAbox", 
+    label: "Book IXTAbox", 
     href: "#map"
+  },
+  { 
+    label: "Your Bookings", 
+    href: "/guest/bookings"
   },
   { 
     label: "About", 
     href: "#footer"
   },
+  
   { 
-    label: "Bookings", 
-    href: "/guest/bookings"
-  },
-  { 
-    label: "Help", 
+    label: "Support", 
     href: "/support"
   }
 ];
@@ -112,7 +113,6 @@ export default function GuestHeader(): JSX.Element {
                   alt="IXTAbox"
                   width={160}
                   height={90}
-                  unoptimized
                   priority
                   className="object-contain h-full w-full transition-opacity group-hover:opacity-90"
                 />

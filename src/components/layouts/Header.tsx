@@ -87,7 +87,6 @@ export default function Header() {
                     alt="InxaBox Portal"
                     width={160}
                     height={90}
-                    unoptimized
                     priority
                     className="object-contain mx-auto h-auto max-w-[200px] sm:max-w-[240px]"
                   />

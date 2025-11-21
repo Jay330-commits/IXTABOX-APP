@@ -89,7 +89,6 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
                 alt="InxaBox Portal"
                 width={160}
                 height={90}
-                unoptimized
                 priority
                 className="object-contain mx-auto h-auto max-w-[200px]"
               />
@@ -241,7 +240,6 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
                 alt="InxaBox Portal"
                 width={80}
                 height={45}
-                unoptimized
                 priority
                 className="object-contain mx-auto h-auto max-w-[100px]"
               />
