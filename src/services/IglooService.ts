@@ -22,16 +22,31 @@ export class IglooService {
 
   /**
    * Format date for Igloo API
-   * Format: YYYY-MM-DDTHH:00:00+hh:mm
+   * Format: YYYY-MM-DDTHH:00:00+01:00 or +02:00 (Swedish timezone with DST)
+   * Forces Europe/Stockholm timezone regardless of server location
    */
   private formatDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const timezoneOffset = -date.getTimezoneOffset();
-    const offsetHours = String(Math.floor(timezoneOffset / 60)).padStart(2, '0');
-    const offsetMinutes = String(timezoneOffset % 60).padStart(2, '0');
+    // Convert to Swedish timezone (Europe/Stockholm)
+    const swedenTime = new Date(date.toLocaleString('en-US', { 
+      timeZone: 'Europe/Stockholm' 
+    }));
+    
+    const year = swedenTime.getFullYear();
+    const month = String(swedenTime.getMonth() + 1).padStart(2, '0');
+    const day = String(swedenTime.getDate()).padStart(2, '0');
+    const hour = String(swedenTime.getHours()).padStart(2, '0');
+    
+    // Determine Swedish timezone offset (handles DST automatically)
+    // Sweden is +01:00 in winter (CET), +02:00 in summer (CEST)
+    const january = new Date(date.getFullYear(), 0, 1);
+    const july = new Date(date.getFullYear(), 6, 1);
+    const stdOffset = Math.max(january.getTimezoneOffset(), july.getTimezoneOffset());
+    const isDST = date.getTimezoneOffset() < stdOffset;
+    
+    // Use +02:00 during DST (summer), +01:00 otherwise (winter)
+    const offsetHours = isDST ? '02' : '01';
+    const offsetMinutes = '00';
+    
     return `${year}-${month}-${day}T${hour}:00:00+${offsetHours}:${offsetMinutes}`;
   }
 
