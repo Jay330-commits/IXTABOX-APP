@@ -26,28 +26,49 @@ export class IglooService {
    * Forces Europe/Stockholm timezone regardless of server location
    */
   private formatDate(date: Date): string {
-    // Convert to Swedish timezone (Europe/Stockholm)
-    const swedenTime = new Date(date.toLocaleString('en-US', { 
-      timeZone: 'Europe/Stockholm' 
-    }));
+    // Format in Swedish timezone to get the local time components
+    const swedenFormatter = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Stockholm',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
     
-    const year = swedenTime.getFullYear();
-    const month = String(swedenTime.getMonth() + 1).padStart(2, '0');
-    const day = String(swedenTime.getDate()).padStart(2, '0');
-    const hour = String(swedenTime.getHours()).padStart(2, '0');
+    const parts = swedenFormatter.formatToParts(date);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    const hour = parts.find(p => p.type === 'hour')?.value;
     
-    // Determine Swedish timezone offset (handles DST automatically)
-    // Sweden is +01:00 in winter (CET), +02:00 in summer (CEST)
-    const january = new Date(date.getFullYear(), 0, 1);
-    const july = new Date(date.getFullYear(), 6, 1);
-    const stdOffset = Math.max(january.getTimezoneOffset(), july.getTimezoneOffset());
-    const isDST = date.getTimezoneOffset() < stdOffset;
+    // Determine timezone offset by checking what Swedish time is relative to UTC
+    // Sweden DST: Last Sunday in March (02:00->03:00 CET->CEST) to last Sunday in October (03:00->02:00 CEST->CET)
+    // During DST (roughly late March to late October): +02:00 (CEST)
+    // Outside DST (roughly late October to late March): +01:00 (CET)
     
-    // Use +02:00 during DST (summer), +01:00 otherwise (winter)
-    const offsetHours = isDST ? '02' : '01';
-    const offsetMinutes = '00';
+    // Get Swedish time string
+    const swedenDateStr = date.toLocaleString('en-US', { timeZone: 'Europe/Stockholm' });
+    const swedenDate = new Date(swedenDateStr);
     
-    return `${year}-${month}-${day}T${hour}:00:00+${offsetHours}:${offsetMinutes}`;
+    // Get UTC time string  
+    const utcDateStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
+    const utcDate = new Date(utcDateStr);
+    
+    // Calculate the hour difference (Swedish time - UTC time)
+    const hourDiff = swedenDate.getHours() - utcDate.getHours();
+    
+    // Normalize for day boundaries
+    let offset = hourDiff;
+    if (hourDiff < -12) offset = hourDiff + 24;
+    if (hourDiff > 12) offset = hourDiff - 24;
+    
+    // Sweden is either +01:00 (CET) or +02:00 (CEST)
+    const offsetStr = offset === 2 ? '+02:00' : '+01:00';
+    
+    console.log(`[IglooService] Formatting date: Input=${date.toISOString()}, Swedish=${swedenDateStr}, UTC=${utcDateStr}, Offset=${offset}, Result=${year}-${month}-${day}T${hour}:00:00${offsetStr}`);
+    
+    return `${year}-${month}-${day}T${hour}:00:00${offsetStr}`;
   }
 
   /**

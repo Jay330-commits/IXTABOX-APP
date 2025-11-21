@@ -399,7 +399,7 @@ export default function GuestHome() {
             )}
           </div>
           
-          <div className="w-full relative" style={{ minHeight: 500 }}>
+          <div className="w-full relative" style={{ minHeight: 500 }} suppressHydrationWarning>
             {standsError ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
                 {standsError}
