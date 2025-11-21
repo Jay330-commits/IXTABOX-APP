@@ -53,10 +53,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
             <span className="text-sm text-gray-600">Description</span>
             <span className="text-sm font-medium text-gray-900">{booking.model.description}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Price Multiplier</span>
-            <span className="text-sm font-medium text-gray-900">{booking.model.priceMultiplier}x</span>
-          </div>
         </div>
       </div>
 
@@ -98,8 +94,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
             <span className="text-sm font-medium text-gray-900">${booking.pricePerDay.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Model Multiplier</span>
-            <span className="text-sm font-medium text-gray-900">{booking.model.priceMultiplier}x</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Days</span>

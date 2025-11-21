@@ -330,7 +330,6 @@ const StandDetails: React.FC<StandDetailsProps> = ({
                         <span className="text-sm font-semibold text-gray-900 text-center">{model.name}</span>
                         <span className="text-xs font-medium text-gray-600 mt-1 text-center">{dimension}</span>
                         <span className="text-xs font-medium text-emerald-600 mt-1 text-center">
-                          {model.priceMultiplier}x multiplier
                         </span>
                         {selectedModel === model.id && (
                           <div className="absolute top-2 right-2">
