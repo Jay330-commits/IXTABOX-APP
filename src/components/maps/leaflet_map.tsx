@@ -125,14 +125,37 @@ export default function Map({ stands }: MapProps) {
     }
   }
 
-  const handleBookStand = (standId: string, modelId?: string, startDate?: string, endDate?: string) => {
+  const handleBookStand = (standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => {
     try {
+      // Calculate total amount based on dates and model
+      const start = startDate ? new Date(startDate) : new Date();
+      const end = endDate ? new Date(endDate) : new Date(start.getTime() + 86400000); // +1 day default
+      const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+      
+      // Get stand price
+      const standData = stands.find(s => s.id === standId);
+      const basePrice = standData?.pricePerDay || 299.99;
+      
+      // Apply model multiplier if provided
+      let multiplier = 1.0;
+      if (modelId === 'pro') multiplier = 1.5;
+      else if (modelId === 'elite') multiplier = 2.0;
+      
+      const totalAmount = basePrice * multiplier * days;
+      
+      // Build payment page URL with all booking details
       const params = new URLSearchParams();
+      params.set('amount', totalAmount.toFixed(2));
+      params.set('currency', 'sek');
       params.set('standId', standId);
       if (modelId) params.set('modelId', modelId);
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
-      router.push(`/guest/bookings?${params.toString()}`);
+      if (startTime) params.set('startTime', startTime);
+      if (endTime) params.set('endTime', endTime);
+      
+      // Navigate directly to payment page (not bookings!)
+      router.push(`/payment?${params.toString()}`);
     } finally {
       setSelectedStand(null);
     }

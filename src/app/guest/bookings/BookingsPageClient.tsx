@@ -141,8 +141,12 @@ export default function BookingsPageClient() {
     const model = modelId === 'pro' ? { name: 'IXTAbox Pro 185', description: 'Premium model with advanced features', priceMultiplier: 1.5 }
       : modelId === 'elite' ? { name: 'IXTAbox Elite', description: 'Elite tier with maximum capacity', priceMultiplier: 2.0 }
       : { name: 'IXTAbox Pro 175', description: 'Standard model with essential features', priceMultiplier: 1.0 };
+    
+    // Generate a stable ID based on the booking parameters (no Date.now() to avoid hydration issues)
+    const stableId = `new-${standId}-${modelId || 'classic'}-${startDate}`;
+    
     const generated = {
-      id: `new-${Date.now()}`,
+      id: stableId,
       standId: standId,
       address: stand.address,
       startDate: new Date(startDate).toISOString(),

@@ -284,22 +284,17 @@ export default function GuestHome() {
     <div className="min-h-screen bg-gray-900 text-white">
       <GuestHeader />
       <main className="">
-        {/* Hero with optimized background image */}
+        {/* Hero with background image */}
         <section
           className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
           style={{ minHeight: 560 }}
         >
-          {/* Optimized background using Next.js Image */}
-          <Image
-            src="/images/background/back.jpg"
-            alt="IXTAbox Hero"
-            fill
-            priority
-            quality={85}
-            sizes="100vw"
-            className="object-cover object-center"
-            placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA5QAAAAA//2Q=="
+          {/* Background image */}
+          <div
+            className="absolute inset-0 bg-center bg-cover"
+            style={{
+              backgroundImage: "url(/images/background/back.jpg)",
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80 z-10" />
           <div className="absolute inset-0 z-10">

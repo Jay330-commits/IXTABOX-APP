@@ -87,7 +87,7 @@ interface StandDetailsProps {
     }[];
     nextAvailableDate?: string; // For booked stands
   };
-  onBook?: (standId: string, modelId?: string, startDate?: string, endDate?: string) => void;
+  onBook?: (standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => void;
   onClose?: () => void;
   initialStartDate?: string;
   initialEndDate?: string;
