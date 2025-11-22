@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse dates
+    // Note: Dates without timezone will be parsed in server's timezone (UTC on Vercel)
+    // The formatDate function will handle converting to Swedish timezone correctly
     const startDateObj = new Date(startDate);
     const endDateObj = new Date(endDate);
 
@@ -25,6 +27,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Log parsed dates for debugging
+    console.log(`[Igloo PIN API] Original strings - Start: ${startDate}, End: ${endDate}`);
+    console.log(`[Igloo PIN API] Parsed as UTC - Start: ${startDateObj.toISOString()}, End: ${endDateObj.toISOString()}`);
 
     // Validate date range
     if (endDateObj <= startDateObj) {

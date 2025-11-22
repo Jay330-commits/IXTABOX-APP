@@ -26,7 +26,7 @@ export class IglooService {
    * Forces Europe/Stockholm timezone regardless of server location
    */
   private formatDate(date: Date): string {
-    // Format in Swedish timezone to get the local time components
+    // Get the date components in Swedish timezone
     const swedenFormatter = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Europe/Stockholm',
       year: 'numeric',
@@ -42,33 +42,51 @@ export class IglooService {
     const day = parts.find(p => p.type === 'day')?.value;
     const hour = parts.find(p => p.type === 'hour')?.value;
     
-    // Determine timezone offset by checking what Swedish time is relative to UTC
-    // Sweden DST: Last Sunday in March (02:00->03:00 CET->CEST) to last Sunday in October (03:00->02:00 CEST->CET)
-    // During DST (roughly late March to late October): +02:00 (CEST)
-    // Outside DST (roughly late October to late March): +01:00 (CET)
+    // Calculate timezone offset using a reliable method:
+    // Format the same moment in both UTC and Stockholm, then compare
+    const utcFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+      hourCycle: 'h23'
+    });
     
-    // Get Swedish time string
-    const swedenDateStr = date.toLocaleString('en-US', { timeZone: 'Europe/Stockholm' });
-    const swedenDate = new Date(swedenDateStr);
+    const stockholmFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Stockholm',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+      hourCycle: 'h23'
+    });
     
-    // Get UTC time string  
-    const utcDateStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
-    const utcDate = new Date(utcDateStr);
+    // Get hours in both timezones for the same moment
+    const utcParts = utcFormatter.formatToParts(date);
+    const stockholmParts = stockholmFormatter.formatToParts(date);
     
-    // Calculate the hour difference (Swedish time - UTC time)
-    const hourDiff = swedenDate.getHours() - utcDate.getHours();
+    const utcHour = parseInt(utcParts.find(p => p.type === 'hour')?.value || '0');
+    const stockholmHour = parseInt(stockholmParts.find(p => p.type === 'hour')?.value || '0');
     
-    // Normalize for day boundaries
-    let offset = hourDiff;
-    if (hourDiff < -12) offset = hourDiff + 24;
-    if (hourDiff > 12) offset = hourDiff - 24;
+    // Calculate offset (Stockholm is ahead of UTC, so positive)
+    let hourDiff = stockholmHour - utcHour;
     
-    // Sweden is either +01:00 (CET) or +02:00 (CEST)
-    const offsetStr = offset === 2 ? '+02:00' : '+01:00';
+    // Handle day boundaries (could be -23 to +23)
+    if (hourDiff < -12) hourDiff += 24;
+    if (hourDiff > 12) hourDiff -= 24;
     
-    console.log(`[IglooService] Formatting date: Input=${date.toISOString()}, Swedish=${swedenDateStr}, UTC=${utcDateStr}, Offset=${offset}, Result=${year}-${month}-${day}T${hour}:00:00${offsetStr}`);
+    // Sweden is either +1 (CET) or +2 (CEST) hours ahead of UTC
+    // Normalize to 1 or 2
+    const offsetHours = hourDiff === 2 ? 2 : 1;
+    const offsetStr = `+${String(offsetHours).padStart(2, '0')}:00`;
     
-    return `${year}-${month}-${day}T${hour}:00:00${offsetStr}`;
+    const result = `${year}-${month}-${day}T${hour}:00:00${offsetStr}`;
+    console.log(`[IglooService] Formatting date: Input=${date.toISOString()}, UTC hour=${utcHour}, Stockholm hour=${stockholmHour}, Hour diff=${hourDiff}, Offset=${offsetHours}, Result=${result}`);
+    
+    return result;
   }
 
   /**
