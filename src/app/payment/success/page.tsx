@@ -60,30 +60,46 @@ function PaymentSuccessContent() {
     setPinError(null);
 
     try {
+      // Helper to create ISO datetime string with timezone
+      const createISOString = (dateStr: string, timeStr: string): string => {
+        if (!dateStr) return new Date().toISOString();
+        
+        // If date already has timezone info, use it directly
+        if (dateStr.includes('Z') || dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+          return new Date(dateStr).toISOString();
+        }
+        
+        // Combine date and time, then create a Date object in local timezone
+        // This ensures the date represents the correct moment in user's timezone
+        const localDateTime = `${dateStr}T${timeStr}:00`;
+        const dateObj = new Date(localDateTime);
+        
+        // Return as ISO string (UTC) - the server will convert back to Swedish timezone
+        return dateObj.toISOString();
+      };
+
       // Use current date/time if start date/time is not set
       const actualStartDate = startDate || getCurrentDate();
       const actualStartTime = startTime || getCurrentTime();
       
-      // Combine date and time to create full datetime strings
-      const startDateTime = `${actualStartDate}T${actualStartTime}:00`;
-      const endDateTime = endTime
-        ? `${endDate}T${endTime}:00`
-        : `${endDate}T17:00:00`; // Default to 5 PM if no time provided
+      // Create ISO datetime strings with proper timezone handling
+      let startDateTime = createISOString(actualStartDate, actualStartTime);
+      
+      // Default end time if not provided
+      const defaultEndTime = endTime || '17:00';
+      const endDateTime = createISOString(endDate, defaultEndTime);
 
       // Check if start date/time is in the past - if so, use current date/time
       const startDateObj = new Date(startDateTime);
       const now = new Date();
       
-      let finalStartDateTime = startDateTime;
       if (startDateObj < now) {
-        // Start time is in the past, use current date/time
-        const currentDate = getCurrentDate();
-        const currentTime = getCurrentTime();
-        finalStartDateTime = `${currentDate}T${currentTime}:00`;
+        // Start time is in the past, use current date/time as ISO string
+        startDateTime = new Date().toISOString();
       }
 
       console.log('Calling API with:', {
-        startDate: finalStartDateTime,
+        startDate: startDateTime,
         endDate: endDateTime,
         accessName: 'Customer'
       });
@@ -94,7 +110,7 @@ function PaymentSuccessContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          startDate: finalStartDateTime,
+          startDate: startDateTime,
           endDate: endDateTime,
           accessName: 'Customer'
         }),
