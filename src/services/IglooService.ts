@@ -4,13 +4,34 @@ import 'server-only';
  * IglooService class handling Igloo API operations for lock PIN generation
  */
 export class IglooService {
-  // Fixed credentials and device ID
-  private readonly clientId = "uysufncu8quzbs0tjg61hxvkii";
-  private readonly clientSecret = "9o8dakrhawv20xsnupsfhhxboo0gp9v3hdi6sjdbouarcszjkvw";
-  private readonly deviceId = "SP2X24ec23e1";
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+  private readonly deviceId: string;
   
   private readonly tokenEndpoint = "https://auth.igloohome.co/oauth2/token";
   private readonly apiBaseUrl = "https://api.igloodeveloper.co/igloohome/devices";
+
+  constructor() {
+    // Read credentials from environment variables for security
+    this.clientId = process.env.IGLOO_CLIENT_ID || '';
+    this.clientSecret = process.env.IGLOO_CLIENT_SECRET || '';
+    
+    // Device ID is dynamic and not sensitive, so it can be in env or hardcoded
+    // If stored per stand in database, it can be passed as parameter instead
+    this.deviceId = process.env.IGLOO_DEVICE_ID || 'SP2X24ec23e1';
+
+    // Validate required environment variables (only sensitive credentials)
+    if (!this.clientId || !this.clientSecret) {
+      const missing = [];
+      if (!this.clientId) missing.push('IGLOO_CLIENT_ID');
+      if (!this.clientSecret) missing.push('IGLOO_CLIENT_SECRET');
+      
+      throw new Error(
+        `Missing required Igloo environment variables: ${missing.join(', ')}. ` +
+        'Please set them in your .env.local file or Vercel environment configuration.'
+      );
+    }
+  }
 
   /**
    * Encode credentials for Basic authentication
