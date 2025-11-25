@@ -27,7 +27,7 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const logoPath = "/images/logo/new.png";
+  const logoPath = "/images/logo/test.png";
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
