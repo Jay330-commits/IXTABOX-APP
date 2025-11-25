@@ -62,24 +62,24 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
 
   const containerClasses = useMemo(
     () =>
-      `sticky top-0 z-[3000] h-20 transition-colors duration-300 ${
+      `sticky top-0 z-[10000] transition-all duration-500 ${
         isScrolled
-          ? "backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.35)]"
-          : "backdrop-blur-sm"
-      } bg-gray-900 border-b border-white/10 overflow-visible relative`,
+          ? "bg-gray-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border-b border-white/5"
+          : "bg-gray-900/80 backdrop-blur-md border-b border-white/5"
+      }`,
     [isScrolled]
   );
 
   const neonFocus = "focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-0";
-  const linkBase =
-    "px-3 py-2 text-sm font-semibold tracking-wide text-gray-200 hover:text-white transition-colors duration-200 relative rounded-md";
-  const linkGlow =
-    "before:absolute before:inset-0 before:rounded-md before:bg-cyan-500/0 hover:before:bg-cyan-500/10 before:blur before:transition-all before:duration-300";
+  const navButtonClasses = (active: boolean) =>
+    `relative inline-flex items-center px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg ${
+      active ? "text-cyan-300" : "text-gray-300 hover:text-white"
+    } group`;
 
   return (
     <>
       {/* === Desktop Header === */}
-      <header className={`${containerClasses} hidden lg:block`}>
+      <header className={`${containerClasses} hidden lg:block h-20`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between h-full">
           {/* Logo */}
           <Link href="/" className="flex items-center">
@@ -96,21 +96,22 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1">
             {navItems.map((item) => {
               const active = activeSection === item.section;
               return (
                 <button
                   key={item.label}
                   onClick={() => onSectionChange(item.section)}
-                  className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 ${
-                    active
-                      ? "bg-cyan-600/20 border-cyan-400/40 text-white"
-                      : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
-                  }`}
+                  className={navButtonClasses(active)}
+                  aria-current={active ? "page" : undefined}
                 >
                   <span className="opacity-80 text-lg">{item.icon}</span>
-                  <span className="relative z-10">{item.label}</span>
+                  <span className="relative z-10 ml-1">{item.label}</span>
+                  {active && (
+                    <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
+                  )}
+                  <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </button>
               );
             })}
@@ -121,7 +122,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             {/* Upgrade Button */}
             <button
               onClick={() => onSectionChange("upgrade")}
-              className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
             >
               <svg
                 className="h-4 w-4 mr-1.5"
@@ -142,7 +143,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             {/* Theme toggle */}
             <button
               onClick={() => setDarkMode((v) => !v)}
-              className={`p-2 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 transition-colors ${neonFocus}`}
+              className={`p-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors ${neonFocus}`}
               aria-label="Toggle theme"
             >
               {darkMode ? (
@@ -173,7 +174,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-gradient-to-br from-cyan-600/10 to-blue-600/10 text-gray-200 hover:bg-white/10 ${neonFocus}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-cyan-600/10 to-blue-600/10 text-gray-200 hover:bg-white/10 ${neonFocus}`}
               >
                 <span className="h-6 w-6 flex items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -184,7 +185,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3000]">
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3000]">
                   <div className="py-1">
                     <button 
                       onClick={() => onSectionChange("profile")} 
@@ -222,7 +223,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
       </header>
 
       {/* === Mobile Top Bar === */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-[3000] h-16 bg-gray-900 border-b border-white/10 flex justify-between items-center px-4">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-[10000] h-16 bg-gray-900/90 backdrop-blur-md border-b border-white/5 flex justify-between items-center px-4">
         <div className="flex items-center gap-3">
           <button
             aria-label="Open menu"
@@ -271,7 +272,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             </button>
             
             {mobileUserMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3001]">
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3001]">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -315,20 +316,19 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
       <div className="lg:hidden h-16"></div>
 
       {/* === Mobile Sidebar === */}
-      <div
-        className={`lg:hidden fixed inset-0 z-[9000] transform transition-transform duration-300 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Backdrop overlay */}
-        <div 
-          className="absolute inset-0 bg-black/80" 
-          onClick={() => setMobileOpen(false)} 
+      <div className={`lg:hidden fixed inset-0 z-[9000] ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
+        <div
+          className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${
+            mobileOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMobileOpen(false)}
         />
         
-        {/* Sidebar */}
-        <div className="relative h-full w-72 bg-gray-950 border-r border-white/10 shadow-2xl shadow-black/60 overflow-y-auto">
-          {/* Sidebar Header */}
+        <div
+          className={`absolute left-0 top-0 h-full w-72 bg-gray-950/95 backdrop-blur-xl border-r border-white/10 shadow-2xl shadow-black/60 transition-transform duration-300 ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
           <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
             <span className="text-white font-semibold text-lg">IXTAbox Partner</span>
             <button
@@ -342,8 +342,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <div className="p-4">
+          <div className="p-4 space-y-4">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const active = activeSection === item.section;
@@ -354,34 +353,31 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
                       onSectionChange(item.section);
                       setMobileOpen(false);
                     }}
-                    className={`${linkBase} ${linkGlow} rounded-md border inline-flex items-center gap-3 w-full ${
-                      active
-                        ? "bg-cyan-600/20 border-cyan-400/40 text-white"
-                        : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
-                    }`}
+                    className={`${navButtonClasses(active)} w-full justify-start`}
                   >
                     <span className="opacity-80 text-xl">{item.icon}</span>
-                    <span className="relative z-10">{item.label}</span>
+                    <span className="relative z-10 ml-2">{item.label}</span>
+                    {active && (
+                      <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
+                    )}
+                    <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </button>
                 );
               })}
             </nav>
 
-            {/* Action Buttons */}
-            <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-4">
-              <button
-                onClick={() => {
-                  onSectionChange("upgrade");
-                  setMobileOpen(false);
-                }}
-                className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors shadow-[0_0_24px_rgba(34,211,238,0.45)]"
-              >
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Upgrade Account
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                onSectionChange("upgrade");
+                setMobileOpen(false);
+              }}
+              className="w-full inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
+            >
+              <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Upgrade Account
+            </button>
           </div>
         </div>
       </div>

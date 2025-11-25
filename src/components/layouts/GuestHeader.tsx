@@ -162,13 +162,6 @@ export default function GuestHeader(): JSX.Element {
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-3">
               <Link
-                href="/auth/login"
-                className="px-4 py-2 text-sm font-semibold text-gray-200 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/5"
-              >
-                Login
-              </Link>
-              
-              <Link
                 href="/auth/signup?role=distributor"
                 className="px-4 py-2 text-sm font-semibold text-cyan-200 hover:text-white transition-all duration-200 rounded-lg border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/10"
               >
@@ -176,10 +169,10 @@ export default function GuestHeader(): JSX.Element {
               </Link>
               
               <Link
-                href="/auth/signup?role=customer"
+                href="/auth/login"
                 className="px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 rounded-lg transition-all duration-200 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-105"
               >
-                Sign Up
+                Login / Sign Up
               </Link>
             </div>
 
@@ -259,14 +252,6 @@ export default function GuestHeader(): JSX.Element {
               {/* Actions */}
               <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
                 <Link
-                  href="/auth/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center px-4 py-3 rounded-lg text-gray-200 hover:text-white hover:bg-white/5 transition-colors border border-white/10"
-                >
-                  <span className="font-semibold">Login</span>
-                </Link>
-                
-                <Link
                   href="/auth/signup?role=distributor"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-4 py-3 rounded-lg text-cyan-200 hover:text-white transition-colors border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/10"
@@ -275,11 +260,11 @@ export default function GuestHeader(): JSX.Element {
                 </Link>
                 
                 <Link
-                  href="/auth/signup?role=customer"
+                  href="/auth/login"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center px-4 py-3 rounded-lg text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/25"
                 >
-                  <span className="font-semibold">Sign Up</span>
+                  <span className="font-semibold">Login / Sign Up</span>
                 </Link>
               </div>
             </div>

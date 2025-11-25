@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ixtaboxrental",
-  description: "Default description for all pages",
+  title: {
+    default: "IXTAbox Rent",
+    template: "%s | IXTAbox",
+  },
+  description:
+    "Back-mounted aerodynamic cargo boxes engineered for reduced drag, better range, and quieter rides.",
 };
 
 export default function RootLayout({

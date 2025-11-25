@@ -40,32 +40,32 @@ const STAT_METRICS = [
 
 const JOURNEY_STEPS = [
   {
-    icon: "🧭",
-    title: "Discover & configure",
-    highlight: "Day 1",
+    icon: "🔍",
+    title: "Browse availability",
+    highlight: "Step 1",
     description:
-      "Choose the IXTAbox model, layout, and accessories that fit your activation. Our configurator recommends power, signage, and staffing plans.",
+      "Open the map, pick the stand closest to you, and check which IXTAbox sizes are free for your dates.",
   },
   {
-    icon: "🚚",
-    title: "Delivered & installed",
-    highlight: "Week 1",
+    icon: "📝",
+    title: "Reserve & schedule",
+    highlight: "Step 2",
     description:
-      "Certified teams position the stand, calibrate sensors, and hand over the keys. Training takes under an hour with remote support on standby.",
+      "Choose your time window, add extras like racks or straps, and confirm the booking with secure checkout.",
   },
   {
-    icon: "📣",
-    title: "Launch & promote",
-    highlight: "Week 2",
+    icon: "⚙️",
+    title: "Mount in minutes",
+    highlight: "Step 3",
     description:
-      "Sync your campaign calendar, automate bookings, and go live with ready-made content kits for social, email, and on-site signage.",
+      "Arrive at the stand, attach IXTAbox to your towbar using the guided checklist, and load at waist height—no ladders required.",
   },
   {
-    icon: "📊",
-    title: "Measure & optimise",
-    highlight: "Week 4+",
+    icon: "🚗",
+    title: "Drive & return",
+    highlight: "Step 4",
     description:
-      "Track engagement, dwell time, and conversions in real time. Use insights to rotate inventory, upsell services, or add new sites.",
+      "Enjoy the trip with quieter, more efficient storage. Drop it back, run the quick inspection, and you’re done.",
   },
 ] as const;
 
@@ -314,20 +314,12 @@ export default function GuestHome() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-3xl text-lg text-gray-200/90">
-              Bring full-scale retail, event, and rental experiences to any site. IXTAbox deploys in
-              minutes, powers itself, and keeps your brand front-and-center in every journey.
+              IXTAbox is now available for rent. Get extra storage without the hassle of a roof box.
+              It mounts to your towbar in minutes, sits at a comfortable height, and keeps your gear
+              within easy reach. Perfect for trips, sports, camping, or everyday overflow simple setup,
+              secure build, ready for any journey.
             </p>
 
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-lg font-semibold">
-              <div className="flex items-center gap-2 text-gray-400">
-                <span>Roof Box</span>
-                <span className="text-red-500">❌</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-100">
-                <span>IXTAbox</span>
-                <span className="text-green-500">✔️</span>
-              </div>
-            </div>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
               <a
