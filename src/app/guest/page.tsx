@@ -12,7 +12,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 
 const STAT_METRICS = [
   {
-    label: "Stands deployed",
+    label: "Locations deployed",
     value: 128,
     suffix: "+",
     description: "Active IXTAbox locations across the Nordics.",
@@ -120,11 +120,13 @@ const Map = dynamic<MapProps>(() => import("../../components/maps/googlemap"), {
 
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
-  const [stands, setStands] = useState<MapProps["stands"]>([]);
-  const [isLoadingStands, setIsLoadingStands] = useState(false);
-  const [standsError, setStandsError] = useState<string | null>(null);
+  const [locations, setLocations] = useState<MapProps["locations"]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [locationsError, setLocationsError] = useState<string | null>(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [testimonialProgress, setTestimonialProgress] = useState(0);
+  const [activeMetric, setActiveMetric] = useState(0);
+  const [metricProgress, setMetricProgress] = useState(0);
   const [showFilterForm, setShowFilterForm] = useState(false);
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
     startDate: '',
@@ -163,39 +165,39 @@ export default function GuestHome() {
     };
   }, [shouldLoadMap]);
 
-  // Only load stands data when map should be loaded
+  // Only load locations data when map should be loaded
   useEffect(() => {
     if (!shouldLoadMap) return;
 
     let cancelled = false;
 
-    async function loadStands() {
+    async function loadLocations() {
       try {
-        setIsLoadingStands(true);
-        const response = await fetch("/api/stands");
+        setIsLoadingLocations(true);
+        const response = await fetch("/api/locations");
         if (!response.ok) {
           throw new Error(`Unexpected response: ${response.status}`);
         }
         const data = await response.json();
-        const fetchedStands = Array.isArray(data?.stands) ? (data.stands as MapProps["stands"]) : [];
+        const fetchedLocations = Array.isArray(data?.locations) ? (data.locations as MapProps["locations"]) : [];
         if (!cancelled) {
-          setStands(fetchedStands);
-          setStandsError(null);
+          setLocations(fetchedLocations);
+          setLocationsError(null);
         }
       } catch (error) {
-        console.error("Failed to load stands:", error);
+        console.error("Failed to load locations:", error);
         if (!cancelled) {
-          setStandsError("Unable to load stands right now. Please try again later.");
-          setStands([]);
+          setLocationsError("Unable to load locations right now. Please try again later.");
+          setLocations([]);
         }
       } finally {
         if (!cancelled) {
-          setIsLoadingStands(false);
+          setIsLoadingLocations(false);
         }
       }
     }
 
-    loadStands();
+    loadLocations();
 
     return () => {
       cancelled = true;
@@ -234,6 +236,41 @@ export default function GuestHome() {
     };
   }, [testimonialCount]);
 
+  // Rotate metrics on mobile
+  useEffect(() => {
+    const metricCount: number = STAT_METRICS.length;
+
+    let animationFrame: number;
+    const duration = 3000; // 3 seconds per metric
+
+    let startTime: number | null = null;
+
+    const tick = (timestamp: number) => {
+      if (startTime === null) {
+        startTime = timestamp;
+      }
+
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      setMetricProgress(progress * 100);
+
+      if (elapsed >= duration) {
+        setActiveMetric((prev) => (prev + 1) % metricCount);
+        startTime = timestamp;
+        setMetricProgress(0);
+      }
+
+      animationFrame = requestAnimationFrame(tick);
+    };
+
+    animationFrame = requestAnimationFrame(tick);
+
+    return () => {
+      startTime = null;
+      cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
   const handleSelectTestimonial = (index: number) => {
     setActiveTestimonial(index);
     setTestimonialProgress(0);
@@ -256,27 +293,31 @@ export default function GuestHome() {
     setBookingFilter(filter);
   };
 
-  // Filter stands based on booking filter
-  const filteredStands = useMemo(() => {
+  // Filter locations based on booking filter
+  const filteredLocations = useMemo(() => {
     if (!bookingFilter.startDate || !bookingFilter.endDate) {
-      return stands;
+      return locations;
     }
 
-    return stands.filter((stand) => {
-      // Filter by status - only show available stands
-      if (stand.status !== 'available') {
+    return locations.filter((location) => {
+      // Filter by status - only show available locations
+      if (location.status !== 'available') {
         return false;
       }
 
-      // In a real app, you would check bookings API to see if the stand is available
-      // for the selected date range. For now, we'll just filter by status.
-      // TODO: Add API call to check availability for date range
-      // const startDate = new Date(bookingFilter.startDate);
-      // const endDate = new Date(bookingFilter.endDate);
+      // Filter by model if specified
+      if (bookingFilter.boxModel && bookingFilter.boxModel !== 'all') {
+        const model = bookingFilter.boxModel === 'classic' ? 'classic' : 'pro';
+        if (location.availableBoxes[model] === 0) {
+          return false;
+        }
+      }
 
-      return true;
+      // In a real app, you would check bookings API to see if boxes are available
+      // for the selected date range. For now, we'll just filter by available count.
+      return location.availableBoxes.total > 0;
     });
-  }, [stands, bookingFilter]);
+  }, [locations, bookingFilter]);
 
   const activeStory = TESTIMONIALS[activeTestimonial] ?? TESTIMONIALS[0];
 
@@ -340,9 +381,49 @@ export default function GuestHome() {
         </section>
 
         <FadeInSection>
-          <section className="mx-auto max-w-6xl px-6 py-16">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-[0_25px_120px_rgba(15,23,42,0.45)] backdrop-blur">
-              <div className="grid grid-cols-1 gap-10 md:grid-cols-2 xl:grid-cols-4">
+          <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16">
+            <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-10 shadow-[0_25px_120px_rgba(15,23,42,0.45)] backdrop-blur">
+              {/* Mobile: Show one metric at a time with rotation */}
+              <div className="block sm:hidden relative min-h-[200px]">
+                {STAT_METRICS.map((metric, index) => {
+                  const decimals = "decimals" in metric ? metric.decimals ?? 0 : 0;
+                  const isActive = index === activeMetric;
+                  return (
+                    <div
+                      key={metric.label}
+                      className={`absolute inset-0 flex flex-col gap-3 transition-all duration-700 ease-in-out ${
+                        isActive 
+                          ? "opacity-100 translate-y-0 pointer-events-auto" 
+                          : "opacity-0 translate-y-4 pointer-events-none"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">
+                          {String(index + 1).padStart(2, "0")} • {metric.label}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">
+                          {String(index + 1).padStart(2, "0")} / {String(STAT_METRICS.length).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <AnimatedCounter
+                        value={metric.value}
+                        suffix={metric.suffix}
+                        decimals={decimals}
+                        className="text-4xl font-black text-white"
+                      />
+                      <p className="text-sm text-gray-300/90">{metric.description}</p>
+                      <div className="h-1 w-full rounded-full bg-white/10 mt-2">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-cyan-300 to-white transition-[width] duration-100 ease-linear"
+                          style={{ width: `${metricProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop: Show all metrics */}
+              <div className="hidden sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-10">
                 {STAT_METRICS.map((metric, index) => {
                   const decimals = "decimals" in metric ? metric.decimals ?? 0 : 0;
                   return (
@@ -354,7 +435,7 @@ export default function GuestHome() {
                         value={metric.value}
                         suffix={metric.suffix}
                         decimals={decimals}
-                        className="text-4xl font-black text-white md:text-5xl"
+                        className="text-4xl md:text-5xl font-black text-white"
                       />
                       <p className="text-sm text-gray-300/90">{metric.description}</p>
                     </div>
@@ -369,7 +450,7 @@ export default function GuestHome() {
         <FadeInSection>
         <section id="map" ref={mapSectionRef} className="px-6 py-12">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-3xl font-bold">Find Our Stands</h2>
+            <h2 className="text-3xl font-bold">Find Our Locations</h2>
             {!showFilterForm && (
               <button
                 onClick={() => {
@@ -386,27 +467,27 @@ export default function GuestHome() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                Filter Stands
+                Filter Locations
               </button>
             )}
           </div>
           
           <div className="w-full relative" style={{ minHeight: 500 }} suppressHydrationWarning>
-            {standsError ? (
+            {locationsError ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
-                {standsError}
+                {locationsError}
               </div>
-            ) : isLoadingStands ? (
-              <div className="flex h-full items-center justify-center text-gray-300">Loading stands…</div>
-            ) : filteredStands.length === 0 ? (
+            ) : isLoadingLocations ? (
+              <div className="flex h-full items-center justify-center text-gray-300">Loading locations…</div>
+            ) : filteredLocations.length === 0 ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 text-center text-gray-200">
                 {bookingFilter.startDate && bookingFilter.endDate
-                  ? `No stands available for the selected dates. Please try different dates.`
-                  : "No stands available right now. Please check back soon."}
+                  ? `No locations available for the selected dates. Please try different dates.`
+                  : "No locations available right now. Please check back soon."}
               </div>
             ) : mounted ? (
               <Map 
-                stands={filteredStands} 
+                locations={filteredLocations} 
                 filterForm={
                   showFilterForm ? (
                     <BookingFilterForm

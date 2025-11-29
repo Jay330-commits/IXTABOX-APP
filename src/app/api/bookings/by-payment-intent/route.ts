@@ -25,18 +25,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Find payment by Stripe payment intent ID
-    const payment = await prisma.payment.findUnique({
+    const payment = await prisma.payments.findUnique({
       where: {
-        stripePaymentIntentId: paymentIntentId,
+        stripe_payment_intent_id: paymentIntentId,
       },
       include: {
-        booking: {
+        bookings: {
           include: {
-            stand: {
-              select: {
-                id: true,
-                name: true,
-                location: true,
+            boxes: {
+              include: {
+                stands: {
+                  include: {
+                    locations: true,
+                  },
+                },
               },
             },
           },
@@ -51,24 +53,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!payment.booking) {
+    if (!payment.bookings) {
       return NextResponse.json(
         { error: 'Booking not found for this payment' },
         { status: 404 }
       );
     }
 
-    const booking = payment.booking;
+    const booking = payment.bookings;
 
     return NextResponse.json({
       booking: {
         id: booking.id,
-        standId: booking.standId,
-        standName: booking.stand.name,
-        location: booking.stand.location,
-        startDate: booking.startDate.toISOString(),
-        endDate: booking.endDate.toISOString(),
-        totalAmount: booking.totalAmount.toString(),
+        boxId: booking.box_id,
+        startDate: booking.start_date.toISOString(),
+        endDate: booking.end_date.toISOString(),
+        totalAmount: booking.total_amount.toString(),
         status: booking.status,
       },
       payment: {

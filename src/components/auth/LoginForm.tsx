@@ -37,10 +37,23 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
     } else {
       try {
         const result = await login(email, password);
+        console.log('Login result:', result);
+        console.log('Redirect path from result:', result.redirectPath);
         
         if (result.success) {
-          // Redirect based on user role
-          router.push('/customer'); // Default redirect, will be handled by middleware
+          // The API must provide redirectPath based on user role - no fallbacks
+          if (!result.redirectPath) {
+            console.error('ERROR: No redirectPath received from API');
+            setError('Login successful but routing failed. Please contact support.');
+            return;
+          }
+          
+          console.log('Navigating to exact path from API:', result.redirectPath);
+          // Small delay to ensure AuthContext state is updated before navigation
+          setTimeout(() => {
+            // At this point redirectPath is guaranteed (checked above)
+            router.replace(result.redirectPath as string);
+          }, 100);
         } else {
           setError(result.message || "Login failed");
           // Show resend confirmation option if email not confirmed

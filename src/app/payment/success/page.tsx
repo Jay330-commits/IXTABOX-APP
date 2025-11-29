@@ -138,11 +138,6 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     const paymentIntentId = searchParams.get('payment_intent');
-    const standId = searchParams.get('standId');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const startTime = searchParams.get('startTime');
-    const endTime = searchParams.get('endTime');
 
     const fetchBookingData = async () => {
       if (!paymentIntentId) {
@@ -150,105 +145,57 @@ function PaymentSuccessContent() {
         return;
       }
 
-      // Securely validate payment and fetch booking information
+      // Securely fetch payment and booking details from server (no URL params)
       try {
-        const validationResponse = await fetch('/api/payment/validate-success', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for session
-          body: JSON.stringify({
-            paymentIntentId: paymentIntentId,
-          }),
+        const response = await fetch(`/api/payments/${paymentIntentId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch payment details');
+        }
+
+        const data = await response.json();
+        
+        // Set payment intent information
+        setPaymentIntent({
+          id: data.paymentIntent.id,
+          status: data.paymentIntent.status,
         });
 
-        if (validationResponse.ok) {
-          const data = await validationResponse.json();
-          
-          // Set payment intent information
-          setPaymentIntent({
-            id: data.paymentIntent.id,
-            status: data.paymentIntent.status,
-          });
+        // Set booking details from server response (secure, not from URL)
+        if (data.booking) {
+          const booking = {
+            standId: data.booking.standId,
+            startDate: data.booking.startDate,
+            endDate: data.booking.endDate,
+            startTime: data.booking.startTime || undefined,
+            endTime: data.booking.endTime || undefined,
+          };
+          setBookingDetails(booking);
 
-          // Set booking details from validated data
-          if (data.booking) {
-            setBookingDetails({
-              standId: data.booking.standId,
-              standName: data.booking.standName,
-              location: data.booking.location,
-              startDate: data.booking.startDate,
-              endDate: data.booking.endDate,
-              startTime: startTime || undefined, // Time might not be in DB, use URL param if available
-              endTime: endTime || undefined,
-            });
-          } else {
-            // If booking not in DB yet, use metadata from payment intent
-            const metadata = data.paymentIntent.metadata || {};
-            setBookingDetails({
-              standId: metadata.standId || standId || undefined,
-              startDate: metadata.startDate || startDate || undefined,
-              endDate: metadata.endDate || endDate || undefined,
-              startTime: metadata.startTime || startTime || undefined,
-              endTime: metadata.endTime || endTime || undefined,
-            });
+          // Generate lock PIN using booking details from server
+          const bookingStartDate = booking.startDate || '';
+          const bookingEndDate = booking.endDate;
+          
+          // If no endDate provided, default to tomorrow
+          let finalEndDate = bookingEndDate;
+          if (!finalEndDate) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            finalEndDate = tomorrow.toISOString().split('T')[0];
           }
-        } else {
-          // If validation fails, still set payment intent from URL but don't show booking details
-          setPaymentIntent({
-            id: paymentIntentId,
-            status: 'succeeded',
-          });
           
-          // Use URL params as fallback
-          setBookingDetails({
-            standId: standId || undefined,
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
-            startTime: startTime || undefined,
-            endTime: endTime || undefined,
-          });
-        }
-
-        // Always generate lock PIN - use booking dates if available, otherwise use defaults
-        const currentBookingDetails = bookingDetails || {
-          standId: standId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          startTime: startTime || undefined,
-          endTime: endTime || undefined,
-        };
-        
-        const bookingStartDate = currentBookingDetails.startDate || startDate || '';
-        const bookingEndDate = currentBookingDetails.endDate || endDate;
-        
-        // If no endDate provided, default to tomorrow
-        let finalEndDate = bookingEndDate;
-        if (!finalEndDate) {
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          finalEndDate = tomorrow.toISOString().split('T')[0];
-        }
-        
-        try {
-          await generateLockPin(bookingStartDate, finalEndDate, currentBookingDetails.startTime || startTime, currentBookingDetails.endTime || endTime || '17:00');
-        } catch (error) {
-          console.error('[Payment Success] Error calling generateLockPin:', error);
+          try {
+            await generateLockPin(bookingStartDate, finalEndDate, booking.startTime, booking.endTime || '17:00');
+          } catch (error) {
+            console.error('[Payment Success] Error calling generateLockPin:', error);
+          }
         }
       } catch (error) {
         console.error('Error in fetchBookingData:', error);
-        // Fallback to URL params
+        // Show error but don't expose sensitive data
         setPaymentIntent({
-          id: paymentIntentId,
-          status: 'succeeded',
-        });
-        setBookingDetails({
-          standId: standId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          startTime: startTime || undefined,
-          endTime: endTime || undefined,
+          id: paymentIntentId || '',
+          status: 'unknown',
         });
       } finally {
         setLoading(false);

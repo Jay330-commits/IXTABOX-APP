@@ -35,6 +35,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://maps.gstatic.com" />
         <link rel="dns-prefetch" href="https://maps.googleapis.com" />
         <link rel="dns-prefetch" href="https://maps.gstatic.com" />
+        {/* Preconnect to Stripe CDN for faster payment page loading */}
+        <link rel="preconnect" href="https://js.stripe.com" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

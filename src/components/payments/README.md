@@ -22,18 +22,24 @@ STRIPE_SECRET_KEY=sk_test_your_secret_key_here
 ```tsx
 import StripeBankPayment from '@/components/payments/StripeBankPayment';
 
-// First, create a payment intent on your server
-const response = await fetch('/api/create-payment-intent', {
+// First, create a secure payment session on your server
+// SECURITY: Amount is calculated server-side, never send amount from client
+const response = await fetch('/api/bookings/create-payment-session', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    amount: 299.99,
-    currency: 'sek',
-    metadata: { standId: '123', bookingId: '456' }
+    locationId: 'location-uuid',
+    boxId: 'box-uuid',
+    standId: 'stand-uuid',
+    modelId: 'pro', // or 'Classic'
+    startDate: '2024-02-01',
+    endDate: '2024-02-03',
+    startTime: '10:00',
+    endTime: '17:00'
   })
 });
 
-const { clientSecret } = await response.json();
+const { clientSecret, paymentIntentId } = await response.json();
 
 // Then use the component
 <StripeBankPayment

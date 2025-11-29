@@ -7,7 +7,7 @@ interface BookingCardProps {
     address: string;
     startDate: string;
     endDate: string;
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+    status: 'pending' | 'active' | 'completed' | 'cancelled';
     model: {
       name: string;
       priceMultiplier: number;
@@ -20,7 +20,7 @@ interface BookingCardProps {
 const BookingCard: React.FC<BookingCardProps> = ({ booking, onClick }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed':
+      case 'active':
         return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';

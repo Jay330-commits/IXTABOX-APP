@@ -7,7 +7,7 @@ interface BookingSummaryProps {
     address: string;
     startDate: string;
     endDate: string;
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+    status: 'pending' | 'active' | 'completed' | 'cancelled';
     model: {
       name: string;
       description: string;

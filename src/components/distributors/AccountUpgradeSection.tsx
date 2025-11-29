@@ -3,33 +3,25 @@
 import React from 'react';
 
 interface CurrentAccountInfo {
-  type: 'Hybrid' | 'Leasing' | 'Owning' | 'Basic';
+  type: 'Leasing' | 'Owning';
   since: string;
   activeStands: number;
 }
 
 const currentAccount: CurrentAccountInfo = {
-  type: 'Hybrid',
+  type: 'Leasing',
   since: 'January 15, 2024',
   activeStands: 3,
 };
 
 const upgradeOptions = [
   {
-    id: 'hybrid',
-    title: 'Hybrid',
-    description: 'Perfect balance of flexibility and ownership. Mix leasing with owning options to maximize your investment.',
-    features: ['Flexible terms', 'Mixed ownership', 'Scalable model', 'Up to 5 stands'],
-    price: '$299/month',
-    recommended: true,
-  },
-  {
     id: 'leasing',
     title: 'Leasing',
     description: 'Pay per rental cycle with minimal upfront costs. Ideal for testing new markets or seasonal operations.',
     features: ['Low initial cost', 'No maintenance fees', 'Flexible contracts', 'Up to 3 stands'],
     price: '$199/month',
-    recommended: false,
+    recommended: true,
   },
   {
     id: 'owning',
@@ -276,7 +268,7 @@ export default function AccountUpgradeSection() {
                   <p className="text-sm font-semibold text-blue-300 mb-1">Requirements</p>
                   <p className="text-sm text-gray-300">
                     Your current account type allows up to{' '}
-                    {currentAccount.type === 'Owning' ? 'unlimited' : currentAccount.type === 'Hybrid' ? '5' : '3'}{' '}
+                    {currentAccount.type === 'Owning' ? 'unlimited' : '3'}{' '}
                     stands. You have {currentAccount.activeStands} active stand(s).
                   </p>
                 </div>

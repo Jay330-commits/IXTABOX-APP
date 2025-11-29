@@ -55,7 +55,7 @@ const result = await authService.register({
   email: 'john@example.com',
   phone: '+1234567890',
   password: 'securePassword123',
-  role: Role.CUSTOMER
+  role: Role.Customer
 });
 
 // Login user
@@ -72,7 +72,7 @@ const user = await authService.getUserByToken(token);
 const users = await userService.getUsers(0, 10);
 
 // Get users by role
-const customers = await userService.getUsersByRole(Role.CUSTOMER);
+const customers = await userService.getUsersByRole(Role.Customer);
 
 // Update user information
 const updatedUser = await userService.updateUser(userId, {

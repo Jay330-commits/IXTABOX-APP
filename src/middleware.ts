@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 // import { verifyToken } from './lib/jwt';
 
 // Define protected routes
 // const protectedRoutes = ['/customer', '/distributer', '/admin'];
 // const authRoutes = ['/auth/login', '/auth/signup'];
 
-export function middleware(request: NextRequest) {
+export function middleware() {
   // const { pathname } = request.nextUrl;
   
   // TEMPORARILY DISABLED FOR TESTING - ENABLE THIS BEFORE PRODUCTION!

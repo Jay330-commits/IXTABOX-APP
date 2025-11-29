@@ -35,7 +35,7 @@ const mockBookings = [
     address: 'Centralplan 15, Stockholm',
     startDate: '2025-10-15T10:00:00',
     endDate: '2025-10-18T10:00:00',
-    status: 'confirmed' as const,
+    status: 'active' as const,
     model: {
       name: 'IXTAbox Pro 190',
       description: 'Premium model with advanced features',
@@ -281,7 +281,7 @@ export default function BookingsPageClient() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Active Bookings</span>
-                  <span className="text-white">{bookings.filter(b => b.status === 'confirmed').length}</span>
+                  <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Pending Bookings</span>

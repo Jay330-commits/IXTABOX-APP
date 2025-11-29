@@ -11,7 +11,8 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Bookings", section: "book", icon: "📅" },
+  { label: "Dashboard", section: "dashboard", icon: "📊" },
+  { label: "Book", section: "book", icon: "📅" },
   { label: "Payments", section: "payments", icon: "💳" },
   { label: "Notifications", section: "notifications", icon: "🔔" },
 ];
@@ -104,10 +105,19 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
                   className={navButtonClasses(active)}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span className="opacity-80 text-lg">{item.icon}</span>
-                  <span className="relative z-10 ml-1">{item.label}</span>
+                  <span className="relative z-10 flex items-center gap-2">
+                    {item.label}
+                    {active && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50" />
+                    )}
+                  </span>
                   {active && (
-                    <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
+                    <>
+                      {/* Background glow */}
+                      <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]" />
+                      {/* Animated bottom border */}
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-3/4 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse" />
+                    </>
                   )}
                   <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </button>
@@ -286,10 +296,19 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
                     }}
                     className={`${navButtonClasses(active)} w-full justify-start`}
                   >
-                    <span className="opacity-80 text-xl">{item.icon}</span>
-                    <span className="relative z-10 ml-2">{item.label}</span>
+                    <span className="relative z-10 flex items-center justify-between flex-1">
+                      {item.label}
+                      {active && (
+                        <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 animate-pulse" />
+                      )}
+                    </span>
                     {active && (
-                      <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
+                      <>
+                        {/* Background glow */}
+                        <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]" />
+                        {/* Left border accent */}
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-0.5 bg-gradient-to-b from-cyan-400/60 via-cyan-400 to-cyan-400/60 rounded-r-full shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
+                      </>
                     )}
                     <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </button>

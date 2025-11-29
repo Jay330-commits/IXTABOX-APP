@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import PaymentButton from '../payments/PaymentButton';
+// PaymentButton removed - use secure booking payment flow instead
 
 interface ContractData {
   contractType: string;
@@ -294,13 +294,15 @@ export default function Contracts() {
                         </svg>
                         <span className="text-sm text-yellow-400">Payment due in 5 days</span>
                       </div>
-                      <PaymentButton
-                        amount={payment.amount}
-                        currency="sek"
-                        className="text-sm py-2 px-4"
+                      <button
+                        className="text-sm py-2 px-4 rounded-full bg-cyan-500 hover:bg-cyan-400 text-white font-semibold transition-colors"
+                        onClick={() => {
+                          // TODO: Implement secure payment flow for contract payments
+                          alert('Payment functionality for contracts will be implemented soon.');
+                        }}
                       >
                         Pay Now
-                      </PaymentButton>
+                      </button>
                     </div>
                   )}
 

@@ -47,18 +47,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to get booking from database
-    const payment = await prisma.payment.findUnique({
+    const payment = await prisma.payments.findUnique({
       where: {
-        stripePaymentIntentId: paymentIntentId,
+        stripe_payment_intent_id: paymentIntentId,
       },
       include: {
-        booking: {
+        bookings: {
           include: {
-            stand: {
-              select: {
-                id: true,
-                name: true,
-                location: true,
+            boxes: {
+              include: {
+                stands: {
+                  include: {
+                    locations: true,
+                  },
+                },
               },
             },
           },
@@ -78,15 +80,13 @@ export async function POST(request: NextRequest) {
         currency: paymentIntent.currency,
         metadata: paymentIntent.metadata,
       },
-      booking: payment?.booking ? {
-        id: payment.booking.id,
-        standId: payment.booking.standId,
-        standName: payment.booking.stand.name,
-        location: payment.booking.stand.location,
-        startDate: payment.booking.startDate.toISOString(),
-        endDate: payment.booking.endDate.toISOString(),
-        totalAmount: payment.booking.totalAmount.toString(),
-        status: payment.booking.status,
+      booking: payment?.bookings ? {
+        id: payment.bookings.id,
+        boxId: payment.bookings.box_id,
+        startDate: payment.bookings.start_date.toISOString(),
+        endDate: payment.bookings.end_date.toISOString(),
+        totalAmount: payment.bookings.total_amount.toString(),
+        status: payment.bookings.status,
       } : null,
     });
   } catch (error) {

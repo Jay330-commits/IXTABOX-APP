@@ -1,5 +1,8 @@
-import { User, Role } from '@prisma/client';
+import type { public_users as PrismaUser } from '@prisma/client';
+import { Role, ContractType } from '@prisma/client';
 import { BaseService } from './BaseService';
+
+type User = PrismaUser;
 
 export interface CreateUserData {
   fullName: string;
@@ -44,31 +47,29 @@ export class UserService extends BaseService {
       // Use raw query to handle enum type that might not exist in DB yet
       // First try upsert with Prisma, fallback to raw SQL if enum type doesn't exist
       try {
-        const user = await this.prisma.user.upsert({
+        const user = await this.prisma.public_users.upsert({
           where: { id: params.id },
           update: {
-            fullName: params.fullName,
+            full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.CUSTOMER,
+            role: Role.Customer,
           },
           create: {
             id: params.id,
-            fullName: params.fullName,
+            full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.CUSTOMER,
+            role: Role.Customer,
           }
         });
 
         // Ensure customer record exists
-        if (user.role === Role.CUSTOMER) {
-          const existingCustomer = await this.prisma.customer.findFirst({ where: { userId: user.id } });
+        const existingCustomer = await this.prisma.customer.findFirst({ where: { user_id: user.id } });
           if (!existingCustomer) {
             await this.prisma.customer.create({
-              data: { userId: user.id }
+            data: { user_id: user.id }
             });
-          }
         }
 
         return user;
@@ -86,7 +87,7 @@ export class UserService extends BaseService {
           
           await this.prisma.$executeRawUnsafe(`
             INSERT INTO public.users (id, full_name, email, phone, role, created_at, updated_at)
-            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'CUSTOMER', NOW(), NOW())
+            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'Customer'::public."Role", NOW(), NOW())
             ON CONFLICT (id) 
             DO UPDATE SET 
               full_name = EXCLUDED.full_name,
@@ -104,7 +105,7 @@ export class UserService extends BaseService {
           `);
 
           // Fetch the created/updated user
-          const user = await this.prisma.user.findUnique({
+          const user = await this.prisma.public_users.findUnique({
             where: { id: params.id }
           });
 
@@ -137,26 +138,22 @@ export class UserService extends BaseService {
       const phoneValue = params.phone?.trim() || null;
 
       try {
-        const user = await this.prisma.user.upsert({
+        const user = await this.prisma.public_users.upsert({
           where: { id: params.id },
           update: {
-            fullName: params.fullName,
+            full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.DISTRIBUTOR,
+            role: Role.Distributor,
           },
           create: {
             id: params.id,
-            fullName: params.fullName,
+            full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.DISTRIBUTOR,
+            role: Role.Distributor,
           },
         });
-
-        // Note: We don't create distributor record here
-        // It should be created separately using DistributorService.createDistributor
-        // This ensures separation of concerns and allows for proper validation
 
         return user;
       } catch (enumError: unknown) {
@@ -172,7 +169,7 @@ export class UserService extends BaseService {
 
           await this.prisma.$executeRawUnsafe(`
             INSERT INTO public.users (id, full_name, email, phone, role, created_at, updated_at)
-            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'DISTRIBUTOR', NOW(), NOW())
+            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'Distributor'::public."Role", NOW(), NOW())
             ON CONFLICT (id) 
             DO UPDATE SET 
               full_name = EXCLUDED.full_name,
@@ -183,7 +180,7 @@ export class UserService extends BaseService {
           `);
 
           // Fetch the created/updated user
-          const user = await this.prisma.user.findUnique({
+          const user = await this.prisma.public_users.findUnique({
             where: { id: params.id },
           });
 
@@ -202,11 +199,13 @@ export class UserService extends BaseService {
 
   /**
    * Create a new user with related records
+   * Note: This method is for creating users directly in Prisma.
+   * For Supabase auth users, use linkAuthUserAsCustomer or linkAuthUserAsDistributor instead.
    */
   async createUser(userData: CreateUserData): Promise<AuthResult> {
     try {
       // Check if user already exists
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = await this.prisma.public_users.findUnique({
         where: { email: userData.email }
       });
 
@@ -218,36 +217,37 @@ export class UserService extends BaseService {
       }
 
       // Create user with related records in a transaction
+      // Note: Password is not stored in Prisma - authentication is handled by Supabase Auth
       const result = await this.executeTransaction(async (tx) => {
-        // Create user
-        const user = await tx.user.create({
+        // Create user (password field removed - handled by Supabase Auth)
+        const user = await tx.public_users.create({
           data: {
-            fullName: userData.fullName,
+            full_name: userData.fullName,
             email: userData.email,
             phone: userData.phone,
-            role: userData.role || Role.CUSTOMER,
-            password: userData.password, // Password should already be hashed
+            role: userData.role || Role.Customer,
           }
         });
 
-        // Create customer record if role is CUSTOMER
-        if (user.role === Role.CUSTOMER) {
+        const assignedRole = userData.role || Role.Customer;
+
+        if (assignedRole === Role.Customer) {
           await tx.customer.create({
             data: {
-              userId: user.id,
+              user_id: user.id,
             }
           });
         }
 
-        // Create distributor record if role is DISTRIBUTOR
-        if (user.role === Role.DISTRIBUTOR) {
+        if (assignedRole === Role.Distributor) {
           await tx.distributor.create({
             data: {
-              userId: user.id,
-              companyName: 'Temporary Company',
-              regNumber: 'TEMP123',
-              contactPerson: userData.fullName,
-              businessType: 'Other',
+              user_id: user.id,
+              company_name: 'Temporary Company',
+              reg_number: 'TEMP123',
+              contact_person: userData.fullName,
+              business_type: 'Other',
+              contract_type: ContractType.Leasing, // Default contract type
             }
           });
         }
@@ -270,7 +270,7 @@ export class UserService extends BaseService {
    */
   async findById(userId: string): Promise<User | null> {
     try {
-      return await this.prisma.user.findUnique({
+      return await this.prisma.public_users.findUnique({
         where: { id: userId }
       });
     } catch (error) {
@@ -283,7 +283,7 @@ export class UserService extends BaseService {
    */
   async findByEmail(email: string): Promise<User | null> {
     try {
-      return await this.prisma.user.findUnique({
+      return await this.prisma.public_users.findUnique({
         where: { email }
       });
     } catch (error) {
@@ -296,7 +296,7 @@ export class UserService extends BaseService {
    */
   async updateUser(userId: string, userData: UpdateUserData): Promise<User> {
     try {
-      return await this.prisma.user.update({
+      return await this.prisma.public_users.update({
         where: { id: userId },
         data: userData
       });
@@ -310,7 +310,7 @@ export class UserService extends BaseService {
    */
   async deleteUser(userId: string): Promise<void> {
     try {
-      await this.prisma.user.delete({
+      await this.prisma.public_users.delete({
         where: { id: userId }
       });
     } catch (error) {
@@ -323,10 +323,10 @@ export class UserService extends BaseService {
    */
   async getUsers(skip = 0, take = 10): Promise<User[]> {
     try {
-      return await this.prisma.user.findMany({
+      return await this.prisma.public_users.findMany({
         skip,
         take,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { created_at: 'desc' }
       });
     } catch (error) {
       this.handleError(error, 'UserService.getUsers');
@@ -338,12 +338,146 @@ export class UserService extends BaseService {
    */
   async getUsersByRole(role: Role): Promise<User[]> {
     try {
-      return await this.prisma.user.findMany({
+      return await this.prisma.public_users.findMany({
         where: { role },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { created_at: 'desc' }
       });
     } catch (error) {
       this.handleError(error, 'UserService.getUsersByRole');
+    }
+  }
+
+  /**
+   * Create a guest user from Stripe payment billing details (without auth account)
+   * Creates both minimal auth_users entry and public_users entry
+   */
+  async createGuestUserFromStripeBilling(params: {
+    email: string;
+    fullName: string;
+    phone?: string;
+    billingAddress?: {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      postal_code?: string;
+      country?: string;
+    };
+  }): Promise<User> {
+    try {
+      const userId = crypto.randomUUID();
+      const phoneValue = params.phone?.trim() || null;
+      
+      // Prepare billing address JSON
+      const addressJson = params.billingAddress ? {
+        line1: params.billingAddress.line1 || null,
+        line2: params.billingAddress.line2 || null,
+        city: params.billingAddress.city || null,
+        state: params.billingAddress.state || null,
+        postal_code: params.billingAddress.postal_code || null,
+        country: params.billingAddress.country || null,
+      } : null;
+
+      // Use raw SQL to create both auth_users and public_users in a transaction
+      // This ensures we satisfy the FK constraint while creating a "guest" user without auth
+      await this.prisma.$executeRawUnsafe(`
+        -- Create minimal auth_users entry (to satisfy FK constraint)
+        INSERT INTO auth.users (
+          id, 
+          email, 
+          aud, 
+          role, 
+          email_confirmed_at, 
+          created_at, 
+          updated_at,
+          is_anonymous,
+          raw_user_meta_data
+        ) VALUES (
+          '${userId}'::uuid,
+          '${params.email.replace(/'/g, "''")}',
+          'authenticated',
+          'authenticated',
+          NOW(),
+          NOW(),
+          NOW(),
+          false,
+          '{"is_guest": true, "full_name": "${params.fullName.replace(/'/g, "''")}"}'::jsonb
+        ) ON CONFLICT (id) DO NOTHING;
+        
+        -- Create public_users entry
+        INSERT INTO public.users (
+          id,
+          full_name,
+          email,
+          phone,
+          address,
+          role,
+          created_at,
+          updated_at
+        ) VALUES (
+          '${userId}'::uuid,
+          '${params.fullName.replace(/'/g, "''")}',
+          '${params.email.replace(/'/g, "''")}',
+          ${phoneValue ? `'${phoneValue.replace(/'/g, "''")}'` : 'NULL'},
+          ${addressJson ? `'${JSON.stringify(addressJson).replace(/'/g, "''")}'::jsonb` : 'NULL'},
+          'Guest'::public."Role",
+          NOW(),
+          NOW()
+        ) ON CONFLICT (email) DO UPDATE SET
+          full_name = EXCLUDED.full_name,
+          phone = COALESCE(EXCLUDED.phone, public.users.phone),
+          address = COALESCE(EXCLUDED.address, public.users.address),
+          updated_at = NOW()
+        RETURNING id;
+      `);
+
+      // Fetch and return the created user
+      const user = await this.prisma.public_users.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new Error('Failed to create guest user');
+      }
+
+      return user;
+    } catch (error) {
+      this.handleError(error, 'UserService.createGuestUserFromStripeBilling');
+      throw error;
+    }
+  }
+
+  /**
+   * Find or create guest user by email (useful for linking payments)
+   */
+  async findOrCreateGuestUser(params: {
+    email: string;
+    fullName: string;
+    phone?: string;
+    billingAddress?: {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      postal_code?: string;
+      country?: string;
+    };
+  }): Promise<User> {
+    try {
+      // Try to find existing user by email
+      const existingUser = await this.prisma.public_users.findUnique({
+        where: { email: params.email },
+      });
+
+      if (existingUser) {
+        return existingUser;
+      }
+
+      // Create new guest user
+      return await this.createGuestUserFromStripeBilling(params);
+    } catch (error) {
+      this.handleError(error, 'UserService.findOrCreateGuestUser');
+      throw error;
     }
   }
 }

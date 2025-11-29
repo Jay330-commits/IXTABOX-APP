@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 
 interface FormData {
-  contractType: 'HYBRID' | 'LEASING' | 'OWNING' | '';
+  contractType: 'Leasing' | 'Owning' | '';
   fullName: string;
   email: string;
   phone: string;
@@ -89,6 +90,56 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   const inputClass =
     "w-full px-3 py-2 rounded-md bg-gray-900 border border-white/10 text-gray-100 placeholder-gray-400 hover:border-cyan-500 transition-colors duration-200 focus:ring-2 focus:ring-cyan-500/60 focus:ring-offset-0";
 
+  const hasValue = (value: string) => value?.trim().length > 0;
+
+  const validateStepFields = (step: number) => {
+    const missingFields: string[] = [];
+
+    if (step === 0) {
+      if (!formData.contractType) {
+        missingFields.push("Business model");
+      }
+    }
+
+    if (step === 1) {
+      if (!hasValue(formData.companyName)) missingFields.push("Company name");
+      if (!hasValue(formData.regNumber)) missingFields.push("Registration number");
+      if (!hasValue(formData.businessAddress)) missingFields.push("Business address");
+    }
+
+    if (step === 2) {
+      if (!hasValue(formData.fullName)) missingFields.push("Full name");
+      if (!hasValue(formData.email)) missingFields.push("Email");
+      if (!hasValue(formData.contactPerson)) missingFields.push("Contact person");
+      if (!hasValue(formData.businessType)) missingFields.push("Business type");
+      if (!hasValue(formData.yearsInBusiness)) missingFields.push("Years in business");
+    }
+
+    if (step === 3) {
+      if (!hasValue(formData.expectedMonthlyBookings))
+        missingFields.push("Expected monthly bookings");
+    }
+
+    if (missingFields.length > 0) {
+      setError(`Please complete: ${missingFields.join(", ")}`);
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateAllSteps = () => {
+    for (let step = 0; step <= 3; step++) {
+      if (!validateStepFields(step)) {
+        if (currentStep !== step) {
+          setCurrentStep(step);
+        }
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleChange = (field: string, value: string | string[]) => {
     setFormData({ ...formData, [field]: value });
   };
@@ -102,13 +153,12 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   };
 
   const nextStep = () => {
-    // If on step 0 (business model selection), require contractType to be selected
-    if (currentStep === 0 && !formData.contractType) {
-      alert("Please select a business model to continue.");
+    if (!validateStepFields(currentStep)) {
       return;
     }
     
     if (currentStep < distributorSteps.length - 1) {
+      setError("");
       setCurrentStep(currentStep + 1);
     }
   };
@@ -123,6 +173,10 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     e.preventDefault();
     setError("");
     setSuccess(false);
+
+    if (!validateAllSteps()) {
+      return;
+    }
 
     // Validation
     if (!termsAccepted) {
@@ -147,28 +201,32 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     // Otherwise, call the API
     setIsLoading(true);
     try {
+      const payload = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        companyName: formData.companyName.trim(),
+        regNumber: formData.regNumber.trim(),
+        businessAddress: formData.businessAddress.trim(),
+        website: formData.website.trim(),
+        contactPerson: formData.contactPerson.trim(),
+        businessType: formData.businessType.trim(),
+        yearsInBusiness: formData.yearsInBusiness.trim(),
+        expectedMonthlyBookings: formData.expectedMonthlyBookings.trim(),
+        marketingChannels: formData.marketingChannels
+          .map(channel => channel.trim())
+          .filter(channel => channel.length > 0),
+        businessDescription: formData.businessDescription.trim(),
+        contractType: formData.contractType.trim(),
+      };
+
       const response = await fetch('/api/auth/register/distributor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          companyName: formData.companyName,
-          regNumber: formData.regNumber,
-          businessAddress: formData.businessAddress,
-          website: formData.website,
-          contactPerson: formData.contactPerson,
-          businessType: formData.businessType,
-          yearsInBusiness: formData.yearsInBusiness,
-          expectedMonthlyBookings: formData.expectedMonthlyBookings,
-          marketingChannels: formData.marketingChannels,
-          businessDescription: formData.businessDescription,
-          contractType: formData.contractType,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -194,23 +252,15 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
 
   const businessModels = [
     {
-      id: 'HYBRID',
-      title: 'Hybrid',
-      description: 'Perfect balance of flexibility and ownership. Mix leasing with owning options to maximize your investment.',
-      features: ['Flexible terms', 'Mixed ownership', 'Scalable model', 'Up to 5 stands'],
-      price: '$299/month',
-      recommended: true,
-    },
-    {
-      id: 'LEASING',
+      id: 'Leasing',
       title: 'Leasing',
       description: 'Pay per rental cycle with minimal upfront costs. Ideal for testing new markets or seasonal operations.',
       features: ['Low initial cost', 'No maintenance fees', 'Flexible contracts', 'Up to 3 stands'],
       price: '$199/month',
-      recommended: false,
+      recommended: true,
     },
     {
-      id: 'OWNING',
+      id: 'Owning',
       title: 'Owning',
       description: 'Full ownership of your stands. Maximize long-term returns and have complete control over your assets.',
       features: ['Full ownership', 'Maximum ROI', 'Asset appreciation', 'Unlimited stands'],
@@ -223,20 +273,20 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Choose Your Business Model</h2>
-              <p className="text-gray-300">Select the business model that best fits your needs</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Choose Your Business Model</h2>
+              <p className="text-gray-300 text-sm">Select the business model that best fits your needs</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {businessModels.map((model) => {
                 const isSelected = formData.contractType === model.id;
                 return (
                   <div
                     key={model.id}
                     onClick={() => handleChange("contractType", model.id)}
-                    className={`border rounded-lg p-6 transition-all cursor-pointer relative ${
+                    className={`border rounded-lg p-4 transition-all cursor-pointer relative ${
                       isSelected
                         ? 'border-cyan-400/60 bg-cyan-500/10 ring-2 ring-cyan-400/40'
                         : model.recommended
@@ -260,13 +310,13 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                       </div>
                     )}
 
-                    <div className="mb-4">
-                      <h3 className="text-xl font-semibold mb-2 text-cyan-300">{model.title}</h3>
-                      <p className="text-2xl font-bold text-white mb-2">{model.price}</p>
-                      <p className="text-gray-300 min-h-[60px]">{model.description}</p>
+                    <div className="mb-3">
+                      <h3 className="text-lg font-semibold mb-1 text-cyan-300">{model.title}</h3>
+                      <p className="text-xl font-bold text-white mb-1">{model.price}</p>
+                      <p className="text-gray-300 text-sm min-h-[50px]">{model.description}</p>
                     </div>
 
-                    <ul className="space-y-2 mb-6">
+                    <ul className="space-y-1 mb-4">
                       {model.features.map((feature, index) => (
                         <li key={index} className="flex items-center text-sm text-gray-300">
                           <svg
@@ -302,11 +352,11 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             </div>
 
             {formData.contractType && (
-              <div className="mt-6 bg-cyan-500/10 border border-cyan-400/20 rounded-lg p-4">
-                <p className="text-sm text-gray-200">
+              <div className="mt-4 bg-cyan-500/10 border border-cyan-400/20 rounded-lg p-3 max-w-2xl mx-auto text-center">
+                <p className="text-xs text-gray-200">
                   <span className="font-semibold text-cyan-300">Great choice!</span> You&apos;ve selected the{' '}
                   <span className="font-semibold">{businessModels.find(m => m.id === formData.contractType)?.title}</span> model. 
-                  Click &quot;Next Step&quot; to continue with your registration.
+                  Click &quot;Next Step&quot; to continue.
                 </p>
               </div>
             )}
@@ -315,10 +365,10 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
 
       case 1:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Company Information</h2>
-              <p className="text-gray-300">Tell us about your business</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Company Information</h2>
+              <p className="text-gray-300 text-sm">Tell us about your business</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -369,10 +419,10 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       
       case 2:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Business Details</h2>
-              <p className="text-gray-300">Share your business background</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Business Details</h2>
+              <p className="text-gray-300 text-sm">Share your business background</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -462,11 +512,11 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             <label className="flex flex-col gap-2 text-gray-200">
               <span className="font-medium">Business Description</span>
               <textarea
-                className={`${inputClass} min-h-[100px] resize-none`}
+                className={`${inputClass} min-h-[80px] resize-none`}
                 value={formData.businessDescription}
                 onChange={(e) => handleChange("businessDescription", e.target.value)}
                 placeholder="Tell us about your business and what you do..."
-                rows={4}
+                rows={3}
               />
             </label>
           </div>
@@ -474,10 +524,10 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       
       case 3:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Distributorship Goals</h2>
-              <p className="text-gray-300">Help us understand your needs</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Distributorship Goals</h2>
+              <p className="text-gray-300 text-sm">Help us understand your needs</p>
             </div>
             
             <label className="flex flex-col gap-2 text-gray-200">
@@ -513,9 +563,9 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
               </div>
             </div>
             
-            <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-3">Distributor Benefits</h3>
-              <ul className="space-y-2 text-gray-300">
+            <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-lg p-4">
+              <h3 className="text-base font-semibold text-white mb-2">Distributor Benefits</h3>
+              <ul className="space-y-1 text-sm text-gray-300">
                 <li className="flex items-center space-x-2">
                   <span className="text-cyan-400">✓</span>
                   <span>Priority booking access</span>
@@ -539,14 +589,14 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       
       case 4:
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Review & Submit</h2>
-              <p className="text-gray-300">Review your information before submitting</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Review & Submit</h2>
+              <p className="text-gray-300 text-sm">Review your information before submitting</p>
             </div>
             
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Company Information</h3>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+              <h3 className="text-base font-semibold text-white mb-3">Company Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">Company:</span>
@@ -640,8 +690,8 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   };
 
   return (
-    <div className={`w-full max-w-4xl bg-gray-900/90 rounded-xl p-4 md:p-8 shadow-2xl shadow-black/60 ${className}`}>
-      <h1 className="text-3xl font-bold text-white mb-8 text-center">
+    <div className={`w-full max-w-2xl mx-auto bg-gray-900/90 rounded-xl p-4 md:p-6 shadow-2xl shadow-black/60 ${className}`}>
+      <h1 className="text-2xl font-bold text-white mb-6 text-center">
         Become a Distributor
       </h1>
 
@@ -658,7 +708,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         </div>
       )}
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         {/* Progress Steps */}
         <div className="flex justify-center px-4">
           <div className="flex items-center space-x-2 md:space-x-4 max-w-full overflow-x-auto">
@@ -688,7 +738,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
           </fieldset>
           
           {/* Navigation Buttons */}
-          <div className="flex flex-col md:flex-row justify-between gap-4 mt-8">
+          <div className="flex flex-col md:flex-row justify-between gap-4 mt-4">
             {/* Mobile: Arrow Navigation */}
             <div className="flex md:hidden justify-between items-center">
               <button

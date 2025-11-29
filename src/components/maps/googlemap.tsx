@@ -17,25 +17,22 @@ import {
   Marker,
   useJsApiLoader,
 } from "@react-google-maps/api";
-import StandDetails from "../bookings/stand";
+import LocationDetails from "../bookings/LocationDetails";
 import LoadingSpinner from "../loading/LoadingSpinner";
 
 export type MapProps = {
-  stands: {
+  locations: {
     id: string;
     lat: number;
     lng: number;
-    title: string;
+    name: string;
     address: string;
-    description?: string;
-    size?: {
-      area: number;
-      unit: string;
-      capacity?: number;
+    status: "available" | "maintenance" | "inactive";
+    availableBoxes: {
+      classic: number;
+      pro: number;
+      total: number;
     };
-    pricePerDay?: number;
-    imageUrl?: string;
-    status?: "available" | "booked" | "maintenance";
   }[];
   filterForm?: React.ReactNode;
   filterValues?: {
@@ -49,10 +46,10 @@ type DirectionsResult = google.maps.DirectionsResult;
 
 const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 };
 
-export default function Map({ stands, filterForm, filterValues }: MapProps) {
+export default function Map({ locations, filterForm, filterValues }: MapProps) {
   const [interactionEnabled, setInteractionEnabled] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [selectedStand, setSelectedStand] = useState<MapProps["stands"][number] | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<MapProps["locations"][number] | null>(null);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [directions, setDirections] = useState<DirectionsResult | null>(null);
@@ -73,7 +70,7 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
 
   const computedBounds = useMemo(() => {
     if (
-      !stands.length ||
+      !locations.length ||
       !isLoaded ||
       typeof window === "undefined" ||
       !(window.google && window.google.maps)
@@ -81,18 +78,18 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
       return null;
     }
     const bounds = new google.maps.LatLngBounds();
-    stands.forEach((s) => bounds.extend({ lat: s.lat, lng: s.lng }));
+    locations.forEach((loc) => bounds.extend({ lat: loc.lat, lng: loc.lng }));
     return bounds;
-  }, [stands, isLoaded]);
+  }, [locations, isLoaded]);
 
   useEffect(() => {
     if (mapRef.current && computedBounds) {
       mapRef.current.fitBounds(computedBounds, 32);
-    } else if (stands.length) {
-      setMapCenter({ lat: stands[0].lat, lng: stands[0].lng });
+    } else if (locations.length) {
+      setMapCenter({ lat: locations[0].lat, lng: locations[0].lng });
       setMapZoom(12);
     }
-  }, [computedBounds, stands]);
+  }, [computedBounds, locations]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -198,21 +195,21 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
     }
   }, []);
 
-  const getNearestStand = useCallback(
+  const getNearestLocation = useCallback(
     (origin: google.maps.LatLngLiteral | null) => {
       if (!origin) return null;
-      let nearest: MapProps["stands"][number] | null = null;
+      let nearest: MapProps["locations"][number] | null = null;
       let bestDistance = Infinity;
-      for (const stand of stands) {
-        const distance = haversine(origin.lat, origin.lng, stand.lat, stand.lng);
+      for (const location of locations) {
+        const distance = haversine(origin.lat, origin.lng, location.lat, location.lng);
         if (distance < bestDistance) {
           bestDistance = distance;
-          nearest = stand;
+          nearest = location;
         }
       }
       return nearest;
     },
-    [stands],
+    [locations],
   );
 
   const handleDirections = useCallback(
@@ -249,7 +246,7 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
       const location = await acquireLocation();
       if (!location) return;
       setUserLocation(location);
-      const nearest = getNearestStand(location);
+      const nearest = getNearestLocation(location);
       if (nearest) {
         await handleDirections(location, { lat: nearest.lat, lng: nearest.lng });
       }
@@ -258,7 +255,7 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
     } finally {
       setIsLoadingLocation(false);
     }
-  }, [acquireLocation, getNearestStand, handleDirections]);
+  }, [acquireLocation, getNearestLocation, handleDirections]);
 
   const computedContainerStyle = useMemo<CSSProperties>(
     () => ({
@@ -273,40 +270,44 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
     [fullscreen],
   );
 
-  const handleBookStand = useCallback(
-    (standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => {
-      // Calculate total amount based on dates and model
-      const start = startDate ? new Date(startDate) : new Date();
-      const end = endDate ? new Date(endDate) : new Date(start.getTime() + 86400000); // +1 day default
-      const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+  const handleBookLocation = useCallback(
+    async (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => {
+      try {
+        // Create secure payment session server-side
+        // Booking details are stored securely, only payment intent ID is returned
+        const response = await fetch('/api/bookings/create-payment-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            locationId,
+            boxId,
+            standId,
+            modelId,
+            startDate,
+            endDate,
+            startTime,
+            endTime,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create payment session');
+        }
+
+        const { paymentIntentId } = await response.json();
       
-      // Get stand price
-      const standData = stands.find(s => s.id === standId);
-      const basePrice = standData?.pricePerDay || 299.99;
-      
-      // Apply model multiplier if provided
-      let multiplier = 1.0;
-      if (modelId === 'pro') multiplier = 1.5;
-      else if (modelId === 'elite') multiplier = 2.0;
-      
-      const totalAmount = basePrice * multiplier * days;
-      
-      // Build payment page URL with all booking details
-      const params = new URLSearchParams();
-      params.set('amount', totalAmount.toFixed(2));
-      params.set('currency', 'sek');
-      params.set('standId', standId);
-      if (modelId) params.set('modelId', modelId);
-      if (startDate) params.set('startDate', startDate);
-      if (endDate) params.set('endDate', endDate);
-      if (startTime) params.set('startTime', startTime);
-      if (endTime) params.set('endTime', endTime);
-      
-      // Navigate directly to payment page (not bookings!)
-      router.push(`/payment?${params.toString()}`);
-      setSelectedStand(null);
+        // Navigate to payment page with ONLY payment intent ID (no sensitive data)
+        router.push(`/payment?payment_intent=${paymentIntentId}`);
+        setSelectedLocation(null);
+      } catch (error) {
+        console.error('Failed to create payment session:', error);
+        alert('Failed to start payment. Please try again.');
+      }
     },
-    [router, stands],
+    [router],
   );
 
   const handleCloseFullscreen = useCallback(() => {
@@ -356,54 +357,35 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
       )}
       
       {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
-      {selectedStand && (
+      {selectedLocation && (
         <div
           className="fixed inset-0 z-[1003] bg-black/50 flex items-start justify-center pt-24 px-4 pb-4"
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedStand(null);
+            setSelectedLocation(null);
           }}
         >
           <div
             className="max-w-lg w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white rounded-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <StandDetails
-              stand={{
-                id: selectedStand.id,
-                title: selectedStand.title,
-                location: {
+            <LocationDetails
+              location={{
+                id: selectedLocation.id,
+                name: selectedLocation.name,
+                address: selectedLocation.address,
                   coordinates: {
-                    lat: selectedStand.lat,
-                    lng: selectedStand.lng,
+                  lat: selectedLocation.lat,
+                  lng: selectedLocation.lng,
                   },
-                  address: selectedStand.address,
-                },
-                pricePerDay: selectedStand.pricePerDay || 299.99,
-                imageUrl: selectedStand.imageUrl,
-                status: selectedStand.status || "available",
-                availableModels: [
-                  {
-                    id: "classic",
-                    name: "IXTAbox pro 175",
-                    priceMultiplier: 1.0,
-                  },
-                  {
-                    id: "pro",
-                    name: "IXTAbox Pro 190",
-                    priceMultiplier: 1.5,
-                  },
-                ],
-                nextAvailableDate:
-                  selectedStand.status === "booked"
-                    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-                    : undefined,
+                status: selectedLocation.status,
+                availableBoxes: selectedLocation.availableBoxes,
               }}
               initialStartDate={filterValues?.startDate}
               initialEndDate={filterValues?.endDate}
               initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
-              onBook={handleBookStand}
-              onClose={() => setSelectedStand(null)}
+              onBook={handleBookLocation}
+              onClose={() => setSelectedLocation(null)}
             />
           </div>
         </div>
@@ -483,15 +465,15 @@ export default function Map({ stands, filterForm, filterValues }: MapProps) {
           gestureHandling: interactionEnabled ? "greedy" : "none",
         }}
       >
-        {stands.map((stand) => (
+        {locations.map((location) => (
           <Marker
-            key={stand.id}
-            position={{ lat: stand.lat, lng: stand.lng }}
+            key={location.id}
+            position={{ lat: location.lat, lng: location.lng }}
             onClick={(e) => {
               e.domEvent.stopPropagation();
-              setSelectedStand(stand);
+              setSelectedLocation(location);
             }}
-            title={stand.title}
+            title={location.name}
           />
         ))}
         {userLocation && (

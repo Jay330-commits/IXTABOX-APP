@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
-import { StandStatus } from '@prisma/client';
 
 type ApiStand = {
   id: string;
@@ -19,13 +18,6 @@ type ApiStand = {
   status?: 'available' | 'booked' | 'maintenance';
 };
 
-const STATUS_MAP: Record<StandStatus, ApiStand['status']> = {
-  [StandStatus.AVAILABLE]: 'available',
-  [StandStatus.OCCUPIED]: 'booked',
-  [StandStatus.MAINTENANCE]: 'maintenance',
-  [StandStatus.INACTIVE]: 'maintenance',
-};
-
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
@@ -41,11 +33,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function GET() {
   try {
-    const stands = await prisma.stand.findMany({
-      where: {
-        status: {
-          not: StandStatus.INACTIVE,
-        },
+    const stands = await prisma.stands.findMany({
+      include: {
+        locations: true,
       },
       orderBy: {
         name: 'asc',
@@ -54,16 +44,19 @@ export async function GET() {
 
     const normalized = stands
       .map((stand) => {
-        const coordinates = isRecord(stand.coordinates) ? stand.coordinates : undefined;
-        const lat = toNumber(coordinates?.lat);
-        const lng = toNumber(coordinates?.lng);
+        // Get coordinates from the related location
+        const locationCoordinates = stand.locations?.coordinates 
+          ? (isRecord(stand.locations.coordinates) ? stand.locations.coordinates : undefined)
+          : undefined;
+        const lat = toNumber(locationCoordinates?.lat);
+        const lng = toNumber(locationCoordinates?.lng);
 
         if (lat === null || lng === null) {
           return null;
         }
 
         const features = isRecord(stand.features) ? stand.features : undefined;
-        const pricing = isRecord(stand.pricing) ? stand.pricing : undefined;
+        const pricing = isRecord(features?.pricing) ? (features.pricing as Record<string, unknown>) : undefined;
 
         const sizeRaw = isRecord(features?.size) ? (features?.size as Record<string, unknown>) : undefined;
         const size =
@@ -96,12 +89,12 @@ export async function GET() {
           lat,
           lng,
           title: stand.name,
-          address: stand.location ?? 'Location coming soon',
+          address: stand.locations?.address ?? 'Location coming soon',
           description,
           size,
           pricePerDay,
           imageUrl,
-          status: STATUS_MAP[stand.status] ?? 'available',
+          status: 'available', // Stands don't have a status field in the schema
         } satisfies ApiStand;
       })
       .filter(Boolean);
@@ -109,9 +102,13 @@ export async function GET() {
     return NextResponse.json({ stands: normalized });
   } catch (error) {
     console.error('Failed to fetch stands', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     return NextResponse.json(
       {
         error: 'Unable to load stands at this time.',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 },
     );

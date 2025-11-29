@@ -38,6 +38,16 @@ export async function POST(request: NextRequest) {
       contractType,
     } = body;
 
+    const normalizedContractType = typeof contractType === 'string' ? contractType.trim() : '';
+    const resolvedContractType =
+      normalizedContractType === ContractType.Leasing
+        ? ContractType.Leasing
+        : normalizedContractType === ContractType.Owning
+          ? ContractType.Owning
+          : null;
+
+    console.log('Distributor registration payload contractType:', contractType, 'resolved:', resolvedContractType);
+
     // Validate required fields for user registration (check for empty strings too)
     if (!fullName?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json(
@@ -47,18 +57,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields for distributor registration (check for empty strings too)
-    if (
-      !companyName?.trim() ||
-      !regNumber?.trim() ||
-      !contactPerson?.trim() ||
-      !businessType?.trim() ||
-      !contractType?.trim()
-    ) {
+    const missingDistributorFields: string[] = [];
+    if (!companyName?.trim()) missingDistributorFields.push('companyName');
+    if (!regNumber?.trim()) missingDistributorFields.push('regNumber');
+    if (!contactPerson?.trim()) missingDistributorFields.push('contactPerson');
+    if (!businessType?.trim()) missingDistributorFields.push('businessType');
+    if (!resolvedContractType) missingDistributorFields.push('contractType');
+
+    if (missingDistributorFields.length > 0) {
+      console.warn('Distributor registration missing fields:', missingDistributorFields, {
+        companyName,
+        regNumber,
+        contactPerson,
+        businessType,
+        contractType,
+        resolvedContractType,
+      });
       return NextResponse.json(
         {
           success: false,
           message:
             'Company name, registration number, contact person, business type, and contract type are required',
+          missingFields: missingDistributorFields,
         },
         { status: 400 }
       );
@@ -78,16 +98,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate contract type
-    const validContractTypes: ContractType[] = [
-      ContractType.HYBRID,
-      ContractType.LEASING,
-      ContractType.OWNING,
-      ContractType.BASIC,
-    ];
-    if (!validContractTypes.includes(contractType)) {
+    // Validate contract type - only LEASING and OWNING are allowed
+    const validContractTypes = [ContractType.Leasing, ContractType.Owning];
+    if (!resolvedContractType || !validContractTypes.includes(resolvedContractType)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid contract type' },
+        { success: false, message: 'Invalid contract type. Must be LEASING or OWNING.' },
         { status: 400 }
       );
     }
@@ -122,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Link auth user to User table with DISTRIBUTOR role
-      const user = await userService.linkAuthUserAsDistributor({
+      await userService.linkAuthUserAsDistributor({
         id: userId,
         fullName,
         email,
@@ -152,7 +167,7 @@ export async function POST(request: NextRequest) {
         expectedMonthlyBookings: expectedMonthlyBookings || undefined,
         marketingChannels: marketingChannels || [],
         businessDescription: businessDescription || undefined,
-        contractType: contractType as ContractType,
+        contractType: resolvedContractType,
       });
 
       return NextResponse.json({
@@ -166,8 +181,8 @@ export async function POST(request: NextRequest) {
         },
         distributor: {
           id: distributor.id,
-          companyName: distributor.companyName,
-          contractType: distributor.contractType,
+          companyName: distributor.company_name,
+          contractType: distributor.contract_type,
         },
         token: (authResult.session as SupabaseSession)?.access_token || 'temp-token',
         message: 'Distributor registered successfully. Your application is under review.',

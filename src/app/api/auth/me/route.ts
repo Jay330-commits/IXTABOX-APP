@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
+import { UserService } from '@/services/UserService';
+import { prisma } from '@/lib/prisma/prisma';
 
 export async function GET() {
   try {
@@ -25,16 +27,107 @@ export async function GET() {
       );
     }
 
-    // For now, just return the Supabase user data without Prisma
-    // TODO: Add Prisma database integration later
+    // Try to fetch user from Prisma database
+    let user;
+    try {
+      user = await prisma.public_users.findUnique({
+        where: { email: supabaseUser.email! },
+        include: {
+          customers: true,
+          distributors: true,
+          admins: true,
+        },
+      });
+    } catch (dbError: unknown) {
+      console.error('Database connection error in /api/auth/me:', dbError);
+      
+      // Check if it's a connection error
+      const errorMessage = dbError instanceof Error ? dbError.message : '';
+      const errorCode = typeof dbError === 'object' && dbError && 'code' in dbError ? (dbError as { code?: string }).code : undefined;
+      const errorName = dbError instanceof Error ? dbError.name : undefined;
+
+      if (errorMessage.includes("Can't reach database server") || 
+          errorCode === 'P1001' || 
+          errorName === 'PrismaClientInitializationError') {
+        console.error('Database connection failed. Check DATABASE_URL and network connectivity.');
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Database connection failed. Please try again later.',
+            error: 'DATABASE_CONNECTION_ERROR'
+          },
+          { status: 503 } // Service Unavailable
+        );
+      }
+      
+      // Re-throw other database errors
+      throw dbError;
+    }
+
+    // If user doesn't exist in Prisma, create/link them
+    if (!user) {
+      console.log('User not found in Prisma, creating/linking user...');
+      try {
+        const userService = new UserService();
+        const fullName = supabaseUser.user_metadata?.full_name || supabaseUser.email!.split('@')[0];
+        const phone = supabaseUser.user_metadata?.phone || null;
+
+        // Link auth user as customer (default role)
+        user = await userService.linkAuthUserAsCustomer({
+          id: supabaseUser.id,
+          fullName,
+          email: supabaseUser.email!,
+          phone: phone || undefined,
+        });
+
+        console.log('Successfully created/linked user in Prisma');
+      } catch (linkError) {
+        console.error('Failed to create/link user in Prisma:', linkError);
+        // Try to fetch again in case it was created
+        user = await prisma.public_users.findUnique({
+          where: { email: supabaseUser.email! },
+          include: {
+            customers: true,
+            distributors: true,
+            admins: true,
+          },
+        });
+      }
+    }
+
+    // Return user data from Prisma if available, otherwise fallback to Supabase data
+    if (user) {
+      // Map Prisma Role enum (PascalCase) to client Role enum (UPPERCASE)
+      const roleMap: Record<string, string> = {
+        'Guest': 'GUEST',
+        'Customer': 'CUSTOMER',
+        'Distributor': 'DISTRIBUTOR',
+        'Admin': 'ADMIN'
+      };
+      const clientRole = roleMap[user.role] || 'GUEST';
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          fullName: user.full_name,
+          email: user.email,
+          phone: user.phone,
+          role: clientRole,
+        }
+      });
+    }
+
+    // Final fallback: return Supabase user data
     return NextResponse.json({
       success: true,
       user: {
         id: supabaseUser.id,
-        fullName: supabaseUser.user_metadata.full_name,
-        email: supabaseUser.email,
-        phone: supabaseUser.user_metadata.phone,
-        role: 'CUSTOMER' // Default role for now
+        fullName: supabaseUser.user_metadata?.full_name || supabaseUser.email!.split('@')[0],
+        email: supabaseUser.email!,
+        phone: supabaseUser.user_metadata?.phone || null,
+        role: 'CUSTOMER' // Default role
       }
     });
   } catch (error) {

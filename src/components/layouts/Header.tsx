@@ -102,7 +102,7 @@ export default function Header() {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 ${
+                    className={`${linkBase} ${linkGlow} border inline-flex items-center gap-2 group relative ${
                       active
                         ? "bg-cyan-600/20 border-cyan-400/40 text-white"
                         : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-200"
@@ -144,7 +144,20 @@ export default function Header() {
                       </svg>
                     )}
                   </span>
-                  <span className="relative z-10">{item.label}</span>
+                  <span className="relative z-10 flex items-center gap-2">
+                    {item.label}
+                    {active && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50" />
+                    )}
+                  </span>
+                  {active && (
+                    <>
+                      {/* Enhanced glow */}
+                      <span className="absolute inset-0 rounded-md shadow-[0_0_12px_rgba(34,211,238,0.15)]" />
+                      {/* Animated bottom border */}
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-3/4 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse" />
+                    </>
+                  )}
                 </Link>
               );
             })}
@@ -238,16 +251,34 @@ export default function Header() {
               </button>
             </div>
             <div className="p-4 flex flex-col gap-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`${linkBase} ${linkGlow} rounded-md block`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`${linkBase} ${linkGlow} rounded-md block relative ${
+                      active
+                        ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]"
+                        : "text-gray-300 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="relative z-10 flex items-center justify-between">
+                      {item.label}
+                      {active && (
+                        <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 animate-pulse" />
+                      )}
+                    </span>
+                    {active && (
+                      <>
+                        {/* Left border accent */}
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-0.5 bg-gradient-to-b from-cyan-400/60 via-cyan-400 to-cyan-400/60 rounded-r-full shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>

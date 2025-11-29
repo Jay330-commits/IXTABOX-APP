@@ -1,4 +1,7 @@
 import 'server-only';
+import { writeFile, appendFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 /**
  * Database Logger
@@ -8,6 +11,7 @@ import 'server-only';
  * - Error tracking
  * - Performance monitoring
  * - Transaction logging
+ * - File logging with automatic rotation
  */
 
 export enum LogLevel {
@@ -53,6 +57,9 @@ class DbLogger {
   private enableConsole: boolean;
   private enableFile: boolean;
   private logFilePath?: string;
+  private logDir?: string;
+  private maxFileSize: number; // Max file size in bytes (default 10MB)
+  private currentDate: string; // Current date for daily log rotation
 
   constructor() {
     // Set log level from environment or default to INFO
@@ -60,6 +67,55 @@ class DbLogger {
     this.enableConsole = process.env.DB_LOG_CONSOLE !== 'false';
     this.enableFile = process.env.DB_LOG_FILE === 'true';
     this.logFilePath = process.env.DB_LOG_FILE_PATH;
+    this.maxFileSize = parseInt(process.env.DB_LOG_MAX_SIZE || '10485760', 10); // 10MB default
+    this.currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Set default log directory if not specified
+    if (this.enableFile && !this.logFilePath) {
+      this.logDir = process.env.DB_LOG_DIR || join(process.cwd(), 'logs');
+      this.ensureLogDirectory();
+    } else if (this.logFilePath) {
+      // Extract directory from file path
+      const pathParts = this.logFilePath.split(/[/\\]/);
+      pathParts.pop(); // Remove filename
+      this.logDir = pathParts.join('/');
+      if (this.logDir) {
+        this.ensureLogDirectory();
+      }
+    }
+  }
+
+  /**
+   * Ensure log directory exists
+   */
+  private async ensureLogDirectory(): Promise<void> {
+    if (!this.logDir) return;
+    
+    try {
+      if (!existsSync(this.logDir)) {
+        await mkdir(this.logDir, { recursive: true });
+      }
+    } catch (error) {
+      console.error('Failed to create log directory:', error);
+      this.enableFile = false; // Disable file logging if directory creation fails
+    }
+  }
+
+  /**
+   * Get current log file path with date rotation
+   */
+  private getLogFilePath(): string {
+    if (this.logFilePath) {
+      return this.logFilePath;
+    }
+    
+    if (!this.logDir) {
+      return '';
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `db-${today}.log`;
+    return join(this.logDir, filename);
   }
 
   /**
@@ -94,7 +150,10 @@ class DbLogger {
       context: log.context,
       error: this.formatError(log.error),
     };
-    this.writeLog(entry);
+    // Fire and forget - don't await to avoid blocking
+    this.writeLog(entry).catch(() => {
+      // Silently fail - logging shouldn't break the app
+    });
   }
 
   /**
@@ -109,7 +168,7 @@ class DbLogger {
         context,
         metadata,
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -131,7 +190,7 @@ class DbLogger {
         context,
         metadata,
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -146,7 +205,7 @@ class DbLogger {
         operation: 'TRANSACTION_START',
         metadata: { transactionId },
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -162,7 +221,7 @@ class DbLogger {
         duration,
         metadata: { transactionId },
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -177,7 +236,7 @@ class DbLogger {
       error: this.formatError(error),
       metadata: { transactionId },
     };
-    this.writeLog(entry);
+    this.writeLog(entry).catch(() => {});
   }
 
   /**
@@ -191,7 +250,7 @@ class DbLogger {
         operation: message,
         metadata,
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -206,7 +265,7 @@ class DbLogger {
         operation: message,
         metadata,
       };
-      this.writeLog(entry);
+      this.writeLog(entry).catch(() => {});
     }
   }
 
@@ -223,17 +282,75 @@ class DbLogger {
   /**
    * Write log entry to console and/or file
    */
-  private writeLog(entry: DbLogEntry): void {
+  private async writeLog(entry: DbLogEntry): Promise<void> {
     const formattedLog = this.formatLog(entry);
 
     if (this.enableConsole) {
       this.writeToConsole(entry, formattedLog);
     }
 
-    if (this.enableFile && this.logFilePath) {
-      // File logging would require fs module and should be handled carefully
-      // For now, we'll just prepare the structure
-      // In production, consider using a logging service like Winston, Pino, or CloudWatch
+    if (this.enableFile) {
+      await this.writeToFile(entry, formattedLog);
+    }
+  }
+
+  /**
+   * Write log entry to file with automatic rotation
+   */
+  private async writeToFile(entry: DbLogEntry, formattedLog: string): Promise<void> {
+    try {
+      const filePath = this.getLogFilePath();
+      if (!filePath) return;
+
+      // Check if we need to rotate (new day or file too large)
+      const today = new Date().toISOString().split('T')[0];
+      if (today !== this.currentDate) {
+        this.currentDate = today;
+      }
+
+      // Format log entry as JSON for structured logging
+      const logLine = JSON.stringify({
+        ...entry,
+        formatted: formattedLog,
+      }) + '\n';
+
+      // Append to file (creates file if it doesn't exist)
+      await appendFile(filePath, logLine, 'utf8');
+
+      // Check file size and rotate if needed (async, don't block)
+      this.checkAndRotateFile(filePath).catch((err) => {
+        console.error('Error during log rotation check:', err);
+      });
+    } catch (error) {
+      // Don't throw - logging errors shouldn't break the app
+      // But log to console as fallback
+      console.error('Failed to write to log file:', error);
+    }
+  }
+
+  /**
+   * Check file size and rotate if necessary
+   */
+  private async checkAndRotateFile(filePath: string): Promise<void> {
+    try {
+      if (!existsSync(filePath)) return;
+
+      const { stat } = await import('fs/promises');
+      const stats = await stat(filePath);
+
+      if (stats.size > this.maxFileSize) {
+        // Rotate: rename current file with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const rotatedPath = filePath.replace('.log', `-${timestamp}.log`);
+        const { rename } = await import('fs/promises');
+        await rename(filePath, rotatedPath);
+        
+        // Create new empty log file
+        await writeFile(filePath, '', 'utf8');
+      }
+    } catch (error) {
+      // Silently fail - rotation is not critical
+      console.error('Log rotation error:', error);
     }
   }
 

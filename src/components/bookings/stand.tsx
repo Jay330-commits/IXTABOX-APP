@@ -161,7 +161,7 @@ const StandDetails: React.FC<StandDetailsProps> = ({
     if (selectedModel && activeTab === 'model') {
       setActiveTab('dates');
     }
-  }, [selectedModel]);
+  }, [selectedModel, activeTab]);
 
   const isTimeOrderValid = React.useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return true;

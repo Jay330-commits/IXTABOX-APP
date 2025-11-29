@@ -1,5 +1,6 @@
 import 'server-only';
-import { Distributor, ContractType, User } from '@prisma/client';
+import type { distributors as Distributor } from '@prisma/client';
+import { ContractType, Prisma } from '@prisma/client';
 import { BaseService } from './BaseService';
 
 export interface CreateDistributorData {
@@ -43,42 +44,40 @@ export class DistributorService extends BaseService {
       async () => {
         // Check if distributor already exists for this user
         const existingDistributor = await this.prisma.distributor.findUnique({
-          where: { userId: data.userId },
+          where: { user_id: data.userId },
         });
 
         if (existingDistributor) {
           throw new Error('Distributor already exists for this user');
         }
 
-        // Validate contract type
+        // Validate contract type - only LEASING and OWNING are allowed
         const validContractTypes: ContractType[] = [
-          ContractType.HYBRID,
-          ContractType.LEASING,
-          ContractType.OWNING,
-          ContractType.BASIC,
+          ContractType.Leasing,
+          ContractType.Owning,
         ];
         if (!validContractTypes.includes(data.contractType)) {
-          throw new Error(`Invalid contract type: ${data.contractType}`);
+          throw new Error(`Invalid contract type: ${data.contractType}. Must be LEASING or OWNING.`);
         }
 
         // Create distributor record
         const distributor = await this.prisma.distributor.create({
           data: {
-            userId: data.userId,
-            companyName: data.companyName,
-            regNumber: data.regNumber,
+            user_id: data.userId,
+            company_name: data.companyName,
+            reg_number: data.regNumber,
             website: data.website || null,
-            contactPerson: data.contactPerson,
-            businessType: data.businessType,
-            yearsInBusiness: data.yearsInBusiness || null,
-            expectedMonthlyBookings: data.expectedMonthlyBookings || null,
-            marketingChannels: data.marketingChannels || [],
-            businessDescription: data.businessDescription || null,
-            contractType: data.contractType,
+            contact_person: data.contactPerson,
+            business_type: data.businessType,
+            years_in_business: data.yearsInBusiness || null,
+            expected_monthly_bookings: data.expectedMonthlyBookings || null,
+            marketing_channels: data.marketingChannels || [],
+            business_description: data.businessDescription || null,
+            contract_type: data.contractType,
             active: true,
           },
           include: {
-            user: true,
+            users: true,
           },
         });
 
@@ -95,9 +94,9 @@ export class DistributorService extends BaseService {
   async findByUserId(userId: string): Promise<Distributor | null> {
     try {
       return await this.prisma.distributor.findUnique({
-        where: { userId },
+        where: { user_id: userId },
         include: {
-          user: true,
+          users: true,
         },
       });
     } catch (error) {
@@ -113,9 +112,11 @@ export class DistributorService extends BaseService {
       return await this.prisma.distributor.findUnique({
         where: { id: distributorId },
         include: {
-          user: true,
-          stands: true,
+          users: true,
           contracts: true,
+          distributor_financials: true,
+          locations: true,
+          promotions: true,
         },
       });
     } catch (error) {
@@ -133,35 +134,40 @@ export class DistributorService extends BaseService {
     return await this.logOperation(
       'UPDATE_DISTRIBUTOR',
       async () => {
-        // Validate contract type if provided
+        // Validate contract type if provided - only LEASING and OWNING are allowed
         if (data.contractType) {
           const validContractTypes: ContractType[] = [
-            ContractType.HYBRID,
-            ContractType.LEASING,
-            ContractType.OWNING,
-            ContractType.BASIC,
+            ContractType.Leasing,
+            ContractType.Owning,
           ];
           if (!validContractTypes.includes(data.contractType)) {
-            throw new Error(`Invalid contract type: ${data.contractType}`);
+            throw new Error(`Invalid contract type: ${data.contractType}. Must be LEASING or OWNING.`);
           }
         }
 
+        const prismaData: Prisma.distributorsUpdateInput = {};
+
+        if (data.companyName !== undefined) prismaData.company_name = data.companyName;
+        if (data.regNumber !== undefined) prismaData.reg_number = data.regNumber;
+        if (data.website !== undefined) prismaData.website = data.website || null;
+        if (data.contactPerson !== undefined) prismaData.contact_person = data.contactPerson;
+        if (data.businessType !== undefined) prismaData.business_type = data.businessType;
+        if (data.yearsInBusiness !== undefined)
+          prismaData.years_in_business = data.yearsInBusiness || null;
+        if (data.expectedMonthlyBookings !== undefined)
+          prismaData.expected_monthly_bookings = data.expectedMonthlyBookings || null;
+        if (data.marketingChannels !== undefined)
+          prismaData.marketing_channels = data.marketingChannels;
+        if (data.businessDescription !== undefined)
+          prismaData.business_description = data.businessDescription || null;
+        if (data.contractType !== undefined) prismaData.contract_type = data.contractType;
+        if (data.active !== undefined) prismaData.active = data.active;
+
         return await this.prisma.distributor.update({
           where: { id: distributorId },
-          data: {
-            ...data,
-            website: data.website === undefined ? undefined : data.website || null,
-            yearsInBusiness:
-              data.yearsInBusiness === undefined ? undefined : data.yearsInBusiness || null,
-            expectedMonthlyBookings:
-              data.expectedMonthlyBookings === undefined
-                ? undefined
-                : data.expectedMonthlyBookings || null,
-            businessDescription:
-              data.businessDescription === undefined ? undefined : data.businessDescription || null,
-          },
+          data: prismaData,
           include: {
-            user: true,
+            users: true,
           },
         });
       },
@@ -179,9 +185,9 @@ export class DistributorService extends BaseService {
         skip,
         take,
         include: {
-          user: true,
+          users: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: 'desc' },
       });
     } catch (error) {
       this.handleError(error, 'DistributorService.getAllDistributors');
@@ -196,9 +202,9 @@ export class DistributorService extends BaseService {
       return await this.prisma.distributor.findMany({
         where: { active: true },
         include: {
-          user: true,
+          users: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: 'desc' },
       });
     } catch (error) {
       this.handleError(error, 'DistributorService.getActiveDistributors');
@@ -216,7 +222,7 @@ export class DistributorService extends BaseService {
           where: { id: distributorId },
           data: { active: false },
           include: {
-            user: true,
+            users: true,
           },
         });
       },
@@ -236,7 +242,7 @@ export class DistributorService extends BaseService {
           where: { id: distributorId },
           data: { active: true },
           include: {
-            user: true,
+            users: true,
           },
         });
       },

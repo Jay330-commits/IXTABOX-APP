@@ -147,11 +147,19 @@ export default function GuestHeader(): JSX.Element {
                       group
                     `}
                   >
-                    <span className="relative z-10">
+                    <span className="relative z-10 flex items-center gap-2">
                       {item.label}
+                      {active && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/50" />
+                      )}
                     </span>
                     {active && (
-                      <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20" />
+                      <>
+                        {/* Background glow */}
+                        <span className="absolute inset-0 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]" />
+                        {/* Animated bottom border */}
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-3/4 bg-gradient-to-r from-transparent via-cyan-400 to-transparent rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)] animate-pulse" />
+                      </>
                     )}
                     <span className="absolute inset-0 bg-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </Link>
@@ -236,14 +244,22 @@ export default function GuestHeader(): JSX.Element {
                         setMobileOpen(false);
                       }}
                       className={`
-                        flex items-center px-4 py-3 rounded-lg transition-all duration-200
+                        relative flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200
                         ${active
-                          ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                          ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]"
                           : "text-gray-300 hover:text-white hover:bg-white/5"
                         }
                       `}
                     >
                       <span className="font-medium">{item.label}</span>
+                      {active && (
+                        <>
+                          {/* Indicator dot */}
+                          <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 animate-pulse" />
+                          {/* Left border accent */}
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-0.5 bg-gradient-to-b from-cyan-400/60 via-cyan-400 to-cyan-400/60 rounded-r-full shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
+                        </>
+                      )}
                     </Link>
                   );
                 })}

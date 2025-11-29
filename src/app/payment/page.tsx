@@ -22,47 +22,46 @@ function PaymentContent() {
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   
-  // Get booking details from URL params or state
-  const amount = parseFloat(searchParams.get('amount') || '299.99');
-  const currency = searchParams.get('currency') || 'sek';
-  const standId = searchParams.get('standId') || '';
-  const startDate = searchParams.get('startDate') || '';
-  const endDate = searchParams.get('endDate') || '';
-  const startTime = searchParams.get('startTime') || '';
-  const endTime = searchParams.get('endTime') || '';
-  const modelId = searchParams.get('modelId') || '';
-  const bookingId = searchParams.get('bookingId') || '';
+  // Get payment intent ID from URL (ONLY non-sensitive identifier)
+  const paymentIntentId = searchParams.get('payment_intent');
+  
+  // Store booking details in state (fetched from server)
+  const [bookingDetails, setBookingDetails] = useState<{
+    locationId?: string;
+    boxId?: string;
+    standId?: string;
+    modelId?: string;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+  } | null>(null);
+  const [amount, setAmount] = useState<number>(0);
+  const [currency, setCurrency] = useState<string>('sek');
 
   useEffect(() => {
-    const createPaymentIntent = async () => {
-      try {
-        const response = await fetch('/api/create-payment-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            amount,
-            currency,
-            metadata: {
-              standId,
-              modelId,
-              startDate,
-              endDate,
-              startTime,
-              endTime,
-              bookingId,
-              source: 'booking-payment',
-            },
-          }),
-        });
+    const fetchPaymentDetails = async () => {
+      if (!paymentIntentId) {
+        setError('Payment intent ID is required');
+        setLoading(false);
+        return;
+      }
 
+      try {
+        // Fetch payment and booking details from server (secure)
+        const response = await fetch(`/api/payments/${paymentIntentId}`);
+        
         if (!response.ok) {
-          throw new Error('Failed to create payment intent');
+          throw new Error('Failed to fetch payment details');
         }
 
-        const { clientSecret } = await response.json();
-        setClientSecret(clientSecret);
+        const data = await response.json();
+        
+        // Set payment details from server response
+        setClientSecret(data.paymentIntent.clientSecret);
+        setAmount(data.paymentIntent.amount / 100); // Convert from cents
+        setCurrency(data.paymentIntent.currency);
+        setBookingDetails(data.booking);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -70,8 +69,8 @@ function PaymentContent() {
       }
     };
 
-    createPaymentIntent();
-  }, [amount, currency, standId, modelId, startDate, endDate, startTime, endTime, bookingId]);
+    fetchPaymentDetails();
+  }, [paymentIntentId]);
 
   const handlePaymentSuccess = async (paymentIntent: PaymentIntent) => {
     console.log('Payment succeeded:', paymentIntent);
@@ -94,13 +93,12 @@ function PaymentContent() {
     
     // Update payment intent with customer contact and notification preferences
     try {
-      await fetch('/api/create-payment-intent', {
+      await fetch(`/api/payments/${paymentIntent.id}/metadata`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          paymentIntentId: paymentIntent.id,
           metadata: {
             customerEmail,
             customerPhone,
@@ -116,17 +114,10 @@ function PaymentContent() {
     // Small delay for smooth transition
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Redirect to success page with booking details for unlock code generation
+    // Redirect to success page with ONLY payment intent ID (no sensitive data)
     const params = new URLSearchParams({
       payment_intent: paymentIntent.id,
-      email: customerEmail,
     });
-    
-    if (standId) params.append('standId', standId);
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    if (startTime) params.append('startTime', startTime);
-    if (endTime) params.append('endTime', endTime);
     
     window.location.href = `/payment/success?${params.toString()}`;
   };
@@ -272,38 +263,34 @@ function PaymentContent() {
               <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Booking Summary</h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-gray-400 flex-shrink-0">Stand ID:</span>
-                    <span className="text-white text-right font-medium">{standId || 'N/A'}</span>
-                  </div>
-                  {modelId && (
+                  {bookingDetails?.standId && (
                     <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Model:</span>
-                      <span className="text-white text-right font-medium">{modelId}</span>
+                      <span className="text-gray-400 flex-shrink-0">Stand ID:</span>
+                      <span className="text-white text-right font-medium">{bookingDetails.standId}</span>
                     </div>
                   )}
-                  {(startDate || endDate) && (
+                  {bookingDetails?.modelId && (
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-gray-400 flex-shrink-0">Model:</span>
+                      <span className="text-white text-right font-medium">{bookingDetails.modelId}</span>
+                    </div>
+                  )}
+                  {(bookingDetails?.startDate || bookingDetails?.endDate) && (
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">Start:</span>
                         <span className="text-white text-right font-medium">
-                          {startDate ? new Date(startDate).toLocaleDateString() : '—'}
-                          {startTime && <span className="block text-xs text-gray-400 mt-0.5">{startTime}</span>}
+                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
+                          {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
                         </span>
                       </div>
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">End:</span>
                         <span className="text-white text-right font-medium">
-                          {endDate ? new Date(endDate).toLocaleDateString() : '—'}
-                          {endTime && <span className="block text-xs text-gray-400 mt-0.5">{endTime}</span>}
+                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
+                          {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
                         </span>
                       </div>
-                    </div>
-                  )}
-                  {bookingId && (
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Reference:</span>
-                      <span className="text-white text-right font-mono text-xs">{bookingId}</span>
                     </div>
                   )}
                   <div className="border-t border-white/10 pt-3 mt-3">
