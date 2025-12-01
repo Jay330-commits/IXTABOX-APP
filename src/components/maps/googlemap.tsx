@@ -76,10 +76,22 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const lastTapRef = useRef<number>(0);
   const exitHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+    googleMapsApiKey,
     libraries: ["places"],
+    id: "google-map-script",
   });
+
+  // Log API key status in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      if (!googleMapsApiKey) {
+        console.warn('⚠️ Google Maps API key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your .env file');
+      }
+    }
+  }, [googleMapsApiKey]);
 
   const computedBounds = useMemo(() => {
     if (
@@ -456,9 +468,22 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   }, [fullscreen, handleCloseFullscreen]);
 
   if (loadError) {
+    console.error('Google Maps load error:', loadError);
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
-        Unable to load map right now. Please try again later.
+        <div>
+          <p className="font-semibold mb-2">Unable to load map</p>
+          <p className="text-sm text-red-300/80">
+            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY 
+              ? 'Map API error. Please check your Google Maps API key configuration.'
+              : 'Google Maps API key is missing. Please configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.'}
+          </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-red-300/60 mt-2">
+              Error: {loadError.message || String(loadError)}
+            </p>
+          )}
+        </div>
       </div>
     );
   }
