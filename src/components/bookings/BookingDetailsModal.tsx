@@ -5,11 +5,8 @@ import BookingActions from './BookingActions';
 interface BookingDetailsModalProps {
   booking: {
     id: string;
-    standId?: string;
-    locationDisplayId?: string;
-    compartment?: number | null;
-    boxDisplayId?: string;
-    address?: string;
+    standId: string;
+    address: string;
     startDate: string;
     endDate: string;
     status: 'pending' | 'active' | 'completed' | 'cancelled';
@@ -19,7 +16,6 @@ interface BookingDetailsModalProps {
       priceMultiplier: number;
     };
     pricePerDay: number;
-    totalAmount?: number | string;
   };
   onClose: () => void;
   onCancel?: () => void;
