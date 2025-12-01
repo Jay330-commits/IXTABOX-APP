@@ -912,7 +912,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               {selectedModel && isModelFullyBooked(selectedModel) && getModelNextAvailableDate(selectedModel) && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm font-medium text-red-900 mb-1">
-                    📅 This model is currently fully booked
+                    This model is currently fully booked
                   </p>
                   <p className="text-xs text-red-700">
                     Next available: {formatDateForDisplay(getModelNextAvailableDate(selectedModel))}
