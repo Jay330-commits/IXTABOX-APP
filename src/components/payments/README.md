@@ -24,7 +24,7 @@ import StripeBankPayment from '@/components/payments/StripeBankPayment';
 
 // First, create a secure payment session on your server
 // SECURITY: Amount is calculated server-side, never send amount from client
-const response = await fetch('/api/bookings/create-payment-session', {
+const response = await fetch('/api/payments/create-session', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

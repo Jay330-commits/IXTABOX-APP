@@ -5,8 +5,11 @@ import BookingActions from './BookingActions';
 interface BookingDetailsModalProps {
   booking: {
     id: string;
-    standId: string;
-    address: string;
+    standId?: string;
+    locationDisplayId?: string;
+    compartment?: number | null;
+    boxDisplayId?: string;
+    address?: string;
     startDate: string;
     endDate: string;
     status: 'pending' | 'active' | 'completed' | 'cancelled';
@@ -16,6 +19,7 @@ interface BookingDetailsModalProps {
       priceMultiplier: number;
     };
     pricePerDay: number;
+    totalAmount?: number | string;
   };
   onClose: () => void;
   onCancel?: () => void;
@@ -29,8 +33,8 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onModify,
 }) => {
   return (
-    <div className="fixed inset-0 z-[1003] bg-black/50 flex items-start justify-center pt-24 px-4 pb-4">
-      <div className="max-w-lg w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white rounded-lg shadow-xl">
+    <div className="fixed inset-0 z-[1003] bg-black/50 flex items-center justify-center px-4 py-4">
+      <div className="max-w-lg w-full max-h-[calc(100vh-80px)] overflow-y-auto bg-white rounded-lg shadow-xl">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Booking Details</h2>
           <button

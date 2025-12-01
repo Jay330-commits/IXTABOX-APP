@@ -33,6 +33,18 @@ export type MapProps = {
       pro: number;
       total: number;
     };
+    isFullyBooked?: boolean;
+    earliestNextAvailableDate?: string | null;
+    modelAvailability?: {
+      classic: {
+        isFullyBooked: boolean;
+        nextAvailableDate: string | null;
+      };
+      pro: {
+        isFullyBooked: boolean;
+        nextAvailableDate: string | null;
+      };
+    };
   }[];
   filterForm?: React.ReactNode;
   filterValues?: {
@@ -40,13 +52,14 @@ export type MapProps = {
     endDate?: string;
     boxModel?: string;
   };
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 };
 
 type DirectionsResult = google.maps.DirectionsResult;
 
 const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 };
 
-export default function Map({ locations, filterForm, filterValues }: MapProps) {
+export default function Map({ locations, filterForm, filterValues, onFullscreenChange }: MapProps) {
   const [interactionEnabled, setInteractionEnabled] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<MapProps["locations"][number] | null>(null);
@@ -90,6 +103,19 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
       setMapZoom(12);
     }
   }, [computedBounds, locations]);
+
+  // Center map on selected location when a marker is clicked
+  useEffect(() => {
+    if (selectedLocation && mapRef.current && isLoaded) {
+      // Pan to the selected location to ensure it's centered
+      mapRef.current.panTo({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+    }
+  }, [selectedLocation, isLoaded]);
+
+  // Notify parent when fullscreen state changes
+  useEffect(() => {
+    onFullscreenChange?.(fullscreen);
+  }, [fullscreen, onFullscreenChange]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -214,7 +240,10 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
 
   const handleDirections = useCallback(
     async (origin: google.maps.LatLngLiteral, destination: google.maps.LatLngLiteral) => {
-      if (!isLoaded || !(window.google && google.maps)) return;
+      try {
+        if (!isLoaded || !(window.google && google.maps)) {
+          return;
+        }
       const service = new google.maps.DirectionsService();
       const result = await service.route({
         origin,
@@ -233,29 +262,103 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
           leg?.distance?.text ? `Distance: ${leg.distance.text}` : undefined,
         ].filter(Boolean);
         routePanelRef.current.innerHTML = summaryLines.map((line) => `<div>${line}</div>`).join("");
+        }
+      } catch (error) {
+        console.warn('Directions service error:', error);
+        // Don't throw, just fail silently
       }
     },
     [isLoaded],
   );
 
-  const handleLocate = useCallback(async () => {
-    if (!mapRef.current) return;
+  const handleLocate = useCallback(async (e?: React.MouseEvent) => {
+    // Prevent any default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Check prerequisites
+    if (!mapRef.current) {
+      console.warn('Map ref not available');
+      return;
+    }
+
+    if (!isLoaded) {
+      console.warn('Google Maps not loaded yet');
+      return;
+    }
+
+    if (!window.google || !window.google.maps) {
+      console.warn('Google Maps API not available');
+      return;
+    }
+
     setIsLoadingLocation(true);
     setRoutePanelOpen(false);
+    setDirections(null);
+
     try {
-      const location = await acquireLocation();
-      if (!location) return;
-      setUserLocation(location);
-      const nearest = getNearestLocation(location);
-      if (nearest) {
-        await handleDirections(location, { lat: nearest.lat, lng: nearest.lng });
+      // Get user location
+      const userPos = await acquireLocation();
+      if (!userPos) {
+        console.warn('Could not acquire user location');
+        setIsLoadingLocation(false);
+        return;
       }
-      mapRef.current.panTo(location);
-      mapRef.current.setZoom(13);
+
+      // Set user location marker
+      setUserLocation(userPos);
+
+      // Find nearest location
+      const nearest = getNearestLocation(userPos);
+      if (!nearest) {
+        console.warn('No nearest location found');
+        setIsLoadingLocation(false);
+        return;
+      }
+
+      // Fit bounds to show all locations + user location + nearest location
+      // This ensures all markers remain visible
+      if (mapRef.current && window.google && window.google.maps) {
+        const bounds = new google.maps.LatLngBounds();
+        
+        // Add user location
+        bounds.extend(userPos);
+        
+        // Add nearest location (highlight it)
+        bounds.extend({ lat: nearest.lat, lng: nearest.lng });
+        
+        // Add all other locations to ensure they're visible
+        locations.forEach((loc) => {
+          bounds.extend({ lat: loc.lat, lng: loc.lng });
+        });
+        
+        // Fit bounds with padding and max zoom to prevent zooming in too much
+        mapRef.current.fitBounds(bounds, 80); // Add padding so markers aren't at the edge
+        
+        // Ensure we don't zoom in too much - set a max zoom after fitting
+        const currentZoom = mapRef.current.getZoom();
+        if (currentZoom && currentZoom > 14) {
+          mapRef.current.setZoom(14);
+        }
+      }
+
+      // Optionally show directions (non-blocking)
+      if (isLoaded && window.google && window.google.maps) {
+        try {
+          await handleDirections(userPos, { lat: nearest.lat, lng: nearest.lng });
+        } catch (dirError) {
+          // Directions are optional, don't fail if they error
+          console.warn('Could not load directions:', dirError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleLocate:', error);
     } finally {
       setIsLoadingLocation(false);
     }
-  }, [acquireLocation, getNearestLocation, handleDirections]);
+  }, [acquireLocation, getNearestLocation, handleDirections, isLoaded, locations]);
 
   const computedContainerStyle = useMemo<CSSProperties>(
     () => ({
@@ -275,7 +378,7 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
       try {
         // Create secure payment session server-side
         // Booking details are stored securely, only payment intent ID is returned
-        const response = await fetch('/api/bookings/create-payment-session', {
+        const response = await fetch('/api/payments/create-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -315,7 +418,26 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
     setInteractionEnabled(false);
     setDirections(null);
     setRoutePanelOpen(false);
-  }, []);
+    onFullscreenChange?.(false);
+  }, [onFullscreenChange]);
+
+  const markerIcons = useMemo(() => {
+    if (!isLoaded || !(window.google && google.maps)) {
+      return { available: undefined, fullyBooked: undefined };
+    }
+    return {
+      available: {
+        url: 'http://maps.google.com/mapfiles/ms/icons/green.png',
+        scaledSize: new google.maps.Size(40, 40),
+        anchor: new google.maps.Point(20, 40),
+      },
+      fullyBooked: {
+        url: 'http://maps.google.com/mapfiles/ms/icons/red.png',
+        scaledSize: new google.maps.Size(40, 40),
+        anchor: new google.maps.Point(20, 40),
+      },
+    };
+  }, [isLoaded]);
 
   useEffect(() => {
     if (!fullscreen) return undefined;
@@ -359,14 +481,15 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
       {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
       {selectedLocation && (
         <div
-          className="fixed inset-0 z-[1003] bg-black/50 flex items-start justify-center pt-24 px-4 pb-4"
+          className="fixed inset-0 z-[1003] bg-black/50 flex items-center justify-center px-4 py-4"
           onClick={(e) => {
             e.stopPropagation();
             setSelectedLocation(null);
           }}
         >
           <div
-            className="max-w-lg w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white rounded-lg shadow-xl"
+            className="max-w-lg w-full max-h-[calc(100vh-80px)] overflow-y-auto bg-white rounded-lg shadow-xl"
+            style={{ maxHeight: 'calc(100vh - 80px)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <LocationDetails
@@ -380,6 +503,9 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
                   },
                 status: selectedLocation.status,
                 availableBoxes: selectedLocation.availableBoxes,
+                isFullyBooked: selectedLocation.isFullyBooked,
+                earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
+                modelAvailability: selectedLocation.modelAvailability,
               }}
               initialStartDate={filterValues?.startDate}
               initialEndDate={filterValues?.endDate}
@@ -396,6 +522,7 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
           onDoubleClick={() => {
             setInteractionEnabled(true);
             setFullscreen(true);
+            onFullscreenChange?.(true);
             setTimeout(() => {
               if (mapRef.current && computedBounds) {
                 mapRef.current.fitBounds(computedBounds, 32);
@@ -408,6 +535,7 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
               e.preventDefault();
               setInteractionEnabled(true);
               setFullscreen(true);
+              onFullscreenChange?.(true);
             }
             lastTapRef.current = now;
           }}
@@ -465,17 +593,21 @@ export default function Map({ locations, filterForm, filterValues }: MapProps) {
           gestureHandling: interactionEnabled ? "greedy" : "none",
         }}
       >
-        {locations.map((location) => (
+        {locations.map((location) => {
+          const icon = location.isFullyBooked ? markerIcons.fullyBooked : markerIcons.available;
+          return (
           <Marker
             key={location.id}
             position={{ lat: location.lat, lng: location.lng }}
+              icon={icon}
             onClick={(e) => {
               e.domEvent.stopPropagation();
               setSelectedLocation(location);
             }}
             title={location.name}
           />
-        ))}
+          );
+        })}
         {userLocation && (
           <>
             <Marker

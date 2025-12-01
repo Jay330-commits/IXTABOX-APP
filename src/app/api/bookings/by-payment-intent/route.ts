@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
 import { getCurrentUser } from '@/lib/supabase-auth';
+import { BookingStatus } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +62,8 @@ export async function POST(request: NextRequest) {
     }
 
     const booking = payment.bookings;
+    // Type assertion needed because Prisma's nested include types don't always include all fields
+    type BookingWithStatus = typeof booking & { status: BookingStatus | null };
 
     return NextResponse.json({
       booking: {
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
         totalAmount: booking.total_amount.toString(),
-        status: booking.status,
+        status: (booking as BookingWithStatus).status ?? BookingStatus.Pending,
       },
       payment: {
         id: payment.id,

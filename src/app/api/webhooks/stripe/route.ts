@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { PaymentStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma/prisma';
-import { PaymentStatus, BookingStatus } from '@prisma/client';
-import { UserService } from '@/services/UserService';
+import { processPaymentSuccess } from '@/services/PaymentProcessingService';
 
 /**
  * Get Stripe client instance
- * Lazy initialization to avoid build-time errors
  */
 function getStripe(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -14,8 +13,8 @@ function getStripe(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not configured');
   }
   return new Stripe(secretKey, {
-  apiVersion: '2025-02-24.acacia',
-});
+    apiVersion: '2025-02-24.acacia',
+  });
 }
 
 /**
@@ -24,10 +23,17 @@ function getStripe(): Stripe {
  * POST /api/webhooks/stripe
  */
 export async function POST(request: NextRequest) {
+  console.log('🔔🔔🔔 WEBHOOK ENDPOINT CALLED at', new Date().toISOString());
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
+  console.log('📋 Request headers:', {
+    hasSignature: !!signature,
+    contentType: request.headers.get('content-type'),
+    userAgent: request.headers.get('user-agent'),
+  });
 
   if (!signature) {
+    console.error('❌ Missing stripe-signature header');
     return NextResponse.json(
       { error: 'Missing stripe-signature header' },
       { status: 400 }
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error('Missing STRIPE_WEBHOOK_SECRET');
+      console.error('❌ Missing STRIPE_WEBHOOK_SECRET');
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -48,8 +54,9 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    console.log('✅ Webhook signature verified. Event type:', event.type, 'Event ID:', event.id);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err);
+    console.error('❌ Webhook signature verification failed:', err);
     return NextResponse.json(
       { error: 'Webhook signature verification failed' },
       { status: 400 }
@@ -57,9 +64,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Log all webhook events for debugging
+    console.log('📥 Webhook event received:', {
+      type: event.type,
+      eventId: event.id,
+      livemode: event.livemode,
+      created: new Date(event.created * 1000).toISOString(),
+    });
+
     // Handle payment_intent.succeeded event
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      
+      console.log('Webhook received: payment_intent.succeeded', {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        livemode: paymentIntent.livemode,
+      });
 
       // Validate payment intent ID exists - no payment record without valid intent ID
       if (!paymentIntent || !paymentIntent.id) {
@@ -67,125 +89,93 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
+      // CRITICAL: Verify payment actually succeeded and is not in test mode when using live key
+      if (paymentIntent.status !== 'succeeded') {
+        console.error('Payment intent status is not succeeded:', paymentIntent.status);
+        return NextResponse.json({ received: true });
+      }
+
+      // Verify payment amount is valid (not zero or negative)
+      if (!paymentIntent.amount || paymentIntent.amount <= 0) {
+        console.error('Invalid payment amount:', paymentIntent.amount);
+        return NextResponse.json({ received: true });
+      }
+
       const stripe = getStripe();
+      
+      // Double-check payment status by retrieving from Stripe (prevents webhook spoofing)
+      let verifiedPaymentIntent: Stripe.PaymentIntent;
+      try {
+        verifiedPaymentIntent = await stripe.paymentIntents.retrieve(paymentIntent.id);
+        console.log('✅ Payment intent verified from Stripe API');
+      } catch (retrieveError) {
+        // Handle test webhooks that don't have real payment intents
+        if (retrieveError instanceof Error && retrieveError.message.includes('No such payment_intent')) {
+          console.warn('⚠️ Test webhook detected - payment intent not found in Stripe. Using event data.');
+          verifiedPaymentIntent = paymentIntent;
+        } else {
+          console.error('❌ Failed to retrieve payment intent:', retrieveError);
+          throw retrieveError;
+        }
+      }
+      
+      if (verifiedPaymentIntent.status !== 'succeeded') {
+        console.error('Payment verification failed - status mismatch:', {
+          webhookStatus: paymentIntent.status,
+          verifiedStatus: verifiedPaymentIntent.status
+        });
+        return NextResponse.json({ received: true });
+      }
+
+      // CRITICAL: Verify payment is not a test payment when using live mode (or vice versa)
+      // This prevents test cards from being processed with live keys
+      const isLiveMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_');
+      const paymentIsLive = verifiedPaymentIntent.livemode;
+      
+      if (isLiveMode !== paymentIsLive) {
+        console.error('Payment mode mismatch detected:', {
+          serverMode: isLiveMode ? 'live' : 'test',
+          paymentMode: paymentIsLive ? 'live' : 'test',
+          paymentIntentId: verifiedPaymentIntent.id
+        });
+        // Don't process payment if mode mismatch - this prevents test cards with live keys
+        return NextResponse.json({ 
+          received: true,
+          error: 'Payment mode mismatch - test payment cannot be processed with live key'
+        });
+      }
 
       try {
-        // Fetch full payment intent details to get billing information
-        // Cast to Stripe.PaymentIntent because stripe.paymentIntents.retrieve
-        // returns a Stripe.Response<Stripe.PaymentIntent> wrapper in newer SDKs
-        const fullPaymentIntent = (await stripe.paymentIntents.retrieve(paymentIntent.id, {
-          expand: ['customer', 'payment_method'],
-        })) as Stripe.PaymentIntent;
-
-        // Extract billing details from payment method (preferred source of truth)
-        const paymentMethod = fullPaymentIntent.payment_method as
-          | Stripe.PaymentMethod
-          | string
-          | null
-          | undefined;
-
-        const billingDetails = typeof paymentMethod === 'object' && paymentMethod
-          ? paymentMethod.billing_details
-          : null;
-
-        const email = billingDetails?.email || 
-                     fullPaymentIntent.receipt_email ||
-                     fullPaymentIntent.metadata?.customerEmail ||
-                     null;
+        const result = await processPaymentSuccess(paymentIntent.id);
         
-        const name = billingDetails?.name || 
-                    fullPaymentIntent.metadata?.customerName ||
-                    'Guest User';
-
-        const phone = billingDetails?.phone || 
-                     fullPaymentIntent.metadata?.customerPhone ||
-                     null;
-
-        // Extract address from billing details, normalizing nulls to undefined
-        const address = billingDetails?.address
-          ? {
-              line1: billingDetails.address.line1 ?? undefined,
-              line2: billingDetails.address.line2 ?? undefined,
-              city: billingDetails.address.city ?? undefined,
-              state: billingDetails.address.state ?? undefined,
-              postal_code: billingDetails.address.postal_code ?? undefined,
-              country: billingDetails.address.country ?? undefined,
-            }
-          : undefined;
-
-        // Find existing payment record
-        const existingPayment = await prisma.payments.findUnique({
-          where: {
-            stripe_payment_intent_id: paymentIntent.id,
-          },
-        });
-
-        if (!existingPayment) {
-          console.error('Payment record not found for payment intent:', paymentIntent.id);
-          return NextResponse.json({ received: true });
+        if (result.alreadyProcessed) {
+          return NextResponse.json({ received: true, message: 'Payment already processed' });
+        }
+        
+        if (result.alreadyConfirmed) {
+          return NextResponse.json({ received: true, message: 'Booking already confirmed' });
         }
 
-        // Create or find guest user if email is available
-        let userId: string | null = existingPayment.user_id || null;
-
-        if (!userId && email) {
-          try {
-            const userService = new UserService();
-            const guestUser = await userService.findOrCreateGuestUser({
-              email,
-              fullName: name,
-              phone: phone || undefined,
-              billingAddress: address || undefined,
-            });
-            userId = guestUser.id;
-          } catch (userError) {
-            console.error('Failed to create guest user:', userError);
-            // Continue without user_id if user creation fails
-          }
-        }
-
-        // Update payment with user_id and status, and update booking status
-        await prisma.$transaction(async (tx) => {
-          // Update payment status
-          await tx.payments.update({
-            where: {
-              id: existingPayment.id,
-            },
-            data: {
-              user_id: userId,
-              status: PaymentStatus.Completed,
-              completed_at: new Date(),
-            },
-          });
-
-          // Update booking status when payment succeeds
-          // Check if booking is in the future or active
-          const booking = await tx.bookings.findFirst({
-            where: {
-              payment_id: existingPayment.id,
-            },
-          });
-
-          if (booking) {
-            const now = new Date();
-            const bookingStart = new Date(booking.start_date);
-            // Check if booking start time has already passed - if so, set to Active immediately
-            // Otherwise, set to Pending (will be activated by trigger when time arrives)
-            const newStatus = bookingStart <= now ? BookingStatus.Active : BookingStatus.Pending;
-            
-            await tx.bookings.update({
-              where: {
-                id: booking.id,
-              },
-              data: {
-                status: newStatus,
-              },
-            });
-          }
+        // Success - booking created
+        console.log('✅ Webhook successfully processed payment and created booking');
+        return NextResponse.json({ 
+          received: true,
+          message: 'Payment processed and booking created successfully'
         });
       } catch (dbError) {
-        console.error('Failed to process payment success in database:', dbError);
-        // Continue even if DB update fails
+        console.error('❌ Failed to process payment success in database:', {
+          error: dbError,
+          paymentIntentId: verifiedPaymentIntent.id,
+          errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+          errorStack: dbError instanceof Error ? dbError.stack : undefined,
+          errorName: dbError instanceof Error ? dbError.name : undefined,
+        });
+        // Return 500 so Stripe retries the webhook
+        return NextResponse.json({ 
+          received: false, 
+          error: 'Database processing failed',
+          message: dbError instanceof Error ? dbError.message : 'Unknown error'
+        }, { status: 500 });
       }
     }
 
@@ -213,13 +203,21 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error('Failed to update payment status to failed in database:', dbError);
       }
+
+      return NextResponse.json({ received: true });
     }
 
-    return NextResponse.json({ received: true });
+    // Handle other event types (log but don't process)
+    console.log('Unhandled webhook event type:', event.type, '- acknowledging');
+    return NextResponse.json({ received: true, message: `Event ${event.type} acknowledged but not processed` });
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('Error processing webhook:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { error: 'Webhook processing failed', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

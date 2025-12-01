@@ -6,9 +6,10 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
+  // For Prisma v7, use DIRECT_URL for migrations to bypass PgBouncer pooling
   datasource: {
-    // For CLI commands: Prefer DIRECT_URL to avoid PgBouncer limitations (hanging, slow introspection)
-    // Falls back to DATABASE_URL if DIRECT_URL not set (e.g., in some CI/CD environments)
-    url: process.env.DIRECT_URL ? env("DIRECT_URL") : env("DATABASE_URL"),
+    // Use Prisma's env() helper which returns `string` and integrates with the
+    // Prisma config typings. Falls back to DATABASE_URL if DIRECT_URL isn't set.
+    url: env("DIRECT_URL") || env("DATABASE_URL"),
   },
 });

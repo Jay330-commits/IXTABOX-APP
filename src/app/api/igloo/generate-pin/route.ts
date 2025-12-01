@@ -40,25 +40,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use the shared function from IglooService
     const iglooService = new IglooService();
-    const result = await iglooService.generateBookingPin(
-      startDateObj,
-      endDateObj,
-      accessName || 'Customer'
-    );
+    
+    try {
+      // Get the full response for metadata (pinId, etc.)
+      const fullResult = await iglooService.generateBookingPin(
+        startDateObj,
+        endDateObj,
+        accessName || 'Customer'
+      );
 
-    // Log the response to see what Igloo API returns
-    console.log('\n========== IGLOO PIN API RESPONSE ==========');
-    console.log('Full response:', JSON.stringify(result, null, 2));
-    console.log('Response keys:', Object.keys(result));
-    console.log('PIN value:', result.pin || result.pinCode || result.code || result.unlockCode || 'NOT FOUND IN RESPONSE');
-    console.log('===========================================\n');
+      // Extract and parse PIN using the shared function (same logic as booking creation)
+      const parsedPin = iglooService.extractAndParsePin(fullResult);
 
-    // Return the full Igloo API response, spreading it at the top level for easy access
-    return NextResponse.json({
-      success: true,
-      ...result
-    });
+      // Log the response to see what Igloo API returns
+      console.log('\n========== IGLOO PIN API RESPONSE ==========');
+      console.log('Full response:', JSON.stringify(fullResult, null, 2));
+      console.log('Response keys:', Object.keys(fullResult));
+      console.log('PIN value:', parsedPin);
+      console.log('===========================================\n');
+
+      // Return the full Igloo API response with parsed PIN
+      return NextResponse.json({
+        success: true,
+        pin: parsedPin,
+        pinNumber: parsedPin, // Also include as pinNumber for clarity
+        ...fullResult
+      });
+    } catch (error) {
+      // Error is already logged in generateBookingPin or generateAndParseBookingPin
+      throw error; // Re-throw to be caught by outer try-catch
+    }
   } catch (error) {
     console.error('Error generating Igloo PIN:', error);
     return NextResponse.json(

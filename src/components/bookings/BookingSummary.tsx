@@ -3,8 +3,11 @@ import React from 'react';
 interface BookingSummaryProps {
   booking: {
     id: string;
-    standId: string;
-    address: string;
+    standId?: string;
+    locationDisplayId?: string;
+    compartment?: number | null;
+    boxDisplayId?: string;
+    address?: string;
     startDate: string;
     endDate: string;
     status: 'pending' | 'active' | 'completed' | 'cancelled';
@@ -14,13 +17,17 @@ interface BookingSummaryProps {
       priceMultiplier: number;
     };
     pricePerDay: number;
+    totalAmount?: number | string;
   };
 }
 
 const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
   const ms = new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime();
   const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  const totalPrice = days * booking.pricePerDay * booking.model.priceMultiplier;
+  const calculatedTotal = days * booking.pricePerDay * booking.model.priceMultiplier;
+  const totalPrice = booking.totalAmount 
+    ? (typeof booking.totalAmount === 'string' ? parseFloat(booking.totalAmount) : booking.totalAmount)
+    : calculatedTotal;
 
   return (
     <div className="space-y-4">
@@ -31,14 +38,30 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
             <span className="text-sm text-gray-600">Booking ID</span>
             <span className="text-sm font-medium text-gray-900">{booking.id}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Stand</span>
-            <span className="text-sm font-medium text-gray-900">#{booking.standId}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Address</span>
-            <span className="text-sm font-medium text-gray-900">{booking.address}</span>
-          </div>
+          {booking.locationDisplayId && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Location</span>
+              <span className="text-sm font-medium text-gray-900">#{booking.locationDisplayId}</span>
+            </div>
+          )}
+          {booking.compartment !== null && booking.compartment !== undefined && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Compartment</span>
+              <span className="text-sm font-medium text-gray-900">#{booking.compartment}</span>
+            </div>
+          )}
+          {booking.boxDisplayId && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Box</span>
+              <span className="text-sm font-medium text-gray-900">#{booking.boxDisplayId}</span>
+            </div>
+          )}
+          {booking.address && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Address</span>
+              <span className="text-sm font-medium text-gray-900">{booking.address}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -92,8 +115,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Base Price</span>
             <span className="text-sm font-medium text-gray-900">${booking.pricePerDay.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Days</span>

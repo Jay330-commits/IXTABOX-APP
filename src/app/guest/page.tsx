@@ -7,8 +7,8 @@ import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import AnimatedCounter from "@/components/animations/AnimatedCounter";
-import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
-import { useEffect, useRef, useState, useMemo } from "react";
+// import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
+import { useEffect, useRef, useState } from "react";
 
 const STAT_METRICS = [
   {
@@ -127,12 +127,13 @@ export default function GuestHome() {
   const [testimonialProgress, setTestimonialProgress] = useState(0);
   const [activeMetric, setActiveMetric] = useState(0);
   const [metricProgress, setMetricProgress] = useState(0);
-  const [showFilterForm, setShowFilterForm] = useState(false);
-  const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
-    startDate: '',
-    endDate: '',
-    boxModel: 'all',
-  });
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  // const [showFilterForm, setShowFilterForm] = useState(false);
+  // const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
+  //   startDate: '',
+  //   endDate: '',
+  //   boxModel: 'all',
+  // });
   const [shouldLoadMap, setShouldLoadMap] = useState(false);
   const autoplayStartRef = useRef<number | null>(null);
   const testimonialCount = Number(TESTIMONIALS.length);
@@ -279,45 +280,63 @@ export default function GuestHome() {
 
   const handleBookBoxClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    setShowFilterForm(true);
-    // Scroll to map section
+    // Scroll to center the map container (not the section with title)
     setTimeout(() => {
-      const mapElement = document.getElementById('map');
-      if (mapElement) {
-        mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const mapSection = document.getElementById('map');
+      if (mapSection) {
+        // Find the map container div - it's the div with class "w-full relative" inside the section
+        const mapContainer = mapSection.querySelector('.w-full.relative') as HTMLElement;
+        if (mapContainer) {
+          const headerHeight = 80; // Approximate header height
+          const viewportHeight = window.innerHeight;
+          const containerTop = mapContainer.getBoundingClientRect().top + window.pageYOffset;
+          const containerHeight = mapContainer.offsetHeight;
+          
+          // Calculate position to center the map container in viewport
+          // Center = container top + (container height / 2) - (viewport height / 2)
+          const centerPosition = containerTop + (containerHeight / 2) - (viewportHeight / 2);
+          
+          // Ensure we don't scroll above the header
+          const finalPosition = Math.max(headerHeight, centerPosition);
+
+          window.scrollTo({
+            top: finalPosition,
+            behavior: 'smooth'
+          });
+        }
       }
     }, 100);
   };
 
-  const handleFilterChange = (filter: BookingFilter) => {
-    setBookingFilter(filter);
-  };
+  // const handleFilterChange = (filter: BookingFilter) => {
+  //   setBookingFilter(filter);
+  // };
 
   // Filter locations based on booking filter
-  const filteredLocations = useMemo(() => {
-    if (!bookingFilter.startDate || !bookingFilter.endDate) {
-      return locations;
-    }
+  // const filteredLocations = useMemo(() => {
+  //   if (!bookingFilter.startDate || !bookingFilter.endDate) {
+  //     return locations;
+  //   }
 
-    return locations.filter((location) => {
-      // Filter by status - only show available locations
-      if (location.status !== 'available') {
-        return false;
-      }
+  //   return locations.filter((location) => {
+  //     // Filter by status - only show available locations
+  //     if (location.status !== 'available') {
+  //       return false;
+  //     }
 
-      // Filter by model if specified
-      if (bookingFilter.boxModel && bookingFilter.boxModel !== 'all') {
-        const model = bookingFilter.boxModel === 'classic' ? 'classic' : 'pro';
-        if (location.availableBoxes[model] === 0) {
-          return false;
-        }
-      }
+  //     // Filter by model if specified
+  //     if (bookingFilter.boxModel && bookingFilter.boxModel !== 'all') {
+  //       const model = bookingFilter.boxModel === 'classic' ? 'classic' : 'pro';
+  //       if (location.availableBoxes[model] === 0) {
+  //         return false;
+  //       }
+  //     }
 
-      // In a real app, you would check bookings API to see if boxes are available
-      // for the selected date range. For now, we'll just filter by available count.
-      return location.availableBoxes.total > 0;
-    });
-  }, [locations, bookingFilter]);
+  //     // In a real app, you would check bookings API to see if boxes are available
+  //     // for the selected date range. For now, we'll just filter by available count.
+  //     return location.availableBoxes.total > 0;
+  //   });
+  // }, [locations, bookingFilter]);
 
   const activeStory = TESTIMONIALS[activeTestimonial] ?? TESTIMONIALS[0];
 
@@ -449,9 +468,10 @@ export default function GuestHome() {
         {/* Map section (moved just below hero) */}
         <FadeInSection>
         <section id="map" ref={mapSectionRef} className="px-6 py-12">
+          {!isMapFullscreen && (
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-3xl font-bold">Find Our Locations</h2>
-            {!showFilterForm && (
+            {/* {!showFilterForm && (
               <button
                 onClick={() => {
                   setShowFilterForm(true);
@@ -469,8 +489,9 @@ export default function GuestHome() {
                 </svg>
                 Filter Locations
               </button>
+             )} */}
+            </div>
             )}
-          </div>
           
           <div className="w-full relative" style={{ minHeight: 500 }} suppressHydrationWarning>
             {locationsError ? (
@@ -479,29 +500,28 @@ export default function GuestHome() {
               </div>
             ) : isLoadingLocations ? (
               <div className="flex h-full items-center justify-center text-gray-300">Loading locations…</div>
-            ) : filteredLocations.length === 0 ? (
+            ) : locations.length === 0 ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 text-center text-gray-200">
-                {bookingFilter.startDate && bookingFilter.endDate
-                  ? `No locations available for the selected dates. Please try different dates.`
-                  : "No locations available right now. Please check back soon."}
+                No locations available right now. Please check back soon.
               </div>
             ) : mounted ? (
               <Map 
-                locations={filteredLocations} 
-                filterForm={
-                  showFilterForm ? (
-                    <BookingFilterForm
-                      onFilterChange={handleFilterChange}
-                      onClose={() => setShowFilterForm(false)}
-                      isMapOverlay={true}
-                    />
-                  ) : undefined
-                }
-                filterValues={{
-                  startDate: bookingFilter.startDate,
-                  endDate: bookingFilter.endDate,
-                  boxModel: bookingFilter.boxModel,
-                }}
+                locations={locations} 
+                onFullscreenChange={setIsMapFullscreen}
+                // filterForm={
+                //   showFilterForm ? (
+                //     <BookingFilterForm
+                //       onFilterChange={handleFilterChange}
+                //       onClose={() => setShowFilterForm(false)}
+                //       isMapOverlay={true}
+                //     />
+                //   ) : undefined
+                // }
+                // filterValues={{
+                //   startDate: bookingFilter.startDate,
+                //   endDate: bookingFilter.endDate,
+                //   boxModel: bookingFilter.boxModel,
+                // }}
               />
             ) : null}
           </div>

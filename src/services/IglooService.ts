@@ -148,6 +148,7 @@ export class IglooService {
   /**
    * Generate a PIN for a booking period using the booking's startDate and endDate
    * Uses the hourly PIN endpoint which accepts custom date ranges
+   * Returns the raw API response
    */
   async generateBookingPin(
     startDate: Date,
@@ -186,6 +187,64 @@ export class IglooService {
     console.log('PIN field:', result.pin || result.pinCode || result.code || result.unlockCode || 'NOT FOUND');
     console.log('==========================');
     return result;
+  }
+
+  /**
+   * Extract and parse PIN from Igloo API response
+   * Shared function used by both booking creation and API endpoint
+   */
+  extractAndParsePin(pinResult: Record<string, unknown>): number {
+    // Extract PIN from response (could be 'pin', 'pinCode', 'code', or 'unlockCode')
+    const pinValue: string | number | undefined = 
+      (pinResult.pin as string | number | undefined) || 
+      (pinResult.pinCode as string | number | undefined) || 
+      (pinResult.code as string | number | undefined) || 
+      (pinResult.unlockCode as string | number | undefined);
+    
+    if (!pinValue) {
+      console.error('⚠️ PIN not found in Igloo API response:', pinResult);
+      throw new Error('PIN not found in Igloo API response');
+    }
+    
+    // Convert PIN to number (it might be a string)
+    const parsedPin: number = typeof pinValue === 'string' ? parseInt(pinValue, 10) : Number(pinValue);
+    
+    if (isNaN(parsedPin)) {
+      console.error('⚠️ Generated PIN is not a valid number:', pinValue);
+      throw new Error('Invalid PIN format from Igloo API');
+    }
+    
+    return parsedPin;
+  }
+
+  /**
+   * Generate and parse a booking PIN as a number
+   * This is the main function to use for booking creation
+   * Validates the PIN and returns it as a number
+   */
+  async generateAndParseBookingPin(
+    startDate: Date,
+    endDate: Date,
+    accessName: string = 'Customer'
+  ): Promise<number> {
+    // Validate dates
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error(`Invalid date format: start=${startDate.toISOString()}, end=${endDate.toISOString()}`);
+    }
+
+    // Validate date range
+    if (endDate <= startDate) {
+      throw new Error('endDate must be after startDate');
+    }
+
+    // Generate PIN
+    const pinResult = await this.generateBookingPin(startDate, endDate, accessName);
+    
+    // Extract and parse using shared function
+    const parsedPin = this.extractAndParsePin(pinResult);
+    
+    console.log('✅ Lock PIN generated and parsed successfully:', parsedPin);
+    return parsedPin;
   }
 
   /**

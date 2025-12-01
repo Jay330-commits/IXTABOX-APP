@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -72,12 +72,102 @@ function PaymentContent() {
     fetchPaymentDetails();
   }, [paymentIntentId]);
 
+  /**
+   * Verify payment intent exists in Stripe and has succeeded status
+   */
+  const verifyPaymentIntentInStripe = async (paymentIntentId: string): Promise<boolean> => {
+    try {
+      const verifyResponse = await fetch(`/api/payments/${paymentIntentId}/verify`);
+      
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json().catch(() => ({}));
+        console.error('Payment intent verification failed:', errorData);
+        return false;
+      }
+
+      const verifyData = await verifyResponse.json();
+      
+      if (!verifyData.exists) {
+        console.error('Payment intent does not exist in Stripe');
+        return false;
+      }
+
+      if (verifyData.paymentIntent.status !== 'succeeded') {
+        console.error('Payment intent status is not succeeded:', verifyData.paymentIntent.status);
+        return false;
+      }
+
+      if (!verifyData.paymentIntent.amount || verifyData.paymentIntent.amount <= 0) {
+        console.error('Invalid payment amount:', verifyData.paymentIntent.amount);
+        return false;
+      }
+
+      console.log('✅ Payment intent verified in Stripe:', {
+        id: verifyData.paymentIntent.id,
+        status: verifyData.paymentIntent.status,
+        amount: verifyData.paymentIntent.amount,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying payment intent in Stripe:', error);
+      return false;
+    }
+  };
+
+  /**
+   * Verify payment status from server
+   */
+  const verifyPaymentStatus = async (paymentIntentId: string): Promise<boolean> => {
+    try {
+      const verifyResponse = await fetch(`/api/payments/${paymentIntentId}`);
+      
+      if (!verifyResponse.ok) {
+        throw new Error('Failed to verify payment');
+      }
+
+      const verifyData = await verifyResponse.json();
+      
+      if (verifyData.paymentIntent.status !== 'succeeded') {
+        console.error('Payment verification failed on server:', verifyData.paymentIntent.status);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying payment status:', error);
+      return false;
+    }
+  };
+
   const handlePaymentSuccess = async (paymentIntent: PaymentIntent) => {
     console.log('Payment succeeded:', paymentIntent);
     
-    // Verify payment is actually succeeded before redirecting
+    // CRITICAL: Verify payment is actually succeeded before redirecting
     if (paymentIntent.status !== 'succeeded') {
       console.warn('Payment status is not succeeded:', paymentIntent.status);
+      setError(`Payment status is ${paymentIntent.status}. Please contact support if payment was charged.`);
+      return;
+    }
+
+    // Verify payment amount is valid
+    if (!paymentIntent.amount || paymentIntent.amount <= 0) {
+      console.error('Invalid payment amount:', paymentIntent.amount);
+      setError('Invalid payment amount. Please contact support.');
+      return;
+    }
+
+    // CRITICAL: Verify payment intent exists in Stripe before proceeding
+    const existsInStripe = await verifyPaymentIntentInStripe(paymentIntent.id);
+    if (!existsInStripe) {
+      setError('Payment verification failed. Payment intent not found in Stripe. Please contact support.');
+      return;
+    }
+
+    // Double-verify payment status by checking with server
+    const statusVerified = await verifyPaymentStatus(paymentIntent.id);
+    if (!statusVerified) {
+      setError('Payment verification failed. Please contact support.');
       return;
     }
 
@@ -111,15 +201,35 @@ function PaymentContent() {
       console.error('Failed to update payment with contact info:', error);
     }
     
+    // Create booking immediately after payment succeeds (for local development)
+    try {
+      console.log('🔄 Creating booking for payment:', paymentIntent.id);
+      const createBookingResponse = await fetch(`/api/payments/${paymentIntent.id}/process-success`, {
+        method: 'POST',
+      });
+      
+      if (createBookingResponse.ok) {
+        const bookingData = await createBookingResponse.json();
+        console.log('✅ Booking created successfully:', {
+          bookingId: bookingData.booking?.id,
+          message: bookingData.message,
+        });
+      } else {
+        const errorData = await createBookingResponse.json().catch(() => ({}));
+        console.error('Failed to create booking:', errorData);
+        // Continue to success page even if booking creation fails (webhook will handle it)
+      }
+    } catch (bookingError) {
+      console.error('Error creating booking:', bookingError);
+      // Continue to success page even if booking creation fails (webhook will handle it)
+    }
+    
     // Small delay for smooth transition
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // Redirect to success page with ONLY payment intent ID (no sensitive data)
-    const params = new URLSearchParams({
-      payment_intent: paymentIntent.id,
-    });
-    
-    window.location.href = `/payment/success?${params.toString()}`;
+    // Use replace instead of href to prevent back button issues
+    window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}`);
   };
 
   // Real-time email validation
@@ -280,14 +390,14 @@ function PaymentContent() {
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">Start:</span>
                         <span className="text-white text-right font-medium">
-                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
+                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : 'ÔÇö'}
                           {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
                         </span>
                       </div>
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">End:</span>
                         <span className="text-white text-right font-medium">
-                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
+                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : 'ÔÇö'}
                           {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
                         </span>
                       </div>

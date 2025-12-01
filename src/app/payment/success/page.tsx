@@ -137,17 +137,27 @@ function PaymentSuccessContent() {
   };
 
   useEffect(() => {
+    // Stripe redirects add payment_intent to URL, but we should also check for it
+    // The payment_intent parameter comes from either:
+    // 1. Stripe redirect (automatic): payment_intent=pi_xxx
+    // 2. Manual redirect from payment page: payment_intent=pi_xxx
     const paymentIntentId = searchParams.get('payment_intent');
 
     const fetchBookingData = async () => {
       if (!paymentIntentId) {
+        console.error('No payment_intent found in URL');
         setLoading(false);
         return;
       }
 
+      console.log('Fetching booking data for payment intent:', paymentIntentId);
+
       // Securely fetch payment and booking details from server (no URL params)
+      // Use cache: 'no-store' to prevent Next.js from caching and showing stale data
       try {
-        const response = await fetch(`/api/payments/${paymentIntentId}`);
+        const response = await fetch(`/api/payments/${paymentIntentId}`, {
+          cache: 'no-store',
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch payment details');
@@ -155,14 +165,189 @@ function PaymentSuccessContent() {
 
         const data = await response.json();
         
+        console.log('📋 Payment data received:', {
+          paymentIntentStatus: data.paymentIntent?.status,
+          bookingExists: data.bookingExists,
+          hasBooking: !!data.booking,
+        });
+        
+        // CRITICAL: Verify payment actually succeeded before showing success page
+        if (data.paymentIntent.status !== 'succeeded') {
+          console.error('Payment not succeeded:', data.paymentIntent.status);
+          setLoading(false);
+          // Redirect to error page or show error
+          return;
+        }
+
+        // Verify payment amount is valid
+        if (!data.paymentIntent.amount || data.paymentIntent.amount <= 0) {
+          console.error('Invalid payment amount:', data.paymentIntent.amount);
+          setLoading(false);
+          return;
+        }
+        
         // Set payment intent information
         setPaymentIntent({
           id: data.paymentIntent.id,
           status: data.paymentIntent.status,
         });
 
+        // Create booking if payment succeeded and booking doesn't exist yet
+        let bookingWasCreated = false;
+        if (data.paymentIntent.status === 'succeeded' && !data.bookingExists) {
+          console.log('🔄 Payment succeeded, creating booking for:', paymentIntentId);
+          console.log('📊 Booking creation check:', {
+            status: data.paymentIntent.status,
+            bookingExists: data.bookingExists,
+            willCreate: true,
+          });
+          
+          try {
+            const createBookingResponse = await fetch(`/api/payments/${paymentIntentId}/process-success`, {
+              method: 'POST',
+              cache: 'no-store',
+            });
+            
+            if (createBookingResponse.ok) {
+              const bookingData = await createBookingResponse.json();
+              console.log('✅ Booking creation response:', {
+                bookingId: bookingData.booking?.id,
+                message: bookingData.message,
+                success: bookingData.success,
+              });
+              
+              // If booking was created or already exists, fetch updated payment data
+              if (bookingData.success) {
+                // Fetch updated payment data to get the newly created booking
+                const updatedResponse = await fetch(`/api/payments/${paymentIntentId}`, {
+                  cache: 'no-store',
+                });
+                if (updatedResponse.ok) {
+                  const updatedData = await updatedResponse.json();
+                  if (updatedData.bookingExists && updatedData.booking) {
+                    console.log('✅ Booking found in database after creation');
+                    data.booking = updatedData.booking;
+                    data.bookingExists = true;
+                    bookingWasCreated = true;
+                    
+                    // Update state immediately
+                    const bookingDetails = {
+                      standId: updatedData.booking.standId,
+                      startDate: updatedData.booking.startDate,
+                      endDate: updatedData.booking.endDate,
+                      startTime: updatedData.booking.startTime || undefined,
+                      endTime: updatedData.booking.endTime || undefined,
+                    };
+                    setBookingDetails(bookingDetails);
+                    
+                    // PIN is already generated during booking creation and stored in lock_pin
+                    // Use it directly from the booking data
+                    const pinValue = updatedData.booking.lockPin || updatedData.booking.lock_pin;
+                    if (pinValue) {
+                      setLockPin({
+                        pin: String(pinValue),
+                        pinCode: String(pinValue),
+                      });
+                      console.log('✅ Booking created with PIN:', pinValue);
+                    } else {
+                      console.warn('⚠️ Booking created but PIN not found in response');
+                    }
+                  } else {
+                    console.warn('⚠️ Booking creation succeeded but booking not found in updated data');
+                  }
+                } else {
+                  console.error('❌ Failed to fetch updated payment data after booking creation');
+                }
+              } else {
+                console.warn('⚠️ Booking creation returned success=false:', bookingData);
+              }
+            } else {
+              const errorData = await createBookingResponse.json().catch(() => ({}));
+              console.error('❌ Failed to create booking - API error:', {
+                status: createBookingResponse.status,
+                statusText: createBookingResponse.statusText,
+                error: errorData,
+              });
+              // Continue - webhook may still create it
+            }
+          } catch (bookingError) {
+            console.error('❌ Error creating booking - exception:', {
+              error: bookingError,
+              message: bookingError instanceof Error ? bookingError.message : String(bookingError),
+              stack: bookingError instanceof Error ? bookingError.stack : undefined,
+            });
+            // Continue - webhook may still create it
+          }
+        }
+
+        // Wait a moment for webhook to process, then check if booking exists
+        // Only poll if booking wasn't just created above
+        // If booking doesn't exist after payment succeeded, webhook may still be processing
+        if (data.paymentIntent.status === 'succeeded' && !data.bookingExists && !bookingWasCreated) {
+          console.log('Payment succeeded, waiting for webhook to create booking...');
+          // Poll for booking creation (webhook should create it)
+          let attempts = 0;
+          const maxAttempts = 5;
+          const pollInterval = 1000; // 1 second
+          
+          const pollForBooking = async () => {
+            if (attempts >= maxAttempts) {
+              console.warn('Booking not created after webhook processing time');
+              return;
+            }
+            
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+            
+            try {
+              const pollResponse = await fetch(`/api/payments/${paymentIntentId}`, {
+                cache: 'no-store',
+              });
+              if (pollResponse.ok) {
+                const pollData = await pollResponse.json();
+                if (pollData.bookingExists && pollData.booking) {
+                  console.log('✅ Booking found after webhook processing');
+                  data.booking = pollData.booking;
+                  data.bookingExists = true;
+                  // Trigger re-render with booking data
+                  setBookingDetails({
+                    standId: pollData.booking.standId,
+                    startDate: pollData.booking.startDate,
+                    endDate: pollData.booking.endDate,
+                    startTime: pollData.booking.startTime || undefined,
+                    endTime: pollData.booking.endTime || undefined,
+                  });
+                  
+                  // Use PIN from booking data (already generated during booking creation)
+                  const pinValue = pollData.booking.lockPin || pollData.booking.lock_pin;
+                  if (pinValue) {
+                    setLockPin({
+                      pin: String(pinValue),
+                      pinCode: String(pinValue),
+                    });
+                    console.log('✅ PIN found in booking:', pinValue);
+                  }
+                  return;
+                }
+              }
+              // Continue polling if booking not found yet
+              if (attempts < maxAttempts) {
+                await pollForBooking();
+              }
+            } catch (pollError) {
+              console.error('Error polling for booking:', pollError);
+            }
+          };
+          
+          // Start polling in background (don't block UI)
+          pollForBooking().catch(console.error);
+        }
+
         // Set booking details from server response (secure, not from URL)
-        if (data.booking) {
+        // Only if booking existed in DATABASE from initial fetch (not from metadata, not from our creation above)
+        // IMPORTANT: data.booking can exist from metadata even when bookingExists is false
+        // Only process if booking actually exists in database
+        if (data.bookingExists && data.booking && !bookingWasCreated) {
           const booking = {
             standId: data.booking.standId,
             startDate: data.booking.startDate,
@@ -172,22 +357,17 @@ function PaymentSuccessContent() {
           };
           setBookingDetails(booking);
 
-          // Generate lock PIN using booking details from server
-          const bookingStartDate = booking.startDate || '';
-          const bookingEndDate = booking.endDate;
-          
-          // If no endDate provided, default to tomorrow
-          let finalEndDate = bookingEndDate;
-          if (!finalEndDate) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            finalEndDate = tomorrow.toISOString().split('T')[0];
-          }
-          
-          try {
-            await generateLockPin(bookingStartDate, finalEndDate, booking.startTime, booking.endTime || '17:00');
-          } catch (error) {
-            console.error('[Payment Success] Error calling generateLockPin:', error);
+          // PIN is already generated during booking creation and stored in lock_pin
+          // If booking has lock_pin, use it directly; otherwise it should be in the booking data
+          if (data.booking.lockPin || data.booking.lock_pin) {
+            const pinValue = data.booking.lockPin || data.booking.lock_pin;
+            setLockPin({
+              pin: String(pinValue),
+              pinCode: String(pinValue),
+            });
+            console.log('✅ Using PIN from existing booking:', pinValue);
+          } else {
+            console.warn('⚠️ PIN not found in booking data, but should have been generated during creation');
           }
         }
       } catch (error) {
@@ -203,7 +383,6 @@ function PaymentSuccessContent() {
     };
 
     fetchBookingData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   if (loading) {

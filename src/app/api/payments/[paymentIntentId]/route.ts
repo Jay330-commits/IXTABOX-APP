@@ -38,6 +38,9 @@ export async function GET(
         where: {
           stripe_payment_intent_id: paymentIntentId,
         },
+        include: {
+          bookings: true, // Include booking if it exists
+        },
       }),
       stripe.paymentIntents.retrieve(paymentIntentId),
     ]);
@@ -49,7 +52,8 @@ export async function GET(
       );
     }
 
-    // Extract booking details from metadata
+    // Extract booking details from Stripe metadata (fallback if booking doesn't exist yet)
+    // Note: Booking is created AFTER payment succeeds in webhook, so we use metadata here
     const bookingDetails = {
       locationId: paymentIntent.metadata.locationId,
       boxId: paymentIntent.metadata.boxId,
@@ -61,6 +65,16 @@ export async function GET(
       endTime: paymentIntent.metadata.endTime,
     };
 
+    // If booking exists in database, use that; otherwise use metadata
+    const booking = payment.bookings 
+      ? {
+          id: payment.bookings.id,
+          lockPin: payment.bookings.lock_pin, // Include PIN from database
+          lock_pin: payment.bookings.lock_pin, // Also include with underscore for compatibility
+          ...bookingDetails,
+        }
+      : bookingDetails;
+
     return NextResponse.json({
       paymentIntent: {
         id: paymentIntent.id,
@@ -69,7 +83,8 @@ export async function GET(
         currency: paymentIntent.currency,
         clientSecret: paymentIntent.client_secret,
       },
-      booking: bookingDetails,
+      booking: booking,
+      bookingExists: !!payment.bookings, // Flag to indicate if booking exists in DB
       payment: {
         id: payment.id,
         amount: payment.amount.toString(),
@@ -85,4 +100,3 @@ export async function GET(
     );
   }
 }
-

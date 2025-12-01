@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-// import { verifyToken } from './lib/jwt';
 
 // Define protected routes
 // const protectedRoutes = ['/customer', '/distributer', '/admin'];
@@ -26,7 +25,7 @@ export function middleware() {
 
   // If accessing auth routes with valid token, redirect to appropriate dashboard
   // if (isAuthRoute && token) {
-  //   const decoded = verifyToken(token);
+  //   // Token verification would be implemented here using Supabase
   //   if (decoded) {
   //     const redirectPath = decoded.role === 'CUSTOMER' ? '/customer' : 
   //                         decoded.role === 'DISTRIBUTOR' ? '/distributer' : 
@@ -37,7 +36,7 @@ export function middleware() {
 
   // If accessing protected route with invalid token, redirect to login
   // if (isProtectedRoute && token) {
-  //   const decoded = verifyToken(token);
+  //   // Token verification would be implemented here using Supabase
   //   if (!decoded) {
   //     const response = NextResponse.redirect(new URL('/auth/login', request.url));
   //     response.cookies.delete('auth-token');

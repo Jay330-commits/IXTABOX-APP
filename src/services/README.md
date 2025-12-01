@@ -24,12 +24,11 @@ The authentication system follows OOP principles with proper separation of conce
   - Pagination support
 
 #### 3. AuthService (`AuthService.ts`)
-- **Purpose**: Handles authentication and authorization logic
+- **Purpose**: Provides password hashing utilities
 - **Features**:
-  - User registration and login
-  - Password hashing and verification
-  - JWT token generation and validation
-  - Session management
+  - Password hashing with bcrypt
+  - Password verification
+  - **Note**: Authentication is handled by Supabase. This service only provides password utilities.
 
 #### 4. ServiceManager (`ServiceManager.ts`)
 - **Purpose**: Dependency injection container and singleton manager
@@ -40,30 +39,13 @@ The authentication system follows OOP principles with proper separation of conce
 
 ## Usage Examples
 
-### Basic Authentication
+### Authentication
 
-```typescript
-import { serviceManager } from '@/services/ServiceManager';
+**Note**: All authentication (login/register) is handled by Supabase through API routes:
+- `/api/auth/login` - User login
+- `/api/auth/register` - User registration
 
-// Get service instances
-const authService = serviceManager.getAuthService();
-const userService = serviceManager.getUserService();
-
-// Register a new user
-const result = await authService.register({
-  fullName: 'John Doe',
-  email: 'john@example.com',
-  phone: '+1234567890',
-  password: 'securePassword123',
-  role: Role.Customer
-});
-
-// Login user
-const loginResult = await authService.login('john@example.com', 'securePassword123');
-
-// Get user by token
-const user = await authService.getUserByToken(token);
-```
+Supabase handles all password hashing and verification automatically. The AuthService is kept for potential future utility methods but currently has no methods.
 
 ### User Management
 
@@ -136,7 +118,7 @@ const result = await this.executeTransaction(async (tx) => {
 ## Security Features
 
 - Password hashing with bcrypt (12 salt rounds)
-- JWT token generation and validation
+- Supabase authentication (JWT tokens provided by Supabase)
 - Input validation and sanitization
 - SQL injection prevention through Prisma ORM
 - Role-based access control

@@ -25,6 +25,8 @@ interface PaymentFormProps {
 }
 
 function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecret }: PaymentFormProps) {
+  // Extract payment intent ID from client secret (format: pi_xxx_secret_xxx)
+  const paymentIntentId = clientSecret.split('_secret_')[0];
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -85,7 +87,7 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/payment/success`,
+        return_url: `${window.location.origin}/payment/success?payment_intent=${paymentIntentId}`,
       },
     });
 

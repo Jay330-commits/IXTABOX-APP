@@ -12,10 +12,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Database Configuration
 DATABASE_URL=your_database_connection_string
 
-# JWT Configuration (optional, has defaults)
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_EXPIRES_IN=7d
-
 # Igloo Lock Configuration (for PIN generation)
 # Note: IGLOO_DEVICE_ID is optional (has default), device IDs are dynamic and can be stored per stand
 IGLOO_CLIENT_ID=your_igloo_client_id
