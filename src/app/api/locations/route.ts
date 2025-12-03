@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
 import { status, boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { LocationService } from '@/services/LocationService';
+import { BookingService } from '@/services/BookingService';
 
 type ApiLocation = {
   id: string;
@@ -43,36 +44,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function GET() {
   try {
-    const locations = await prisma.locations.findMany({
-      where: {
-        status: {
-          not: status.Inactive,
-        },
-      },
-      include: {
-        stands: {
-          include: {
-            boxes: {
-              where: {
-                status: boxStatus.Active,
-              },
-              include: {
-                bookings: {
-                  where: {
-                    status: {
-                      in: [BookingStatus.Active, BookingStatus.Pending],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const locationService = new LocationService();
+    const bookingService = new BookingService();
+
+    // Get all active locations using LocationService
+    const locations = await locationService.getActiveLocations();
 
     const normalized = locations
       .map((location) => {
@@ -137,7 +113,9 @@ export async function GET() {
         // Location is fully booked if all boxes have active/pending bookings
         const isFullyBooked = totalBoxes > 0 && bookedBoxes === totalBoxes;
         
-        // Calculate earliest next available date per model
+        // Calculate earliest next available date per model using BookingService
+        const bookingService = new BookingService();
+        
         const getLatestEndDate = (dates: Date[]): Date | null => {
           if (dates.length === 0) return null;
           return dates.reduce((latest, endDate) => {

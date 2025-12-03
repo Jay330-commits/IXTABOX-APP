@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PaymentProcessingService } from '@/services/PaymentProcessingService';
 import { prisma } from '@/lib/prisma/prisma';
-import Stripe from 'stripe';
 
 /**
  * Secure API endpoint to fetch payment details by payment intent ID
@@ -20,17 +20,7 @@ export async function GET(
       );
     }
 
-    // Fetch payment from database and Stripe API in parallel for better performance
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-02-24.acacia',
-    });
+    const paymentService = new PaymentProcessingService();
 
     // Run database query and Stripe API call in parallel
     const [payment, paymentIntent] = await Promise.all([
@@ -42,7 +32,7 @@ export async function GET(
           bookings: true, // Include booking if it exists
         },
       }),
-      stripe.paymentIntents.retrieve(paymentIntentId),
+      paymentService.retrievePaymentIntent(paymentIntentId),
     ]);
 
     if (!payment) {
@@ -63,6 +53,8 @@ export async function GET(
       endDate: paymentIntent.metadata.endDate,
       startTime: paymentIntent.metadata.startTime,
       endTime: paymentIntent.metadata.endTime,
+      locationDisplayId: paymentIntent.metadata.locationDisplayId || paymentIntent.metadata.locationId,
+      compartment: paymentIntent.metadata.compartment || null,
     };
 
     // If booking exists in database, use that; otherwise use metadata

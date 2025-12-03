@@ -64,9 +64,12 @@ export async function POST(request: NextRequest) {
     console.log('Supabase registration result:', authResult);
 
     if (!authResult.success) {
-      console.log('Supabase registration failed:', authResult.message);
+      console.error('Supabase registration failed:', authResult.message);
+      console.error('Full auth result:', JSON.stringify(authResult, null, 2));
+      
+      // Log technical details but return generic message to user
       return NextResponse.json(
-        { success: false, message: authResult.message },
+        { success: false, message: 'Registration failed. Please try again later.' },
         { status: 400 }
       );
     }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus } from '@prisma/client';
+import { BookingService } from '@/services/BookingService';
 
 /**
  * GET /api/boxes/[boxId]/bookings
@@ -12,31 +11,18 @@ export async function GET(
 ) {
   try {
     const { boxId } = await params;
+    const bookingService = new BookingService();
 
-    // Fetch all active and pending bookings for this box
-    const bookings = await prisma.bookings.findMany({
-      where: {
-        box_id: boxId,
-        status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
-        },
-      },
-      select: {
-        start_date: true,
-        end_date: true,
-      },
-      orderBy: {
-        start_date: 'asc',
-      },
-    });
+    // Get blocked ranges using BookingService
+    const blockedRanges = await bookingService.getBoxBlockedRanges(boxId);
 
-    const bookingRanges = bookings.map(b => ({
-      start_date: b.start_date.toISOString(),
-      end_date: b.end_date.toISOString(),
+    const bookingRanges = blockedRanges.map(range => ({
+      start_date: range.start.toISOString(),
+      end_date: range.end.toISOString(),
     }));
 
-    console.log(`📅 [Blocked Ranges] Box ${boxId}: Found ${bookings.length} active/pending bookings`);
-    if (bookings.length > 0) {
+    console.log(`📅 [Blocked Ranges] Box ${boxId}: Found ${blockedRanges.length} active/pending bookings`);
+    if (blockedRanges.length > 0) {
       console.log(`📅 [Blocked Ranges] Box ${boxId} ranges:`, JSON.stringify(bookingRanges, null, 2));
     }
 

@@ -35,6 +35,8 @@ function PaymentContent() {
     endDate?: string;
     startTime?: string;
     endTime?: string;
+    locationDisplayId?: string;
+    compartment?: string | null;
   } | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('sek');
@@ -157,15 +159,17 @@ function PaymentContent() {
       return;
     }
 
-    // CRITICAL: Verify payment intent exists in Stripe before proceeding
-    const existsInStripe = await verifyPaymentIntentInStripe(paymentIntent.id);
+    // Verify payment in parallel (faster)
+    const [existsInStripe, statusVerified] = await Promise.all([
+      verifyPaymentIntentInStripe(paymentIntent.id),
+      verifyPaymentStatus(paymentIntent.id)
+    ]);
+    
     if (!existsInStripe) {
       setError('Payment verification failed. Payment intent not found in Stripe. Please contact support.');
       return;
     }
 
-    // Double-verify payment status by checking with server
-    const statusVerified = await verifyPaymentStatus(paymentIntent.id);
     if (!statusVerified) {
       setError('Payment verification failed. Please contact support.');
       return;
@@ -181,54 +185,45 @@ function PaymentContent() {
     // Show processing overlay with smooth transition
     setIsProcessingSuccess(true);
     
-    // Update payment intent with customer contact and notification preferences
-    try {
-      await fetch(`/api/payments/${paymentIntent.id}/metadata`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
+    // Update payment intent with customer contact and notification preferences (non-blocking)
+    fetch(`/api/payments/${paymentIntent.id}/metadata`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        metadata: {
+          customerEmail,
+          customerPhone,
+          emailNotification: emailNotification.toString(),
+          smsNotification: smsNotification.toString(),
         },
-        body: JSON.stringify({
-          metadata: {
-            customerEmail,
-            customerPhone,
-            emailNotification: emailNotification.toString(),
-            smsNotification: smsNotification.toString(),
-          },
-        }),
-      });
-    } catch (error) {
+      }),
+    }).catch(error => {
       console.error('Failed to update payment with contact info:', error);
-    }
+    });
     
-    // Create booking immediately after payment succeeds (for local development)
-    try {
-      console.log('🔄 Creating booking for payment:', paymentIntent.id);
-      const createBookingResponse = await fetch(`/api/payments/${paymentIntent.id}/process-success`, {
-        method: 'POST',
-      });
-      
-      if (createBookingResponse.ok) {
-        const bookingData = await createBookingResponse.json();
+    // Create booking in background (non-blocking) - webhook will handle it if this fails
+    fetch(`/api/payments/${paymentIntent.id}/process-success`, {
+      method: 'POST',
+    }).then(response => {
+      if (response.ok) {
+        return response.json();
+      }
+      return null;
+    }).then(bookingData => {
+      if (bookingData) {
         console.log('✅ Booking created successfully:', {
           bookingId: bookingData.booking?.id,
           message: bookingData.message,
         });
-      } else {
-        const errorData = await createBookingResponse.json().catch(() => ({}));
-        console.error('Failed to create booking:', errorData);
-        // Continue to success page even if booking creation fails (webhook will handle it)
       }
-    } catch (bookingError) {
-      console.error('Error creating booking:', bookingError);
-      // Continue to success page even if booking creation fails (webhook will handle it)
-    }
+    }).catch(bookingError => {
+      console.error('Error creating booking (will be handled by webhook):', bookingError);
+    });
     
-    // Small delay for smooth transition
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Redirect to success page with ONLY payment intent ID (no sensitive data)
-    // Use replace instead of href to prevent back button issues
+    // Redirect immediately - don't wait for booking creation
+    // Booking will be created by webhook or background process
     window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}`);
   };
 
@@ -373,16 +368,22 @@ function PaymentContent() {
               <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Booking Summary</h3>
                 <div className="space-y-3 text-sm">
-                  {bookingDetails?.standId && (
+                  {bookingDetails?.locationDisplayId && (
                     <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Stand ID:</span>
-                      <span className="text-white text-right font-medium">{bookingDetails.standId}</span>
+                      <span className="text-gray-400 flex-shrink-0">Location:</span>
+                      <span className="text-white text-right font-medium">{bookingDetails.locationDisplayId}</span>
                     </div>
                   )}
                   {bookingDetails?.modelId && (
                     <div className="flex justify-between items-start gap-2">
                       <span className="text-gray-400 flex-shrink-0">Model:</span>
-                      <span className="text-white text-right font-medium">{bookingDetails.modelId}</span>
+                      <span className="text-white text-right font-medium capitalize">{bookingDetails.modelId}</span>
+                    </div>
+                  )}
+                  {bookingDetails?.compartment && (
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-gray-400 flex-shrink-0">Compartment:</span>
+                      <span className="text-white text-right font-medium">C{bookingDetails.compartment}</span>
                     </div>
                   )}
                   {(bookingDetails?.startDate || bookingDetails?.endDate) && (
@@ -390,14 +391,14 @@ function PaymentContent() {
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">Start:</span>
                         <span className="text-white text-right font-medium">
-                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : 'ÔÇö'}
+                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
                           {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
                         </span>
                       </div>
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-400 flex-shrink-0">End:</span>
                         <span className="text-white text-right font-medium">
-                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : 'ÔÇö'}
+                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
                           {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
                         </span>
                       </div>
@@ -537,6 +538,7 @@ function PaymentContent() {
                   clientSecret={clientSecret}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
+                  disabled={!customerEmail || !!emailError || !customerEmail.includes('@')}
                 />
               ) : null}
             </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
+import { StandService } from '@/services/StandService';
 
 type ApiStand = {
   id: string;
@@ -33,14 +33,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function GET() {
   try {
-    const stands = await prisma.stands.findMany({
-      include: {
-        locations: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const standService = new StandService();
+    
+    // Get all stands using StandService
+    const stands = await standService.getAllStands();
 
     const normalized = stands
       .map((stand) => {

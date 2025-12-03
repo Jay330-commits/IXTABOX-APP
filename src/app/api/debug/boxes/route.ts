@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
+import { BoxService } from '@/services/BoxService';
 
 export async function GET() {
   try {
-    const boxes = await prisma.boxes.findMany({
-      select: {
-        id: true,
-        stand_id: true,
-        model: true,
-        compartment: true,
-        display_id: true,
-      },
-      orderBy: [
-        { stand_id: 'asc' },
-        { id: 'asc' },
-      ],
-      take: 20,
-    });
+    const boxService = new BoxService();
+    
+    // Get boxes using BoxService
+    const boxes = await boxService.getAllBoxes(20);
 
     const stats = {
       total: boxes.length,

@@ -82,7 +82,7 @@ interface LocationDetailsProps {
       };
     };
   };
-  onBook?: (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => void;
+  onBook?: (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, locationDisplayId?: string, compartment?: number | null) => Promise<void> | void;
   onClose?: () => void;
   initialStartDate?: string;
   initialEndDate?: string;
@@ -125,6 +125,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   const [availableBoxes, setAvailableBoxes] = useState<AvailableBox[]>([]);
   const [selectedBox, setSelectedBox] = useState<{ boxId: string; standId: string; standName: string; model: string; compartment: number | null } | null>(null);
   const [loadingBoxes, setLoadingBoxes] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
   const [boxBlockedRanges, setBoxBlockedRanges] = useState<Map<string, DateRange[]>>(new Map());
   const [modelBlockedRangesState, setModelBlockedRangesState] = useState<DateRange[]>([]);
@@ -1170,7 +1171,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             </div>
           )}
           <button
-            onClick={() => {
+            onClick={async () => {
               // Validate booking against blocked ranges (use model-level ranges if available)
               if (startDate && endDate && startTime && endTime) {
                 const start = new Date(`${startDate}T${startTime}`);
@@ -1197,7 +1198,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                 }
               }
               
-              if (onBook && selectedBox) {
+              if (onBook && selectedBox && !isBooking) {
+                setIsBooking(true);
                 logger.info('✅ [Booking Form] Booking submitted', {
                   locationId: location.id,
                   boxId: selectedBox.boxId,
@@ -1205,8 +1207,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                   model: selectedModel,
                   startDate: `${startDate}T${startTime}`,
                   endDate: `${endDate}T${endTime}`,
+                  compartment: selectedBox.compartment,
                 });
-                onBook(
+                try {
+                  const result = onBook(
                   location.id,
                   selectedBox.boxId,
                   selectedBox.standId,
@@ -1214,8 +1218,18 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                   startDate,
                   endDate,
                   startTime,
-                  endTime
-                );
+                    endTime,
+                    location.id, // locationDisplayId - using location.id as display id for now
+                    selectedBox.compartment
+                  );
+                  if (result instanceof Promise) {
+                    await result;
+                  }
+                } catch (error) {
+                  console.error('Booking error:', error);
+                  setIsBooking(false);
+                  alert('Failed to create booking. Please try again.');
+                }
               }
             }}
             disabled={
@@ -1229,7 +1243,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               !selectedModel ||
               !selectedBox ||
               loadingBoxes ||
-              isSelectedRangeBlocked
+              isSelectedRangeBlocked ||
+              isBooking
             }
             className={`w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white transition-colors
               ${
@@ -1250,7 +1265,9 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               }
               focus:outline-none focus:ring-2 focus:ring-offset-2`}
           >
-            {location.status === 'maintenance' 
+            {isBooking
+              ? 'Processing...'
+              : location.status === 'maintenance' 
               ? 'Under Maintenance' 
               : location.status === 'inactive'
               ? 'Location Inactive'

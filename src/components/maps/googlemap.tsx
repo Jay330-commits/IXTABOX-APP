@@ -386,7 +386,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   );
 
   const handleBookLocation = useCallback(
-    async (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string) => {
+    async (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, locationDisplayId?: string, compartment?: number | null) => {
       try {
         // Create secure payment session server-side
         // Booking details are stored securely, only payment intent ID is returned
@@ -404,6 +404,8 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
             endDate,
             startTime,
             endTime,
+            locationDisplayId,
+            compartment: compartment !== null && compartment !== undefined ? compartment.toString() : undefined,
           }),
         });
 
@@ -415,7 +417,8 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         const { paymentIntentId } = await response.json();
       
         // Navigate to payment page with ONLY payment intent ID (no sensitive data)
-        router.push(`/payment?payment_intent=${paymentIntentId}`);
+        // Use replace to prevent back button issues
+        router.replace(`/payment?payment_intent=${paymentIntentId}`);
         setSelectedLocation(null);
       } catch (error) {
         console.error('Failed to create payment session:', error);

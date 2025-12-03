@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PaymentStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma/prisma';
-import { processPaymentSuccess } from '@/services/PaymentProcessingService';
-
-/**
- * Get Stripe client instance
- */
-function getStripe(): Stripe {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error('STRIPE_SECRET_KEY is not configured');
-  }
-  return new Stripe(secretKey, {
-    apiVersion: '2025-02-24.acacia',
-  });
-}
+import { PaymentProcessingService } from '@/services/PaymentProcessingService';
 
 /**
  * Stripe Webhook Handler
@@ -52,7 +39,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stripe = getStripe();
+    const paymentService = new PaymentProcessingService();
+    const stripe = paymentService.getStripe();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     console.log('✅ Webhook signature verified. Event type:', event.type, 'Event ID:', event.id);
   } catch (err) {
@@ -100,17 +88,15 @@ export async function POST(request: NextRequest) {
         console.error('Invalid payment amount:', paymentIntent.amount);
         return NextResponse.json({ received: true });
       }
-
-      const stripe = getStripe();
       
       // Double-check payment status by retrieving from Stripe (prevents webhook spoofing)
       let verifiedPaymentIntent: Stripe.PaymentIntent;
       try {
-        verifiedPaymentIntent = await stripe.paymentIntents.retrieve(paymentIntent.id);
+        verifiedPaymentIntent = await paymentService.retrievePaymentIntent(paymentIntent.id);
         console.log('✅ Payment intent verified from Stripe API');
       } catch (retrieveError) {
         // Handle test webhooks that don't have real payment intents
-        if (retrieveError instanceof Error && retrieveError.message.includes('No such payment_intent')) {
+        if (retrieveError instanceof Error && retrieveError.message.includes('Payment intent not found')) {
           console.warn('⚠️ Test webhook detected - payment intent not found in Stripe. Using event data.');
           verifiedPaymentIntent = paymentIntent;
         } else {
@@ -146,7 +132,7 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const result = await processPaymentSuccess(paymentIntent.id);
+        const result = await paymentService.processPaymentSuccess(paymentIntent.id);
         
         if (result.alreadyProcessed) {
           return NextResponse.json({ received: true, message: 'Payment already processed' });

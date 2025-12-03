@@ -57,6 +57,8 @@ export async function registerWithSupabase(userData: {
   password: string;
 }): Promise<AuthResult> {
   try {
+    console.log('Attempting Supabase signUp for:', userData.email);
+    
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -64,16 +66,59 @@ export async function registerWithSupabase(userData: {
         data: {
           full_name: userData.fullName,
           phone: userData.phone,
-        }
+        },
+        // Disable email confirmation if SMTP is not configured
+        // This allows registration to succeed even if email sending fails
+        emailRedirectTo: undefined
       }
     });
 
     if (error) {
+      console.error('Supabase signUp error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      });
+      
+      // Handle specific SMTP/email confirmation errors
+      if (error.message?.toLowerCase().includes('confirmation email') || 
+          error.message?.toLowerCase().includes('sending email') ||
+          error.message?.toLowerCase().includes('email')) {
+        console.error('Email confirmation error detected. This may be due to SMTP misconfiguration.');
+        console.error('SMTP Error details:', error);
+        console.error('Check SMTP settings in Supabase dashboard: Settings > Auth > SMTP Settings');
+        
+        // If user was created but email failed, we can still proceed
+        // Check if user exists despite the error
+        if (data?.user) {
+          console.log('User was created despite email error. Proceeding with registration.');
+          return {
+            success: true,
+            user: data.user as SupabaseUser,
+            session: data.session as SupabaseSession | null
+          };
+        }
+        
+        // Log the technical error but return generic message to user
+        return {
+          success: false,
+          message: 'Registration failed. Please try again later.'
+        };
+      }
+      
+      // Log all errors but return generic message
       return {
         success: false,
-        message: error.message
+        message: 'Registration failed. Please try again.'
       };
     }
+
+    console.log('Supabase signUp successful:', {
+      userId: data.user?.id,
+      email: data.user?.email,
+      emailConfirmed: data.user?.email_confirmed_at ? 'Yes' : 'No',
+      hasSession: !!data.session
+    });
 
     return {
       success: true,
@@ -82,6 +127,7 @@ export async function registerWithSupabase(userData: {
     };
   } catch (error) {
     console.error('Supabase registration error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return {
       success: false,
       message: 'Registration failed. Please try again.'

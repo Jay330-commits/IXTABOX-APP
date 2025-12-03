@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus, BoxModel } from '@prisma/client';
-import { mergeRanges, normalizeDate, type Range } from '@/utils/dates';
+import { BookingStatus, BoxModel, boxStatus } from '@prisma/client';
+import { BookingService } from '@/services/BookingService';
+import { LocationService } from '@/services/LocationService';
 
 /**
  * GET /api/locations/[id]/model-blocked-ranges
@@ -43,72 +43,32 @@ export async function GET(
       );
     }
 
-    // Fetch location with all stands and boxes of the specified model
-    const location = await prisma.locations.findUnique({
-      where: { id: locationId },
-      include: {
-        stands: {
-          include: {
-            boxes: {
-              where: {
-                model: model,
-                status: 'Active',
-              },
-              include: {
-                bookings: {
-                  where: {
-                    status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
-                    },
-                  },
-                  select: {
-                    start_date: true,
-                    end_date: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const bookingService = new BookingService();
+    const locationService = new LocationService();
 
-    if (!location) {
-      return NextResponse.json(
-        { error: 'Location not found' },
-        { status: 404 }
-      );
-    }
+    // Get blocked ranges using BookingService
+    const blockedRanges = await bookingService.getModelBlockedRanges(locationId, model);
 
-    // Collect all booking ranges from all boxes of this model
-    const allRanges: Range[] = [];
-    const boxSummary: Array<{ boxId: string; displayId: string; bookingCount: number }> = [];
+    // Fetch location for display name and box summary using LocationService
+    const location = await locationService.getLocation(locationId);
+
+    // Collect box summary for logging - filter by model
+    const boxSummary: Array<{ boxId: string; displayId: string }> = [];
     let totalBoxes = 0;
 
     location.stands.forEach(stand => {
-      stand.boxes.forEach(box => {
-        totalBoxes++;
-        const boxBookings: Range[] = [];
-        box.bookings.forEach(booking => {
-          const range = {
-            start: normalizeDate(booking.start_date),
-            end: normalizeDate(booking.end_date),
-          };
-          allRanges.push(range);
-          boxBookings.push(range);
-        });
-        if (boxBookings.length > 0) {
+      stand.boxes
+        .filter(box => box.model === model && box.status === boxStatus.Active)
+        .forEach(box => {
+          totalBoxes++;
           boxSummary.push({
             boxId: box.id,
             displayId: box.display_id || 'N/A',
-            bookingCount: boxBookings.length,
           });
-        }
-      });
+        });
     });
 
-    // Merge overlapping/adjacent ranges
-    const mergedRanges = mergeRanges(allRanges);
+    const mergedRanges = blockedRanges.ranges;
 
     // Print comprehensive summary to terminal
     console.error('\n' + '='.repeat(80));
@@ -119,14 +79,14 @@ export async function GET(
     console.error(`📦 Boxes with bookings: ${boxSummary.length}`);
     
     if (boxSummary.length > 0) {
-      console.error('\n📦 Boxes contributing to blocked ranges:');
+      console.error('\n📦 Boxes of this model at location:');
       boxSummary.forEach((box, index) => {
-        console.error(`   ${index + 1}. Box ${box.displayId} (${box.boxId.substring(0, 8)}...): ${box.bookingCount} booking(s)`);
+        console.error(`   ${index + 1}. Box ${box.displayId} (${box.boxId.substring(0, 8)}...)`);
       });
     }
     
     console.error(`\n📊 Summary:`);
-    console.error(`   • Individual bookings found: ${allRanges.length}`);
+    console.error(`   • Individual bookings found: ${blockedRanges.totalBookings}`);
     console.error(`   • Merged blocked ranges: ${mergedRanges.length}`);
     
     if (mergedRanges.length === 0) {
@@ -150,8 +110,8 @@ export async function GET(
         start: r.start.toISOString(),
         end: r.end.toISOString(),
       })),
-      totalBookings: allRanges.length,
-      mergedRangesCount: mergedRanges.length,
+      totalBookings: blockedRanges.totalBookings,
+      mergedRangesCount: blockedRanges.mergedRangesCount,
     });
   } catch (error) {
     console.error('Failed to fetch model blocked ranges:', error);

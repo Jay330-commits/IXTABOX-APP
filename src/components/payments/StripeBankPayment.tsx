@@ -22,9 +22,10 @@ interface PaymentFormProps {
   onSuccess?: (paymentIntent: PaymentIntent) => void;
   onError?: (error: StripeError) => void;
   clientSecret: string;
+  disabled?: boolean;
 }
 
-function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecret }: PaymentFormProps) {
+function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecret, disabled = false }: PaymentFormProps) {
   // Extract payment intent ID from client secret (format: pi_xxx_secret_xxx)
   const paymentIntentId = clientSecret.split('_secret_')[0];
   const stripe = useStripe();
@@ -140,9 +141,10 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       </div>
 
       <button
-        disabled={isLoading || !stripe || !elements}
+        disabled={isLoading || !stripe || !elements || disabled}
         id="submit"
         className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition-all duration-300 shadow-[0_0_24px_rgba(34,211,238,0.45)] hover:shadow-[0_0_32px_rgba(34,211,238,0.6)] transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
+        title={disabled ? 'Please fill in your email address before proceeding with payment' : ''}
       >
         <span id="button-text">
           {isLoading ? (
@@ -194,6 +196,7 @@ interface StripeBankPaymentProps {
   onSuccess?: (paymentIntent: PaymentIntent) => void;
   onError?: (error: StripeError) => void;
   clientSecret: string;
+  disabled?: boolean;
 }
 
 export default function StripeBankPayment({ 
@@ -201,7 +204,8 @@ export default function StripeBankPayment({
   currency = 'sek', 
   onSuccess, 
   onError, 
-  clientSecret 
+  clientSecret,
+  disabled = false
 }: StripeBankPaymentProps) {
   const appearance = {
     theme: 'night' as const,
@@ -295,6 +299,7 @@ export default function StripeBankPayment({
             onSuccess={onSuccess}
             onError={onError}
             clientSecret={clientSecret}
+            disabled={disabled}
           />
         </Elements>
 

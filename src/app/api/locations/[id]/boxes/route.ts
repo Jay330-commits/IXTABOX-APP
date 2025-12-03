@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/prisma';
 import { boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { BookingService } from '@/services/BookingService';
+import { LocationService } from '@/services/LocationService';
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
-
-type Booking = {
-  start_date: Date;
-  end_date: Date;
-};
 
 type BoxWithBookings = {
   id: string;
@@ -17,7 +13,10 @@ type BoxWithBookings = {
   display_id: string;
   compartment: number | null;
   status: boxStatus | null;
-  bookings: Booking[];
+  bookings: Array<{
+    start_date: Date;
+    end_date: Date;
+  }>;
 };
 
 type ProcessedBox = {
@@ -46,95 +45,6 @@ type StandGroup = {
 };
 
 // ============================================================================
-// Helper Functions - Date & Booking Logic
-// ============================================================================
-
-/**
- * Check if two date ranges overlap
- */
-function hasDateOverlap(
-  start1: Date,
-  end1: Date,
-  start2: Date,
-  end2: Date
-): boolean {
-  return start1 <= end2 && end1 >= start2;
-}
-
-/**
- * Find bookings that conflict with the requested date range
- */
-function findConflictingBookings(
-  bookings: Booking[],
-  requestedStart: Date,
-  requestedEnd: Date
-): Booking[] {
-  return bookings.filter((booking) =>
-    hasDateOverlap(
-      new Date(booking.start_date),
-      new Date(booking.end_date),
-      requestedStart,
-      requestedEnd
-    )
-  );
-}
-
-/**
- * Get the latest end date from a list of bookings
- */
-function getLatestEndDate(bookings: Booking[]): Date | null {
-  if (bookings.length === 0) return null;
-  
-  return bookings.reduce((latest, booking) => {
-    const bookingEnd = new Date(booking.end_date);
-    return bookingEnd > latest ? bookingEnd : latest;
-  }, new Date(0));
-}
-
-/**
- * Calculate box availability based on bookings and requested dates
- */
-function calculateAvailability(
-  bookings: Booking[],
-  requestedStartDate: string | null,
-  requestedEndDate: string | null
-): { isAvailable: boolean; nextAvailableDate: string | null } {
-  // If no bookings, box is available
-  if (bookings.length === 0) {
-    return { isAvailable: true, nextAvailableDate: null };
-  }
-
-  // If no dates specified, check all bookings
-  if (!requestedStartDate || !requestedEndDate) {
-    const latestEndDate = getLatestEndDate(bookings);
-    return {
-      isAvailable: false,
-      nextAvailableDate: latestEndDate ? latestEndDate.toISOString() : null,
-    };
-  }
-
-  // Check for conflicts with requested dates
-  const requestedStart = new Date(requestedStartDate);
-  const requestedEnd = new Date(requestedEndDate);
-  const conflictingBookings = findConflictingBookings(
-    bookings,
-    requestedStart,
-    requestedEnd
-  );
-
-  if (conflictingBookings.length === 0) {
-    return { isAvailable: true, nextAvailableDate: null };
-  }
-
-  // Get the latest end date from conflicting bookings
-  const latestEndDate = getLatestEndDate(conflictingBookings);
-  return {
-    isAvailable: false,
-    nextAvailableDate: latestEndDate ? latestEndDate.toISOString() : null,
-  };
-}
-
-// ============================================================================
 // Box Processing Functions
 // ============================================================================
 
@@ -149,7 +59,8 @@ function processBoxes(
   }>,
   modelFilter: string | null,
   requestedStartDate: string | null,
-  requestedEndDate: string | null
+  requestedEndDate: string | null,
+  bookingService: BookingService
 ): ProcessedBox[] {
   return stands.flatMap((stand) =>
     stand.boxes
@@ -161,7 +72,7 @@ function processBoxes(
         return box.status === boxStatus.Active;
       })
       .map((box) => {
-        const { isAvailable, nextAvailableDate } = calculateAvailability(
+        const { isAvailable, nextAvailableDate } = bookingService.calculateAvailability(
           box.bookings,
           requestedStartDate,
           requestedEndDate
@@ -228,41 +139,19 @@ export async function GET(
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Fetch location with stands, boxes, and bookings
-    const location = await prisma.locations.findUnique({
-      where: { id },
-      include: {
-        stands: {
-          include: {
-            boxes: {
-              include: {
-                bookings: {
-                  where: {
-                    status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const bookingService = new BookingService();
+    const locationService = new LocationService();
 
-    if (!location) {
-      return NextResponse.json(
-        { error: 'Location not found' },
-        { status: 404 }
-      );
-    }
+    // Fetch location with stands, boxes, and bookings using LocationService
+    const location = await locationService.getLocationWithBookings(id);
 
     // Process all boxes with availability information
     const processedBoxes = processBoxes(
       location.stands,
       model,
       startDate,
-      endDate
+      endDate,
+      bookingService
     );
 
     // Group boxes by stand
