@@ -53,7 +53,7 @@ export class LocationService extends BaseService {
             distributor_id: data.distributorId,
             name: data.name,
             address: data.address ?? null,
-            coordinates: data.coordinates ?? null,
+            coordinates: data.coordinates ?? Prisma.JsonNull,
             status: data.status ?? status.Available,
             display_id: data.displayId, // If not provided, database will auto-generate
           },
@@ -127,7 +127,9 @@ export class LocationService extends BaseService {
         const updateData: Prisma.locationsUpdateInput = {};
 
         if (data.distributorId !== undefined) {
-          updateData.distributor_id = data.distributorId;
+          updateData.distributors = {
+            connect: { id: data.distributorId }
+          };
         }
         if (data.name !== undefined) {
           updateData.name = data.name;
@@ -136,7 +138,7 @@ export class LocationService extends BaseService {
           updateData.address = data.address;
         }
         if (data.coordinates !== undefined) {
-          updateData.coordinates = data.coordinates;
+          updateData.coordinates = data.coordinates === null ? Prisma.JsonNull : data.coordinates;
         }
         if (data.status !== undefined) {
           updateData.status = data.status;

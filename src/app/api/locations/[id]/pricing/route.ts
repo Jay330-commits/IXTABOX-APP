@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const locationId = params.id;
+    const { id: locationId } = await params;
 
     // Try to get pricing from platform_settings first
     const basePriceSetting = await prisma.platform_settings.findUnique({

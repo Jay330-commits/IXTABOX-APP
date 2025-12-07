@@ -51,7 +51,7 @@ export class StandService extends BaseService {
             location_id: data.locationId,
             name: data.name,
             capacity: data.capacity ?? 1,
-            features: data.features ?? null,
+            features: data.features ?? Prisma.JsonNull,
             display_id: data.displayId, // If not provided, database will auto-generate
           },
           include: {
@@ -124,7 +124,9 @@ export class StandService extends BaseService {
         const updateData: Prisma.standsUpdateInput = {};
 
         if (data.locationId !== undefined) {
-          updateData.location_id = data.locationId;
+          updateData.locations = {
+            connect: { id: data.locationId }
+          };
         }
         if (data.name !== undefined) {
           updateData.name = data.name;
@@ -133,7 +135,7 @@ export class StandService extends BaseService {
           updateData.capacity = data.capacity;
         }
         if (data.features !== undefined) {
-          updateData.features = data.features;
+          updateData.features = data.features === null ? Prisma.JsonNull : data.features;
         }
         if (data.displayId !== undefined) {
           updateData.display_id = data.displayId;

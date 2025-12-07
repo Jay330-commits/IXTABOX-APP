@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     // For now, return basic info from public_users
     return NextResponse.json({
       user: {
-        name: user.name || 'Guest User',
+        name: user.full_name || 'Guest User',
         email: user.email,
         phone: user.phone || null,
       },
