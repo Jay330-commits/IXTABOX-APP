@@ -1,6 +1,6 @@
 import 'server-only';
 import { Prisma, BookingStatus, boxStatus } from '@prisma/client';
-import { BaseService } from './BaseService';
+import { BaseService } from '../BaseService';
 
 export interface CreateStandData {
   locationId: string;

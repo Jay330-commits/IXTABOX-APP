@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PaymentProcessingService } from '@/services/PaymentProcessingService';
+import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 import { prisma } from '@/lib/prisma/prisma';
 
 /**

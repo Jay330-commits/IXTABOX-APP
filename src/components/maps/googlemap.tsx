@@ -418,8 +418,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       
         // Navigate to payment page with ONLY payment intent ID (no sensitive data)
         // Use replace to prevent back button issues
+        // Don't close modal immediately - let it stay open until navigation completes
         router.replace(`/payment?payment_intent=${paymentIntentId}`);
-        setSelectedLocation(null);
+        // Modal will close automatically when component unmounts after navigation
       } catch (error) {
         console.error('Failed to create payment session:', error);
         alert('Failed to start payment. Please try again.');
@@ -510,15 +511,15 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {selectedLocation && (
         <div
           className="fixed inset-0 z-[1003] bg-black/50 flex items-center justify-center px-4 py-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedLocation(null);
-          }}
+          // Modal only closes via X button - no onClick handler to prevent closing on backdrop click
         >
           <div
             className="max-w-lg w-full max-h-[calc(100vh-80px)] overflow-y-auto bg-white rounded-lg shadow-xl"
             style={{ maxHeight: 'calc(100vh - 80px)' }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              // Prevent clicks inside modal from bubbling up to backdrop
+              e.stopPropagation();
+            }}
           >
             <LocationDetails
               location={{

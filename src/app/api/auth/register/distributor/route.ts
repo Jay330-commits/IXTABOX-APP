@@ -1,8 +1,8 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { registerWithSupabase, SupabaseSession } from '@/lib/supabase-auth';
-import { UserService } from '@/services/UserService';
-import { DistributorService } from '@/services/DistributorService';
+import { UserService } from '../../../../../services/user/UserService';
+import { DistributorService } from '@/services/distributors/DistributorService';
 import { ContractType } from '@prisma/client';
 
 export async function POST(request: NextRequest) {

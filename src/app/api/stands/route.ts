@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { StandService } from '@/services/StandService';
+import { StandService } from '@/services/locations/StandService';
 
 type ApiStand = {
   id: string;

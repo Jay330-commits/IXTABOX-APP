@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processPaymentSuccess } from '@/services/PaymentProcessingService';
+import { processPaymentSuccess } from '@/services/bookings/PaymentProcessingService';
 
 /**
  * Process payment success locally (for local development when webhooks don't work)
@@ -19,9 +19,37 @@ export async function POST(
       );
     }
 
+    // Get email from request body (from contact form)
+    let customerEmail: string | null = null;
+    try {
+      const contentType = request.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const text = await request.text();
+        if (text?.trim()) {
+          try {
+            const body = JSON.parse(text);
+            customerEmail = body.customerEmail || null;
+            if (customerEmail) {
+              console.log('📧 Email from form:', customerEmail);
+            } else {
+              console.log('📧 No email in request body');
+            }
+          } catch {
+            console.log('📧 Invalid JSON in request body');
+          }
+        } else {
+          console.log('📧 Empty request body');
+        }
+      } else {
+        console.log('📧 No JSON content type, skipping body parse');
+      }
+    } catch (error) {
+      console.log('📧 Could not read request body:', error instanceof Error ? error.message : String(error));
+    }
+
     console.log('🔄 Processing payment success locally for:', paymentIntentId);
 
-    const result = await processPaymentSuccess(paymentIntentId);
+    const result = await processPaymentSuccess(paymentIntentId, customerEmail);
 
     if (result.alreadyProcessed) {
       return NextResponse.json({

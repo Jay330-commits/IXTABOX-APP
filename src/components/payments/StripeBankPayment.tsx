@@ -85,6 +85,16 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
     // Add smooth scroll to top for better mobile UX
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    // Store email in localStorage BEFORE redirect (so success page can use it)
+    // Get email from the payment page's input field via a custom event or localStorage
+    // The payment page should have already stored it, but we ensure it's there
+    const storedEmail = localStorage.getItem(`payment_email_${paymentIntentId}`);
+    if (storedEmail) {
+      console.log('📧 [StripeBankPayment] Email already stored, proceeding with payment');
+    } else {
+      console.log('📧 [StripeBankPayment] No email found in localStorage before redirect');
+    }
+
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {

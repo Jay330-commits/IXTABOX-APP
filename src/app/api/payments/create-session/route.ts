@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PaymentProcessingService } from '@/services/PaymentProcessingService';
-import { BookingService } from '@/services/BookingService';
+import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
+import { BookingService } from '@/services/bookings/BookingService';
 import { prisma } from '@/lib/prisma/prisma';
 import { PaymentStatus } from '@prisma/client';
 

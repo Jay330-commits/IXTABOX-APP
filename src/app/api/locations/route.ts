@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { status, boxStatus, BoxModel, BookingStatus } from '@prisma/client';
-import { LocationService } from '@/services/LocationService';
-import { BookingService } from '@/services/BookingService';
+import { LocationService } from '@/services/locations/LocationService';
+import { BookingService } from '@/services/bookings/BookingService';
 
 type ApiLocation = {
   id: string;
@@ -138,9 +138,9 @@ export async function GET() {
         }
         
         if (isFullyBooked) {
-          console.log(`[Locations] ${location.name} - FULLY BOOKED (${bookedBoxes}/${totalBoxes} boxes)`);
+          // Location fully booked (logging removed)
         } else {
-          console.log(`[Locations] ${location.name} - Available (${classicCount + proCount} boxes free, ${bookedBoxes}/${totalBoxes} booked)`);
+          // Location available (logging removed)
         }
 
         const statusMap: Record<status, ApiLocation['status']> = {
@@ -176,7 +176,7 @@ export async function GET() {
           },
         };
         
-        console.log(`[API] Location "${location.name}" - isFullyBooked: ${apiLocation.isFullyBooked}, earliestNextAvailableDate: ${apiLocation.earliestNextAvailableDate}`);
+        // Location API response (logging removed)
         
         return apiLocation;
       })

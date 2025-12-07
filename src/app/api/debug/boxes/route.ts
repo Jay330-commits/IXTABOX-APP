@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { BoxService } from '@/services/BoxService';
+import { BoxService } from '@/services/locations/BoxService';
 
 export async function GET() {
   try {

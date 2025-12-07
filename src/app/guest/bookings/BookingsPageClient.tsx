@@ -1,73 +1,46 @@
 "use client";
-import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import BookingList from '@/components/bookings/BookingList';
 import BookingDetailsModal from '@/components/bookings/BookingDetailsModal';
 import GuestHeader from '@/components/layouts/GuestHeader';
 import Footer from '@/components/layouts/Footer';
 
-// Example data - in a real app, this would come from an API
-const mockStands = [
-  {
-    id: 1,
-    lat: 59.3293,
-    lng: 18.0686,
-    title: 'Stockholm Central',
-    address: 'Centralplan 15, Stockholm',
-    status: 'available' as const,
-    pricePerDay: 299.99,
-  },
-  {
-    id: 2,
-    lat: 59.3308,
-    lng: 18.0826,
-    title: 'Kungsträdgården',
-    address: 'Kungsträdgården 12, Stockholm',
-    status: 'available' as const,
-    pricePerDay: 349.99,
-  },
-];
+type Booking = {
+  id: string;
+  standId: string;
+  address: string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'pending' | 'completed' | 'cancelled';
+  model: {
+    name: string;
+    description: string;
+    priceMultiplier: number;
+  };
+  pricePerDay: number;
+  locationName?: string;
+  boxDisplayId?: string;
+  standDisplayId?: string;
+};
 
-const mockBookings = [
-  {
-    id: '1',
-    standId: '1',
-    address: 'Centralplan 15, Stockholm',
-    startDate: '2025-10-15T10:00:00',
-    endDate: '2025-10-18T10:00:00',
-    status: 'active' as const,
-    model: {
-      name: 'IXTAbox Pro 190',
-      description: 'Premium model with advanced features',
-      priceMultiplier: 1.5,
-    },
-    pricePerDay: 299.99,
-  },
-  {
-    id: '2',
-    standId: '2',
-    address: 'Kungsträdgården 12, Stockholm',
-    startDate: '2025-10-20T14:00:00',
-    endDate: '2025-10-22T10:00:00',
-    status: 'pending' as const,
-    model: {
-      name: 'IXTAbox Pro 175',
-      description: 'Standard model with essential features',
-      priceMultiplier: 1.0,
-    },
-    pricePerDay: 349.99,
-  },
-];
+type UserDetails = {
+  name: string;
+  email: string;
+  phone: string | null;
+};
 
 export default function BookingsPageClient() {
-  const searchParams = useSearchParams();
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
   const [searchEmail, setSearchEmail] = useState('');
   const [searchReference, setSearchReference] = useState('');
   const [searchMode, setSearchMode] = useState(false);
-  const [searchResults, setSearchResults] = useState<typeof mockBookings>([]);
+  const [searchResults, setSearchResults] = useState<Booking[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
 
   const handleBookingClick = (bookingId: string) => {
     setSelectedBooking(bookingId);
@@ -89,6 +62,69 @@ export default function BookingsPageClient() {
     setSelectedBooking(null);
   };
 
+  // Fetch user bookings when email is provided
+  useEffect(() => {
+    const fetchBookingsByEmail = async () => {
+      if (!searchEmail) return;
+
+      setLoadingBookings(true);
+      try {
+        const response = await fetch('/api/bookings/guest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: searchEmail }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setBookings(data.bookings || []);
+        } else {
+          setBookings([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch bookings:', error);
+        setBookings([]);
+      } finally {
+        setLoadingBookings(false);
+      }
+    };
+
+    // Also fetch user details when email is provided
+    const fetchUserDetails = async () => {
+      if (!searchEmail) return;
+
+      setLoadingUserDetails(true);
+      try {
+        const response = await fetch('/api/guest/user-details', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: searchEmail }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserDetails(data.user);
+        } else {
+          setUserDetails(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user details:', error);
+        setUserDetails(null);
+      } finally {
+        setLoadingUserDetails(false);
+      }
+    };
+
+    if (searchEmail) {
+      fetchBookingsByEmail();
+      fetchUserDetails();
+    }
+  }, [searchEmail]);
+
   const handleSearch = async () => {
     if (!searchEmail || !searchReference) {
       setSearchError('Please enter both email and booking reference');
@@ -99,24 +135,30 @@ export default function BookingsPageClient() {
     setSearchError('');
 
     try {
-      // In a real app, this would be an API call
-      // Simulating API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock search - find bookings matching email and reference
-      const results = mockBookings.filter(booking => 
-        booking.id === searchReference
-      );
+      const response = await fetch('/api/bookings/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: searchEmail,
+          bookingReference: searchReference,
+        }),
+      });
 
-      if (results.length === 0) {
-        setSearchError('No bookings found with the provided details');
+      const data = await response.json();
+
+      if (!response.ok || !data.bookings || data.bookings.length === 0) {
+        setSearchError(data.error || 'No bookings found with the provided details');
         setSearchResults([]);
       } else {
-        setSearchResults(results);
+        setSearchResults(data.bookings);
         setSearchMode(true);
       }
-    } catch {
+    } catch (error) {
+      console.error('Search error:', error);
       setSearchError('An error occurred while searching. Please try again.');
+      setSearchResults([]);
     } finally {
       setSearching(false);
     }
@@ -130,46 +172,12 @@ export default function BookingsPageClient() {
     setSearchError('');
   };
 
-  const bookings = useMemo(() => {
-    const standId = searchParams.get('standId');
-    const modelId = searchParams.get('modelId');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    if (!standId || !startDate) return mockBookings;
-    const stand = mockStands.find(s => s.id.toString() === standId);
-    if (!stand) return mockBookings;
-    const model = modelId === 'pro' ? { name: 'IXTAbox Pro 185', description: 'Premium model with advanced features', priceMultiplier: 1.5 }
-      : modelId === 'elite' ? { name: 'IXTAbox Elite', description: 'Elite tier with maximum capacity', priceMultiplier: 2.0 }
-      : { name: 'IXTAbox Pro 175', description: 'Standard model with essential features', priceMultiplier: 1.0 };
-    
-    // Generate a stable ID based on the booking parameters (no Date.now() to avoid hydration issues)
-    const stableId = `new-${standId}-${modelId || 'classic'}-${startDate}`;
-    
-    const generated = {
-      id: stableId,
-      standId: standId,
-      address: stand.address,
-      startDate: new Date(startDate).toISOString(),
-      endDate: endDate ? new Date(endDate).toISOString() : new Date(new Date(startDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      status: 'pending' as const,
-      model,
-      pricePerDay: stand.pricePerDay ?? 299.99,
-    };
-    return [generated, ...mockBookings];
-  }, [searchParams]);
-
-  React.useEffect(() => {
-    const first = bookings[0];
-    if (first && typeof first.id === 'string' && first.id.startsWith('new-')) {
-      setSelectedBooking(first.id);
-    }
-  }, [bookings]);
+  // Display bookings - use search results if in search mode, otherwise show all bookings for the email
+  const displayBookings = searchMode ? searchResults : bookings;
 
   const currentBooking = selectedBooking 
-    ? (searchMode ? searchResults : bookings).find(b => b.id === selectedBooking)
+    ? displayBookings.find(b => b.id === selectedBooking)
     : null;
-
-  const displayBookings = searchMode ? searchResults : bookings;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -257,47 +265,81 @@ export default function BookingsPageClient() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Info Section */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Account Details</h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-gray-400">Name</label>
-                  <p className="text-white">John Doe</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400">Email</label>
-                  <p className="text-white">john.doe@example.com</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400">Phone</label>
-                  <p className="text-white">+46 70 123 4567</p>
-                </div>
+          {searchEmail && (
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">Account Details</h2>
+                {loadingUserDetails ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+                  </div>
+                ) : userDetails ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-400">Name</label>
+                      <p className="text-white">{userDetails.name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400">Email</label>
+                      <p className="text-white">{userDetails.email}</p>
+                    </div>
+                    {userDetails.phone && (
+                      <div>
+                        <label className="block text-sm text-gray-400">Phone</label>
+                        <p className="text-white">{userDetails.phone}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-400">Enter email to view account details</div>
+                )}
               </div>
-            </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Active Bookings</span>
-                  <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Pending Bookings</span>
-                  <span className="text-white">{bookings.filter(b => b.status === 'pending').length}</span>
-                </div>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
+                {loadingBookings ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Active Bookings</span>
+                      <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Pending Bookings</span>
+                      <span className="text-white">{bookings.filter(b => b.status === 'pending').length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Total Bookings</span>
+                      <span className="text-white">{bookings.length}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Bookings List Section */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className={searchEmail ? "lg:col-span-2 space-y-6" : "lg:col-span-3 space-y-6"}>
             <section className="bg-white/5 border border-white/10 rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">
-                {searchMode ? 'Search Results' : 'All Bookings'}
+                {searchMode ? 'Search Results' : searchEmail ? 'All Bookings' : 'Enter your email to view bookings'}
               </h2>
-              {displayBookings.length === 0 ? (
+              {!searchEmail ? (
+                <div className="text-center py-8">
+                  <svg className="h-12 w-12 text-gray-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  <p className="text-gray-400">Enter your email address above to view your bookings</p>
+                </div>
+              ) : loadingBookings ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                </div>
+              ) : displayBookings.length === 0 ? (
                 <div className="text-center py-8">
                   <svg className="h-12 w-12 text-gray-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>

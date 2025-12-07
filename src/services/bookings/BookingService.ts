@@ -1,7 +1,7 @@
 import 'server-only';
 import { BookingStatus, PaymentStatus, BoxModel, boxStatus } from '@prisma/client';
-import { BaseService } from './BaseService';
-import { IglooService } from './IglooService';
+import { BaseService } from '../BaseService';
+import { IglooService } from '../locations/IglooService';
 import { mergeRanges, normalizeDate, type Range } from '@/utils/dates';
 
 /**

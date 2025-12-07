@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BookingService } from '@/services/BookingService';
+import { BookingService } from '@/services/bookings/BookingService';
 
 /**
  * GET /api/boxes/[boxId]/bookings

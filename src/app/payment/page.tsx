@@ -5,14 +5,22 @@ import { useSearchParams } from 'next/navigation';
 import { PaymentIntent, StripeError } from '@stripe/stripe-js';
 import StripeBankPayment from '@/components/payments/StripeBankPayment';
 import GuestHeader from '@/components/layouts/GuestHeader';
+import CustomerHeader from '@/components/layouts/CustomerHeader';
 import Footer from '@/components/layouts/Footer';
+import { useAuth } from '@/contexts/AuthContext';
+import { Role } from '@/types/auth';
 
 function PaymentContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [isProcessingSuccess, setIsProcessingSuccess] = useState(false);
+  const [activeSection, setActiveSection] = useState("dashboard");
+  
+  // Determine if user is a customer
+  const isCustomer = user && user.role === Role.CUSTOMER;
   
   // Notification preferences
   const [customerEmail, setCustomerEmail] = useState('');
@@ -104,7 +112,7 @@ function PaymentContent() {
         return false;
       }
 
-      console.log('✅ Payment intent verified in Stripe:', {
+      console.log('Payment intent verified in Stripe:', {
         id: verifyData.paymentIntent.id,
         status: verifyData.paymentIntent.status,
         amount: verifyData.paymentIntent.amount,
@@ -143,7 +151,7 @@ function PaymentContent() {
   };
 
   const handlePaymentSuccess = async (paymentIntent: PaymentIntent) => {
-    console.log('Payment succeeded:', paymentIntent);
+    console.log(' [handlePaymentSuccess] Called with email from state:', customerEmail);
     
     // CRITICAL: Verify payment is actually succeeded before redirecting
     if (paymentIntent.status !== 'succeeded') {
@@ -175,56 +183,76 @@ function PaymentContent() {
       return;
     }
 
+    // Get email from state - this is the email the user typed in the form
+    const emailToUse = customerEmail;
+    console.log('[handlePaymentSuccess] Email from customerEmail state:', emailToUse);
+    
     // Validate customer email before proceeding
-    if (!customerEmail || !customerEmail.includes('@')) {
+    if (!emailToUse || !emailToUse.includes('@')) {
+      console.error('[handlePaymentSuccess] NO VALID EMAIL IN STATE');
       setError('Please provide a valid email address before completing payment.');
       setEmailError('Valid email required');
       return;
     }
 
+    // Store email in localStorage so success page can retrieve it
+    localStorage.setItem(`payment_email_${paymentIntent.id}`, emailToUse);
+    console.log('[handlePaymentSuccess] Stored email in localStorage:', emailToUse);
+
     // Show processing overlay with smooth transition
     setIsProcessingSuccess(true);
     
-    // Update payment intent with customer contact and notification preferences (non-blocking)
-    fetch(`/api/payments/${paymentIntent.id}/metadata`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        metadata: {
-          customerEmail,
-          customerPhone,
-          emailNotification: emailNotification.toString(),
-          smsNotification: smsNotification.toString(),
-        },
-      }),
-    }).catch(error => {
-      console.error('Failed to update payment with contact info:', error);
-    });
+    // Update metadata (optional - for Stripe records)
+    try {
+      await fetch(`/api/payments/${paymentIntent.id}/metadata`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: {
+            customerEmail: emailToUse,
+            customerPhone,
+            customerName: emailToUse.split('@')[0],
+            emailNotification: emailNotification.toString(),
+            smsNotification: smsNotification.toString(),
+          },
+        }),
+      });
+    } catch (metadataError) {
+      // Non-critical - email will be passed directly to process-success
+      console.warn('Metadata update failed (non-critical):', metadataError);
+    }
     
-    // Create booking in background (non-blocking) - webhook will handle it if this fails
-    fetch(`/api/payments/${paymentIntent.id}/process-success`, {
-      method: 'POST',
-    }).then(response => {
-      if (response.ok) {
-        return response.json();
+    // Process payment success - pass email directly from contact form
+    // MUST complete before redirecting so email is available
+    try {
+      const requestBody = {
+        customerEmail: emailToUse,
+        customerPhone,
+        customerName: emailToUse.split('@')[0],
+      };
+      console.log('[handlePaymentSuccess] Sending to process-success with email:', emailToUse);
+      const processResponse = await fetch(`/api/payments/${paymentIntent.id}/process-success`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (processResponse.ok) {
+        const result = await processResponse.json();
+        console.log('[handlePaymentSuccess] Booking processed:', result.message);
+      } else {
+        const error = await processResponse.json().catch(() => ({}));
+        console.error('[handlePaymentSuccess] Process failed:', error);
       }
-      return null;
-    }).then(bookingData => {
-      if (bookingData) {
-        console.log('✅ Booking created successfully:', {
-          bookingId: bookingData.booking?.id,
-          message: bookingData.message,
-        });
-      }
-    }).catch(bookingError => {
-      console.error('Error creating booking (will be handled by webhook):', bookingError);
-    });
+    } catch (bookingError) {
+      console.error('[handlePaymentSuccess] Error processing booking:', bookingError);
+    }
     
-    // Redirect immediately - don't wait for booking creation
-    // Booking will be created by webhook or background process
-    window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}`);
+    // Redirect after processing completes (so email is sent)
+    // Pass email in URL so success page can use it
+    const emailParam = encodeURIComponent(emailToUse);
+    console.log('📧 [handlePaymentSuccess] Redirecting with email:', emailToUse);
+    window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}&email=${emailParam}`);
   };
 
   // Real-time email validation
@@ -265,7 +293,11 @@ function PaymentContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-        <GuestHeader />
+        {isCustomer ? (
+          <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
+        ) : (
+          <GuestHeader />
+        )}
         <main className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center animate-fadeIn">
             <div className="relative inline-block">
@@ -288,7 +320,11 @@ function PaymentContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-        <GuestHeader />
+        {isCustomer ? (
+          <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
+        ) : (
+          <GuestHeader />
+        )}
         <main className="max-w-4xl mx-auto px-6 py-16">
           <div className="text-center">
             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-500/20 mb-6">
@@ -327,7 +363,11 @@ function PaymentContent() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <GuestHeader />
+      {isCustomer ? (
+        <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
+      ) : (
+        <GuestHeader />
+      )}
       
       {/* Success Processing Overlay */}
       {isProcessingSuccess && (
@@ -424,8 +464,16 @@ function PaymentContent() {
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                          setCustomerEmail(e.target.value);
-                          validateEmail(e.target.value);
+                          const email = e.target.value;
+                          setCustomerEmail(email);
+                          validateEmail(email);
+                          // Store email in localStorage immediately when user types it
+                          // This ensures it's available even if Stripe redirects before handlePaymentSuccess runs
+                          const currentPaymentIntentId = searchParams.get('payment_intent');
+                          if (currentPaymentIntentId && email && email.includes('@')) {
+                            localStorage.setItem(`payment_email_${currentPaymentIntentId}`, email);
+                            console.log('[Payment Page] Email stored:', email, 'for payment:', currentPaymentIntentId);
+                          }
                         }}
                         onBlur={(e) => validateEmail(e.target.value)}
                         placeholder="your.email@example.com"

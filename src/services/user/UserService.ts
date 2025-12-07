@@ -1,6 +1,6 @@
 import type { public_users as PrismaUser } from '@prisma/client';
 import { Role, ContractType } from '@prisma/client';
-import { BaseService } from './BaseService';
+import { BaseService } from '../BaseService';
 
 type User = PrismaUser;
 
@@ -380,66 +380,80 @@ export class UserService extends BaseService {
 
       // Use raw SQL to create both auth_users and public_users in a transaction
       // This ensures we satisfy the FK constraint while creating a "guest" user without auth
-      await this.prisma.$executeRawUnsafe(`
-        -- Create minimal auth_users entry (to satisfy FK constraint)
-        INSERT INTO auth.users (
-          id, 
-          email, 
-          aud, 
-          role, 
-          email_confirmed_at, 
-          created_at, 
-          updated_at,
-          is_anonymous,
-          raw_user_meta_data
-        ) VALUES (
-          '${userId}'::uuid,
-          '${params.email.replace(/'/g, "''")}',
-          'authenticated',
-          'authenticated',
-          NOW(),
-          NOW(),
-          NOW(),
-          false,
-          '{"is_guest": true, "full_name": "${params.fullName.replace(/'/g, "''")}"}'::jsonb
-        ) ON CONFLICT (id) DO NOTHING;
-        
-        -- Create public_users entry
-        INSERT INTO public.users (
-          id,
-          full_name,
-          email,
-          phone,
-          address,
-          role,
-          created_at,
-          updated_at
-        ) VALUES (
-          '${userId}'::uuid,
-          '${params.fullName.replace(/'/g, "''")}',
-          '${params.email.replace(/'/g, "''")}',
-          ${phoneValue ? `'${phoneValue.replace(/'/g, "''")}'` : 'NULL'},
-          ${addressJson ? `'${JSON.stringify(addressJson).replace(/'/g, "''")}'::jsonb` : 'NULL'},
-          'Guest'::public."Role",
-          NOW(),
-          NOW()
-        ) ON CONFLICT (email) DO UPDATE SET
-          full_name = EXCLUDED.full_name,
-          phone = COALESCE(EXCLUDED.phone, public.users.phone),
-          address = COALESCE(EXCLUDED.address, public.users.address),
-          updated_at = NOW()
-        RETURNING id;
-      `);
+      // First, check if user already exists by email and get the ID
+      const existingUserByEmail = await this.prisma.public_users.findUnique({
+        where: { email: params.email },
+      });
 
-      // Fetch and return the created user
+      let finalUserId = userId;
+      if (existingUserByEmail) {
+        // User exists, use existing ID
+        finalUserId = existingUserByEmail.id;
+        console.log('Guest user already exists with email:', params.email, 'ID:', finalUserId);
+      } else {
+        // Create new guest user
+        await this.prisma.$executeRawUnsafe(`
+          -- Create minimal auth_users entry (to satisfy FK constraint)
+          INSERT INTO auth.users (
+            id, 
+            email, 
+            aud, 
+            role, 
+            email_confirmed_at, 
+            created_at, 
+            updated_at,
+            is_anonymous,
+            raw_user_meta_data
+          ) VALUES (
+            '${userId}'::uuid,
+            '${params.email.replace(/'/g, "''")}',
+            'authenticated',
+            'authenticated',
+            NOW(),
+            NOW(),
+            NOW(),
+            false,
+            '{"is_guest": true, "full_name": "${params.fullName.replace(/'/g, "''")}"}'::jsonb
+          ) ON CONFLICT (id) DO NOTHING;
+          
+          -- Create public_users entry
+          INSERT INTO public.users (
+            id,
+            full_name,
+            email,
+            phone,
+            address,
+            role,
+            created_at,
+            updated_at
+          ) VALUES (
+            '${userId}'::uuid,
+            '${params.fullName.replace(/'/g, "''")}',
+            '${params.email.replace(/'/g, "''")}',
+            ${phoneValue ? `'${phoneValue.replace(/'/g, "''")}'` : 'NULL'},
+            ${addressJson ? `'${JSON.stringify(addressJson).replace(/'/g, "''")}'::jsonb` : 'NULL'},
+            'Guest'::public."Role",
+            NOW(),
+            NOW()
+          ) ON CONFLICT (email) DO UPDATE SET
+            full_name = EXCLUDED.full_name,
+            phone = COALESCE(EXCLUDED.phone, public.users.phone),
+            address = COALESCE(EXCLUDED.address, public.users.address),
+            updated_at = NOW();
+        `);
+        console.log('Created new guest user with ID:', userId);
+      }
+
+      // Fetch and return the created user (use finalUserId which might be existing user's ID)
       const user = await this.prisma.public_users.findUnique({
-        where: { id: userId },
+        where: { id: finalUserId },
       });
 
       if (!user) {
-        throw new Error('Failed to create guest user');
+        throw new Error(`Failed to create or retrieve guest user with ID: ${finalUserId}`);
       }
 
+      console.log('✅ Guest user ready:', user.id, user.email, user.role);
       return user;
     } catch (error) {
       this.handleError(error, 'UserService.createGuestUserFromStripeBilling');

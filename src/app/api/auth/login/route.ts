@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loginWithSupabase, SupabaseSession } from '@/lib/supabase-auth';
-import { UserService } from '@/services/UserService';
+import { UserService } from '../../../../services/user/UserService';
 import { prisma } from '@/lib/prisma/prisma';
 import { Role } from '@prisma/client';
 

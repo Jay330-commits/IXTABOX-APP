@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { IglooService } from '@/services/IglooService';
+import { IglooService } from '@/services/locations/IglooService';
 
 export async function POST(request: NextRequest) {
   try {

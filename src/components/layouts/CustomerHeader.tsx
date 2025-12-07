@@ -3,6 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import LogoutConfirmationModal from "./LogoutConfirmationModal";
 
 type NavItem = {
   label: string;
@@ -28,6 +31,9 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { logout } = useAuth();
+  const router = useRouter();
   const logoPath = "/images/logo/test.png";
 
   useEffect(() => {
@@ -40,19 +46,25 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('[data-mobile-account-menu]')) {
+      if (!target.closest('[data-account-menu]') && !target.closest('[data-mobile-account-menu]')) {
+        setUserMenuOpen(false);
         setMobileUserMenuOpen(false);
       }
     };
     
-    if (mobileUserMenuOpen) {
+    if (userMenuOpen || mobileUserMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [mobileUserMenuOpen]);
+  }, [userMenuOpen, mobileUserMenuOpen]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
 
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add("dark");
@@ -158,7 +170,7 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
             </button>
 
             {/* Account menu */}
-            <div className="relative">
+            <div className="relative" data-account-menu>
               <button
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-gradient-to-br from-cyan-600/10 to-blue-600/10 text-gray-200 hover:bg-white/10 ${neonFocus}`}
@@ -169,14 +181,58 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
                   </svg>
                 </span>
                 Account
+                <svg
+                  className={`h-4 w-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3000]">
-                  <div className="py-1">
-                    <button onClick={() => onSectionChange("profile")} className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors">Profile</button>
-                    <button onClick={() => onSectionChange("settings")} className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-500/10 hover:text-blue-200 transition-colors">Settings</button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-red-500/10 hover:text-red-200 transition-colors">Logout</button>
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-cyan-500/20 bg-gray-950/95 backdrop-blur-xl shadow-2xl shadow-black/80 z-[3000] overflow-hidden">
+                  <div className="py-1.5">
+                    <button 
+                      onClick={() => {
+                        onSectionChange("profile");
+                        setUserMenuOpen(false);
+                      }} 
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors group"
+                    >
+                      <svg className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Profile
+                    </button>
+                    <button 
+                      onClick={() => {
+                        onSectionChange("settings");
+                        setUserMenuOpen(false);
+                      }} 
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-blue-500/10 hover:text-blue-200 transition-colors group"
+                    >
+                      <svg className="w-4 h-4 text-blue-400 group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Settings
+                    </button>
+                    <div className="my-1 border-t border-white/10"></div>
+                    <button 
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        setShowLogoutModal(true);
+                      }} 
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-red-500/10 hover:text-red-200 transition-colors group"
+                    >
+                      <svg className="w-4 h-4 text-red-400 group-hover:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
                   </div>
                 </div>
               )}
@@ -224,15 +280,18 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
           </button>
           
           {mobileUserMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-white/10 bg-gray-950 shadow-lg shadow-black/60 z-[3001]">
-              <div className="py-1">
+            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-cyan-500/20 bg-gray-950/95 backdrop-blur-xl shadow-2xl shadow-black/80 z-[3001] overflow-hidden">
+              <div className="py-1.5">
                 <button
                   onClick={() => {
                     onSectionChange("profile");
                     setMobileUserMenuOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors group"
                 >
+                  <svg className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                   Profile
                 </button>
                 <button
@@ -240,11 +299,25 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
                     onSectionChange("settings");
                     setMobileUserMenuOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-blue-500/10 hover:text-blue-200 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-blue-500/10 hover:text-blue-200 transition-colors group"
                 >
+                  <svg className="w-4 h-4 text-blue-400 group-hover:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
                   Settings
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-red-500/10 hover:text-red-200 transition-colors">
+                <div className="my-1 border-t border-white/10"></div>
+                <button 
+                  onClick={() => {
+                    setMobileUserMenuOpen(false);
+                    setShowLogoutModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-red-500/10 hover:text-red-200 transition-colors group"
+                >
+                  <svg className="w-4 h-4 text-red-400 group-hover:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
                   Logout
                 </button>
               </div>
@@ -318,6 +391,13 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PaymentProcessingService } from '@/services/PaymentProcessingService';
+import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
+import { prisma } from '@/lib/prisma/prisma';
 
 /**
  * Update payment intent metadata
@@ -38,7 +39,27 @@ export async function PATCH(
       ...metadata,
     };
 
-    await paymentService.updatePaymentIntentMetadata(paymentIntentId, updatedMetadata);
+    // Update Stripe payment intent metadata AND set receipt_email
+    // This ensures email is available in multiple places for reliable extraction
+    const stripe = paymentService.getStripe();
+    
+    if (metadata.customerEmail) {
+      // Update both metadata AND receipt_email for maximum reliability
+      await stripe.paymentIntents.update(paymentIntentId, {
+        metadata: updatedMetadata,
+        receipt_email: metadata.customerEmail, // Set receipt_email so Stripe stores it
+      });
+      console.log('📧 ✅ Email set in both metadata and receipt_email:', metadata.customerEmail);
+    } else {
+      // Just update metadata if no email
+      await paymentService.updatePaymentIntentMetadata(paymentIntentId, updatedMetadata);
+    }
+
+    console.log('✅ Payment intent metadata updated:', {
+      paymentIntentId,
+      hasEmail: !!metadata.customerEmail,
+      email: metadata.customerEmail || 'NOT PROVIDED',
+    });
 
     return NextResponse.json({
       success: true,

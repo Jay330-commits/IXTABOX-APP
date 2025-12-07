@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PaymentStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma/prisma';
-import { PaymentProcessingService } from '@/services/PaymentProcessingService';
+import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 
 /**
  * Stripe Webhook Handler
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   let event: Stripe.Event;
+  const paymentService = new PaymentProcessingService();
 
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -39,7 +40,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const paymentService = new PaymentProcessingService();
     const stripe = paymentService.getStripe();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     console.log('✅ Webhook signature verified. Event type:', event.type, 'Event ID:', event.id);
