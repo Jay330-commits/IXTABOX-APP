@@ -27,13 +27,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Search for booking by payment ID or booking ID (booking reference could be either)
-    // Try to find booking through payment (since payment has stripe_payment_intent_id)
+    // Try to find booking through payment (using charge_id - the actual payment ID)
     const payment = await prisma.payments.findFirst({
       where: {
         user_id: user.id,
         OR: [
           { id: bookingReference },
-          { stripe_payment_intent_id: bookingReference },
+          { charge_id: bookingReference }, // charge_id is the actual Stripe payment ID
         ],
       },
       include: {

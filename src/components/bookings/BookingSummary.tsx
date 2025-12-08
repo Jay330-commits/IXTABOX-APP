@@ -4,6 +4,8 @@ interface BookingSummaryProps {
   booking: {
     id: string;
     standId: string;
+    boxDisplayId?: string;
+    standDisplayId?: string;
     address: string;
     startDate: string;
     endDate: string;
@@ -14,6 +16,10 @@ interface BookingSummaryProps {
       priceMultiplier: number;
     };
     pricePerDay: number;
+    lockPin?: string | null;
+    paymentId?: string;
+    paymentStatus?: string | null;
+    createdAt?: string;
   };
 }
 
@@ -32,12 +38,29 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
             <span className="text-sm font-medium text-gray-900">{booking.id}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Stand</span>
-            <span className="text-sm font-medium text-gray-900">#{booking.standId}</span>
+            <span className="text-sm text-gray-600">Stand ID</span>
+            <span className="text-sm font-medium text-gray-900">#{booking.standDisplayId || booking.standId}</span>
           </div>
+          {booking.boxDisplayId && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Box ID</span>
+              <span className="text-sm font-medium text-gray-900">#{booking.boxDisplayId}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Address</span>
             <span className="text-sm font-medium text-gray-900">{booking.address}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Status</span>
+            <span className={`text-sm font-medium capitalize ${
+              booking.status === 'active' || booking.status === 'completed' ? 'text-green-600' :
+              booking.status === 'pending' ? 'text-yellow-600' :
+              booking.status === 'cancelled' ? 'text-red-600' :
+              'text-gray-600'
+            }`}>
+              {booking.status}
+            </span>
           </div>
         </div>
       </div>
@@ -89,11 +112,27 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
       <div>
         <h3 className="text-sm font-medium text-gray-500">Payment</h3>
         <div className="mt-2 bg-gray-50 rounded-lg p-4 space-y-3">
+          {booking.paymentId && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Payment ID</span>
+              <span className="text-sm font-medium text-gray-900 font-mono text-xs">{booking.paymentId.slice(0, 8)}...</span>
+            </div>
+          )}
+          {booking.paymentStatus && (
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Payment Status</span>
+              <span className={`text-sm font-medium ${
+                booking.paymentStatus === 'Completed' ? 'text-green-600' :
+                booking.paymentStatus === 'Pending' ? 'text-yellow-600' :
+                'text-gray-600'
+              }`}>
+                {booking.paymentStatus}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Base Price</span>
+            <span className="text-sm text-gray-600">Base Price/Day</span>
             <span className="text-sm font-medium text-gray-900">${booking.pricePerDay.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Days</span>
@@ -105,6 +144,39 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
           </div>
         </div>
       </div>
+      
+      {booking.lockPin && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">Access Information</h3>
+          <div className="mt-2 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Lock Access PIN</span>
+              <span className="text-2xl font-bold text-cyan-600 font-mono">{booking.lockPin}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Use this PIN to access your box during the booking period.</p>
+          </div>
+        </div>
+      )}
+      
+      {booking.createdAt && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">Booking Information</h3>
+          <div className="mt-2 bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Booked On</span>
+              <span className="text-sm font-medium text-gray-900">
+                {new Date(booking.createdAt).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

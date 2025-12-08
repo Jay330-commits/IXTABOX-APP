@@ -6,6 +6,8 @@ interface BookingDetailsModalProps {
   booking: {
     id: string;
     standId: string;
+    standDisplayId?: string;
+    boxDisplayId?: string;
     address: string;
     startDate: string;
     endDate: string;
@@ -16,6 +18,10 @@ interface BookingDetailsModalProps {
       priceMultiplier: number;
     };
     pricePerDay: number;
+    lockPin?: string | null;
+    paymentId?: string;
+    paymentStatus?: string | null;
+    createdAt?: string;
   };
   onClose: () => void;
   onCancel?: () => void;

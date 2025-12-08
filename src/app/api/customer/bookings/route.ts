@@ -54,12 +54,20 @@ export async function GET() {
           include: {
             stands: {
               include: {
-                locations: true,
+                locations: {
+                  include: {
+                    distributors: true,
+                  },
+                },
               },
             },
           },
         },
-        payments: true,
+        payments: {
+          include: {
+            users: true,
+          },
+        },
       },
       orderBy: {
         created_at: 'desc',
@@ -72,14 +80,22 @@ export async function GET() {
     const formattedBookings = bookings.map((booking) => ({
       id: booking.id,
       location: booking.boxes.stands.locations.name || 'Unknown Location',
+      locationAddress: booking.boxes.stands.locations.address || null,
       date: booking.start_date.toISOString().split('T')[0],
       status: booking.status || BookingStatus.Pending,
       amount: parseFloat(booking.total_amount.toString()),
       startDate: booking.start_date.toISOString(),
       endDate: booking.end_date.toISOString(),
       boxId: booking.box_id,
+      boxDisplayId: booking.boxes.display_id,
       standId: booking.boxes.stand_id,
+      standDisplayId: booking.boxes.stands.display_id,
       locationId: booking.boxes.stands.location_id,
+      lockPin: booking.lock_pin || null,
+      paymentId: booking.payment_id,
+      paymentStatus: booking.payments?.status || null,
+      createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
+      model: booking.boxes.model || 'Classic',
     }));
 
     return NextResponse.json({ bookings: formattedBookings });

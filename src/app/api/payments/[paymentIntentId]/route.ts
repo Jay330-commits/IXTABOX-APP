@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 import { prisma } from '@/lib/prisma/prisma';
+import type Stripe from 'stripe';
 
 /**
  * Secure API endpoint to fetch payment details by payment intent ID
@@ -22,28 +23,10 @@ export async function GET(
 
     const paymentService = new PaymentProcessingService();
 
-    // Run database query and Stripe API call in parallel
-    const [payment, paymentIntent] = await Promise.all([
-      prisma.payments.findUnique({
-        where: {
-          stripe_payment_intent_id: paymentIntentId,
-        },
-        include: {
-          bookings: true, // Include booking if it exists
-        },
-      }),
-      paymentService.retrievePaymentIntent(paymentIntentId),
-    ]);
-
-    if (!payment) {
-      return NextResponse.json(
-        { error: 'Payment not found' },
-        { status: 404 }
-      );
-    }
-
-    // Extract booking details from Stripe metadata (fallback if booking doesn't exist yet)
-    // Note: Booking is created AFTER payment succeeds in webhook, so we use metadata here
+    // Get payment intent from Stripe (this always exists)
+    const paymentIntent = await paymentService.retrievePaymentIntent(paymentIntentId);
+    
+    // Extract booking details from Stripe metadata (always available)
     const bookingDetails = {
       locationId: paymentIntent.metadata.locationId,
       boxId: paymentIntent.metadata.boxId,
@@ -57,16 +40,37 @@ export async function GET(
       compartment: paymentIntent.metadata.compartment || null,
     };
 
-    // If booking exists in database, use that; otherwise use metadata
-    const booking = payment.bookings 
-      ? {
-          id: payment.bookings.id,
-          lockPin: payment.bookings.lock_pin, // Include PIN from database
-          lock_pin: payment.bookings.lock_pin, // Also include with underscore for compatibility
-          ...bookingDetails,
-        }
-      : bookingDetails;
+    // Try to get payment record if payment has succeeded (charge exists)
+    const chargeId = paymentIntent.latest_charge;
+    let payment = null;
+    let booking = bookingDetails;
 
+    if (chargeId) {
+      // Payment has succeeded - try to find payment record in database
+      const actualChargeId = typeof chargeId === 'string' ? chargeId : (chargeId as Stripe.Charge).id;
+
+      payment = await prisma.payments.findUnique({
+        where: {
+          charge_id: actualChargeId,
+        },
+        include: {
+          bookings: true, // Include booking if it exists
+        },
+      });
+
+      // If payment and booking exist in database, use those details
+      if (payment?.bookings) {
+        booking = {
+          ...bookingDetails,
+          id: payment.bookings.id,
+          lockPin: payment.bookings.lock_pin,
+          lock_pin: payment.bookings.lock_pin,
+        } as typeof bookingDetails & { id: string; lockPin: number; lock_pin: number };
+      }
+    }
+
+    // Return payment intent details (always available)
+    // If payment record exists, include it; otherwise just return Stripe payment intent
     return NextResponse.json({
       paymentIntent: {
         id: paymentIntent.id,
@@ -76,13 +80,15 @@ export async function GET(
         clientSecret: paymentIntent.client_secret,
       },
       booking: booking,
-      bookingExists: !!payment.bookings, // Flag to indicate if booking exists in DB
-      payment: {
-        id: payment.id,
-        amount: payment.amount.toString(),
-        currency: payment.currency,
-        status: payment.status,
-      },
+      bookingExists: !!payment?.bookings, // Flag to indicate if booking exists in DB
+      ...(payment ? {
+        payment: {
+          id: payment.id,
+          amount: payment.amount.toString(),
+          currency: payment.currency,
+          chargeId: payment.charge_id,
+        },
+      } : {}), // Only include payment if it exists in database
     });
   } catch (error) {
     console.error('Error fetching payment details:', error);

@@ -31,19 +31,21 @@ export async function GET() {
         user_id: user.id,
       },
       orderBy: {
-        created_at: 'desc',
+        completed_at: 'desc',
       },
     });
 
     // Transform payments to match the frontend format
+    // Note: Payments are only created when Stripe confirms success, so they're all "Completed"
     const formattedPayments = payments.map((payment) => ({
       id: payment.id,
       amount: parseFloat(payment.amount.toString()),
-      date: payment.created_at?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      date: payment.completed_at?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
       method: 'Credit Card', // You may want to store this in payment_methods table
-      status: payment.status || 'Pending',
+      status: 'Completed', // All payments in DB are confirmed by Stripe
       currency: payment.currency || 'SEK',
       completedAt: payment.completed_at?.toISOString(),
+      chargeId: payment.charge_id,
     }));
 
     return NextResponse.json({ payments: formattedPayments });

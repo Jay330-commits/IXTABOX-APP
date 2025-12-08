@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { PaymentStatus } from '@prisma/client';
-import { prisma } from '@/lib/prisma/prisma';
 import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 
 /**
@@ -10,17 +8,17 @@ import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingS
  * POST /api/webhooks/stripe
  */
 export async function POST(request: NextRequest) {
-  console.log('🔔🔔🔔 WEBHOOK ENDPOINT CALLED at', new Date().toISOString());
+  console.log(' WEBHOOK ENDPOINT CALLED at', new Date().toISOString());
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
-  console.log('📋 Request headers:', {
+  console.log('Request headers:', {
     hasSignature: !!signature,
     contentType: request.headers.get('content-type'),
     userAgent: request.headers.get('user-agent'),
   });
 
   if (!signature) {
-    console.error('❌ Missing stripe-signature header');
+    console.error('Missing stripe-signature header');
     return NextResponse.json(
       { error: 'Missing stripe-signature header' },
       { status: 400 }
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error('❌ Missing STRIPE_WEBHOOK_SECRET');
+      console.error('Missing STRIPE_WEBHOOK_SECRET');
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -42,9 +40,9 @@ export async function POST(request: NextRequest) {
 
     const stripe = paymentService.getStripe();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    console.log('✅ Webhook signature verified. Event type:', event.type, 'Event ID:', event.id);
+    console.log('Webhook signature verified. Event type:', event.type, 'Event ID:', event.id);
   } catch (err) {
-    console.error('❌ Webhook signature verification failed:', err);
+    console.error('Webhook signature verification failed:', err);
     return NextResponse.json(
       { error: 'Webhook signature verification failed' },
       { status: 400 }
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Log all webhook events for debugging
-    console.log('📥 Webhook event received:', {
+    console.log('Webhook event received:', {
       type: event.type,
       eventId: event.id,
       livemode: event.livemode,
@@ -132,18 +130,25 @@ export async function POST(request: NextRequest) {
       }
 
       try {
+        // Extract email from payment intent for user linking (webhook has no auth context)
+        // The processPaymentSuccess method will extract email and link user, but we log it here for debugging
+        console.log('🔍 Extracting user info from payment intent for webhook processing...');
+        
         const result = await paymentService.processPaymentSuccess(paymentIntent.id);
         
         if (result.alreadyProcessed) {
+          console.log('ℹ️ Payment already processed via webhook');
           return NextResponse.json({ received: true, message: 'Payment already processed' });
         }
         
         if (result.alreadyConfirmed) {
+          console.log('ℹ️ Booking already confirmed via webhook');
           return NextResponse.json({ received: true, message: 'Booking already confirmed' });
         }
 
         // Success - booking created
         console.log('✅ Webhook successfully processed payment and created booking');
+        console.log('✅ Payment linked to user:', result.booking ? 'Yes' : 'Unknown');
         return NextResponse.json({ 
           received: true,
           message: 'Payment processed and booking created successfully'
@@ -175,20 +180,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Update payment status to failed in database using Prisma
-      // Only update if payment record exists (created when intent was created)
-      try {
-        await prisma.payments.updateMany({
-          where: {
-            stripe_payment_intent_id: paymentIntent.id,
-          },
-          data: {
-            status: PaymentStatus.Failed,
-          },
-        });
-      } catch (dbError) {
-        console.error('Failed to update payment status to failed in database:', dbError);
-      }
+      // Payment failed - we don't store failed payments in the database
+      // Only verified (succeeded) payments are stored
+      console.log('Payment failed - no database record to update (we only store verified payments)');
 
       return NextResponse.json({ received: true });
     }

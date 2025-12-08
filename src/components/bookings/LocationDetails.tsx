@@ -152,7 +152,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       
       // Only set if the initial datetime is at least 1 minute from now
       if (initialDateTime >= oneMinuteFromNow) {
-        setStartDate(newStartDate);
+      setStartDate(newStartDate);
         setStartTime(time);
       } else {
         // Set to minimum allowed datetime if initial value is too early
@@ -169,7 +169,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       
       // Only set if the initial datetime is at least 1 minute from now
       if (initialDateTime >= oneMinuteFromNow) {
-        setEndDate(newEndDate);
+      setEndDate(newEndDate);
         setEndTime(time);
       } else {
         // Set to minimum allowed datetime if initial value is too early

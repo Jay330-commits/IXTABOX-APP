@@ -1,7 +1,7 @@
 import 'server-only';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma/prisma';
-import { PaymentStatus, BookingStatus } from '@prisma/client';
+import { BookingStatus } from '@prisma/client';
 import { UserService } from '../user/UserService';
 import { BookingService } from './BookingService';
 import { StripeService } from '../payments/StripeService';
@@ -97,10 +97,14 @@ export class PaymentProcessingService {
   /**
    * Find and validate payment record
    */
-  async findPaymentRecord(paymentIntentId: string) {
+  /**
+   * Find payment record by Stripe charge ID (the actual payment ID from Stripe)
+   * This is the ONLY way to look up payments - we only store verified payments
+   */
+  async findPaymentRecordByChargeId(chargeId: string) {
     const payment = await prisma.payments.findUnique({
       where: {
-        stripe_payment_intent_id: paymentIntentId,
+        charge_id: chargeId,
       },
       include: {
         bookings: true,
@@ -108,7 +112,7 @@ export class PaymentProcessingService {
     });
 
     if (!payment) {
-      throw new Error(`Payment record not found for payment intent: ${paymentIntentId}`);
+      throw new Error(`Payment record not found for Stripe charge ID: ${chargeId}`);
     }
 
     return payment;
@@ -163,23 +167,64 @@ export class PaymentProcessingService {
    * @param providedEmail - Optional email from frontend (from contact form) - takes priority over Stripe extraction
    */
   async processPaymentSuccess(paymentIntentId: string, providedEmail?: string | null) {
-    // Fetch payment record first
-    const existingPayment = await this.findPaymentRecord(paymentIntentId).catch(findError => {
-      console.error('Payment record not found in database:', {
-        paymentIntentId,
-        error: findError instanceof Error ? findError.message : String(findError),
-      });
-      throw findError;
+    // SECURITY: Retrieve payment intent from Stripe FIRST to verify payment actually succeeded
+    // Only create payment record after payment is confirmed - not before!
+    const fullPaymentIntent = await this.retrievePaymentIntent(paymentIntentId, {
+      expand: ['customer', 'payment_method', 'latest_charge'], // Expand charge to get full details
     });
 
-    // Retrieve payment intent from Stripe
-    const fullPaymentIntent = await this.retrievePaymentIntent(paymentIntentId, {
-      expand: ['customer', 'payment_method'],
+    // CRITICAL: Verify payment actually succeeded before proceeding
+    if (fullPaymentIntent.status !== 'succeeded') {
+      throw new Error(`Payment intent status is ${fullPaymentIntent.status}, not succeeded. Cannot process payment.`);
+    }
+
+    // Get the actual charge ID (payment ID) from Stripe - this is the REAL payment ID from Stripe
+    const stripeChargeId = fullPaymentIntent.latest_charge;
+    if (!stripeChargeId) {
+      throw new Error(`Payment succeeded but no charge ID found in payment intent: ${paymentIntentId}`);
+    }
+
+    // If latest_charge is an object (expanded), get the ID, otherwise it's already a string
+    const chargeId = typeof stripeChargeId === 'string' 
+      ? stripeChargeId 
+      : (stripeChargeId as Stripe.Charge).id;
+
+    console.log('✅ Stripe Charge ID (actual payment ID from Stripe):', chargeId);
+
+    // Try to find existing payment record by charge ID (the actual payment ID)
+    let existingPayment = await this.findPaymentRecordByChargeId(chargeId).catch(() => {
+      console.log('⚠️ Payment record not found - will create it now (payment confirmed, creating record)');
+      return null;
     });
+
+    // If payment record doesn't exist, create it now (payment is confirmed via Stripe)
+    if (!existingPayment) {
+      console.log('🔨 Creating payment record for confirmed payment with Stripe payment ID:', chargeId);
+      const amountInCents = fullPaymentIntent.amount;
+      const amountStr = (amountInCents / 100).toFixed(2);
+
+      existingPayment = await prisma.payments.create({
+        data: {
+          amount: amountStr, // Prisma will convert string to Decimal
+          currency: fullPaymentIntent.currency.toUpperCase() || 'SEK',
+          charge_id: chargeId, // Store ONLY the actual payment ID from Stripe (ch_xxx) - verified payment
+        },
+        include: {
+          bookings: true,
+        },
+      });
+
+      console.log('✅ Created payment record:', existingPayment.id, 'with Stripe payment ID:', chargeId);
+    }
+
+    // Type guard to ensure existingPayment is not null
+    if (!existingPayment) {
+      throw new Error('Failed to create or find payment record');
+    }
 
     console.log('Payment record found:', {
       paymentId: existingPayment.id,
-      currentStatus: existingPayment.status,
+      stripePaymentId: chargeId,
       hasBooking: !!existingPayment.bookings,
       bookingId: existingPayment.bookings?.id,
     });
@@ -193,38 +238,32 @@ export class PaymentProcessingService {
     const phone = extractedDetails.phone;
     const address = extractedDetails.address;
     
+    // CRITICAL: Log email extraction for debugging webhook issues
+    console.log('📧 Email extraction for payment:', {
+      paymentIntentId,
+      providedEmail: providedEmail || 'none',
+      extractedEmail: extractedDetails.email || 'none',
+      finalEmail: email || 'none',
+      receiptEmail: fullPaymentIntent.receipt_email || 'none',
+      metadataEmail: fullPaymentIntent.metadata?.customerEmail || 'none',
+    });
+    
     if (providedEmail) {
-      console.log('📧 Using email from form:', providedEmail);
+      console.log('✅ Using email from form/parameter:', providedEmail);
     } else if (extractedDetails.email) {
-      console.log('📧 Using email from Stripe:', extractedDetails.email);
+      console.log('✅ Using email extracted from Stripe payment intent:', extractedDetails.email);
     } else {
-      console.log('📧 No email available');
-    }
-
-    // Check if already processed
-    if (existingPayment.status === PaymentStatus.Completed) {
-      console.log('Payment already processed, checking if email needs to be sent:', {
-        paymentIntentId,
-        paymentId: existingPayment.id,
-        existingStatus: existingPayment.status,
-        completedAt: existingPayment.completed_at,
-        hasBooking: !!existingPayment.bookings,
-        hasEmail: !!email,
-      });
-      
-      // Still try to send email if booking exists and email is available
-      if (existingPayment.bookings && email) {
-        try {
-          await this.sendBookingConfirmationEmail(existingPayment.bookings.id, email);
-        } catch (emailError) {
-          console.error('Failed to send email for already processed payment:', emailError);
-        }
+      console.error('❌ CRITICAL: No email available in payment intent - user linking will fail!');
+      console.error('Payment intent metadata:', JSON.stringify(fullPaymentIntent.metadata || {}, null, 2));
+      console.error('Payment intent receipt_email:', fullPaymentIntent.receipt_email);
+      if (fullPaymentIntent.payment_method && typeof fullPaymentIntent.payment_method === 'object') {
+        const pm = fullPaymentIntent.payment_method as Stripe.PaymentMethod;
+        console.error('Payment method billing details:', JSON.stringify(pm.billing_details || {}, null, 2));
       }
-      
-      return { alreadyProcessed: true, booking: existingPayment.bookings };
     }
 
-    // Check if booking exists
+    // Payment record exists - check if booking already exists
+    // Since payments are only stored when verified, if record exists, payment is already processed
     if (existingPayment.bookings) {
       const bookingStatus = existingPayment.bookings.status;
       if (bookingStatus === BookingStatus.Confirmed || bookingStatus === BookingStatus.Active) {
@@ -256,24 +295,24 @@ export class PaymentProcessingService {
           userId = await this.getOrCreateGuestUser(null, email, name, phone, address);
         }
 
-        // Update payment with correct user_id if it's different
-        const currentStatus = existingPayment.status as PaymentStatus | null;
-        const needsUpdate = (userId && existingPayment.user_id !== userId) || (currentStatus !== PaymentStatus.Completed);
+        // CRITICAL: Always ensure payment has correct user_id (even if booking already exists)
+        // Update payment with correct user_id if it's missing or wrong
+        const needsUserUpdate = userId && existingPayment.user_id !== userId;
         
-        if (needsUpdate) {
+        if (needsUserUpdate) {
           await prisma.payments.update({
             where: { id: existingPayment.id },
             data: {
-              ...(userId && existingPayment.user_id !== userId ? { user_id: userId } : {}),
-              ...(currentStatus !== PaymentStatus.Completed ? {
-                status: PaymentStatus.Completed,
-                completed_at: new Date(),
-              } : {}),
+              user_id: userId!,
             },
           });
-          if (userId && existingPayment.user_id !== userId) {
-            console.log('✅ Updated payment user_id to customer:', userId);
-          }
+          console.log('✅ Updated payment user_id to customer (booking already confirmed):', userId);
+        } else if (!existingPayment.user_id) {
+          // Payment has no user_id but we couldn't determine it - log warning
+          console.warn('⚠️ Payment has no user_id and we could not determine it:', {
+            paymentId: existingPayment.id,
+            hasEmail: !!email,
+          });
         }
         
         return { alreadyConfirmed: true, booking: existingPayment.bookings };
@@ -293,14 +332,8 @@ export class PaymentProcessingService {
         paymentIntentId: fullPaymentIntent.id,
         allMetadata: fullPaymentIntent.metadata,
       });
-      // Still update payment status even if booking can't be created
-      await prisma.payments.update({
-        where: { id: existingPayment.id },
-        data: {
-          status: PaymentStatus.Completed,
-          completed_at: new Date(),
-        },
-      });
+      // Payment is already verified (it exists in DB), but booking can't be created
+      // Log error but don't update payment - it's already verified
       throw metadataError;
     }
 
@@ -369,17 +402,21 @@ export class PaymentProcessingService {
 
     console.log('🔑 Customer user ID for payment:', userId);
 
-    // Update payment with the correct user_id (the customer paying, not the distributor)
+    // CRITICAL: Update payment with the correct user_id (the customer paying, not the distributor)
     // Always update to ensure payment is linked to the correct user
+    // This is especially important for webhooks where payment might already exist without user_id
     await prisma.payments.update({
       where: { id: existingPayment.id },
       data: {
-        user_id: userId,
-        status: PaymentStatus.Completed,
-        completed_at: new Date(),
+        user_id: userId, // Always set user_id when we have it
       },
     });
-    console.log('✅ Updated payment user_id to customer:', userId);
+    
+    console.log('✅ Updated payment with user_id:', {
+      paymentId: existingPayment.id,
+      userId: userId,
+      previousUserId: existingPayment.user_id || 'none',
+    });
 
     // Create booking using BookingService
     const booking = await bookingService.createBooking(
@@ -427,7 +464,14 @@ export class PaymentProcessingService {
       console.log('📧 No email - skipping email send');
     }
 
-    return { booking };
+    console.log('✅ Payment processing completed successfully:', {
+      paymentId: existingPayment.id,
+      userId: userId,
+      bookingId: booking.id,
+      email: email || 'No email',
+    });
+
+    return { booking, userId };
   }
 
 

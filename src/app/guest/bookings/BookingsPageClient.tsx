@@ -12,7 +12,7 @@ type Booking = {
   startDate: string;
   endDate: string;
   status: 'active' | 'pending' | 'completed' | 'cancelled';
-  model: {
+    model: {
     name: string;
     description: string;
     priceMultiplier: number;
@@ -266,51 +266,51 @@ export default function BookingsPageClient() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Info Section */}
           {searchEmail && (
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-                <h2 className="text-xl font-semibold mb-4">Account Details</h2>
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Account Details</h2>
                 {loadingUserDetails ? (
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
                   </div>
                 ) : userDetails ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm text-gray-400">Name</label>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-400">Name</label>
                       <p className="text-white">{userDetails.name}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400">Email</label>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400">Email</label>
                       <p className="text-white">{userDetails.email}</p>
-                    </div>
+                </div>
                     {userDetails.phone && (
-                      <div>
-                        <label className="block text-sm text-gray-400">Phone</label>
+                <div>
+                  <label className="block text-sm text-gray-400">Phone</label>
                         <p className="text-white">{userDetails.phone}</p>
                       </div>
                     )}
-                  </div>
+                </div>
                 ) : (
                   <div className="text-sm text-gray-400">Enter email to view account details</div>
                 )}
-              </div>
+            </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-                <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
                 {loadingBookings ? (
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Active Bookings</span>
-                      <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Pending Bookings</span>
-                      <span className="text-white">{bookings.filter(b => b.status === 'pending').length}</span>
-                    </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Active Bookings</span>
+                  <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Pending Bookings</span>
+                  <span className="text-white">{bookings.filter(b => b.status === 'pending').length}</span>
+                </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Bookings</span>
                       <span className="text-white">{bookings.length}</span>

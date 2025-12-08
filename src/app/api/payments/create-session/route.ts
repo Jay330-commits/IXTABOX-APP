@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 import { BookingService } from '@/services/bookings/BookingService';
-import { prisma } from '@/lib/prisma/prisma';
-import { PaymentStatus } from '@prisma/client';
+import { getCurrentUser } from '@/lib/supabase-auth';
 
 /**
  * Secure API endpoint to create payment session
@@ -76,6 +75,19 @@ export async function POST(request: NextRequest) {
       amount: booking.amountStr,
     });
     
+    // Try to get authenticated user to include email in metadata
+    let customerEmail: string | null = null;
+    try {
+      const supabaseUser = await getCurrentUser();
+      if (supabaseUser?.email) {
+        customerEmail = supabaseUser.email;
+        console.log('📧 Adding authenticated user email to payment intent metadata:', customerEmail);
+      }
+    } catch {
+      // User not authenticated - that's fine, email will be collected during payment
+      console.log('No authenticated user - email will be collected during payment');
+    }
+
     // Verify box exists and create Stripe payment intent in parallel for better performance
     const [boxVerification, paymentIntent] = await Promise.all([
       // Verify box exists
@@ -84,7 +96,10 @@ export async function POST(request: NextRequest) {
       paymentService.createPaymentIntent({
         amount: booking.amount,
         currency: 'sek',
-        metadata: booking.metadata,
+        metadata: {
+          ...booking.metadata,
+          ...(customerEmail ? { customerEmail } : {}), // Add customer email if authenticated
+        },
       })
     ]);
 
@@ -97,26 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Stripe payment intent created:', paymentIntent.id);
-
-    // Store payment record in database (non-blocking - can be done after response)
-    // We'll create it in the background to speed up the response
-    prisma.payments.create({
-      data: {
-        amount: booking.amountStr, // Prisma will convert string to Decimal
-        currency: 'SEK',
-        status: PaymentStatus.Pending,
-        stripe_payment_intent_id: paymentIntent.id,
-      },
-    }).then(payment => {
-      console.log('Payment record created:', payment.id);
-      console.log('Booking will be created after payment succeeds via webhook');
-    }).catch(dbError => {
-      console.error('Database error (non-critical - payment intent already created):', {
-        error: dbError instanceof Error ? dbError.message : 'Unknown error',
-        paymentIntentId: paymentIntent.id,
-      });
-      // Don't throw - payment intent is already created, we can retry payment record creation later
-    });
+    console.log('⚠️ SECURITY: Payment record will be created ONLY when payment is confirmed via webhook or payment success handler');
 
     // Return ONLY the payment intent ID (no sensitive data)
     // Booking will be created after payment succeeds via webhook

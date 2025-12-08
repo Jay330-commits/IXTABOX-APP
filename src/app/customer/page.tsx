@@ -1,7 +1,7 @@
   "use client";
 
   import { useState, useEffect } from "react";
-  import { useRouter } from "next/navigation";
+  import { useRouter, useSearchParams } from "next/navigation";
   import { useAuth } from "@/contexts/AuthContext";
   import { Role } from "@/types/auth";
   import CustomerHeader from "@/components/layouts/CustomerHeader";
@@ -28,14 +28,22 @@
   type Booking = {
     id: string;
     location: string;
+    locationAddress?: string | null;
     date: string;
     status: string;
     amount: number;
     startDate?: string;
     endDate?: string;
     boxId?: string;
+    boxDisplayId?: string;
     standId?: string;
+    standDisplayId?: string;
     locationId?: string;
+    lockPin?: string | null;
+    paymentId?: string;
+    paymentStatus?: string | null;
+    createdAt?: string;
+    model?: string;
   };
 
   type Payment = {
@@ -68,7 +76,16 @@
   export default function CustomerDashboard() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [activeSection, setActiveSection] = useState("dashboard");
+    
+    // Read section from URL query parameter when navigating from other pages
+    useEffect(() => {
+      const section = searchParams.get('section');
+      if (section && ['dashboard', 'book', 'bookings', 'payments', 'notifications', 'profile', 'settings'].includes(section)) {
+        setActiveSection(section);
+      }
+    }, [searchParams]);
     const [locations, setLocations] = useState<MapProps["locations"]>([]);
     const [isLoadingLocations, setIsLoadingLocations] = useState(false);
     const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -95,6 +112,9 @@
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
+  
+  // Expanded booking state (for expandable bookings list)
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
     // Protect route - check authentication and role
     useEffect(() => {
@@ -320,6 +340,299 @@
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          );
+        case "bookings":
+          return (
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+              <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
+              {isLoadingData ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+                </div>
+              ) : dataError ? (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center text-red-200">
+                  {dataError}
+                </div>
+              ) : bookings.length === 0 ? (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center text-gray-400">
+                  No bookings found. Book your first box to get started!
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bookings.map((booking) => {
+                    const statusLower = booking.status.toLowerCase();
+                    const statusColor = 
+                      statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
+                      statusLower === 'pending' ? 'yellow' :
+                      'gray';
+                    
+                    const isExpanded = expandedBookingId === booking.id;
+                    const startDate = booking.startDate ? new Date(booking.startDate) : new Date(booking.date);
+                    const endDate = booking.endDate ? new Date(booking.endDate) : new Date(booking.date);
+                    const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+                    
+                    // Calculate model info
+                    const modelName = booking.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic';
+                    const modelDescription = booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box';
+                    const modelMultiplier = booking.model === 'Pro' ? 1.5 : 1.0;
+                    const pricePerDay = booking.amount / days / modelMultiplier;
+                    const totalPrice = days * pricePerDay * modelMultiplier;
+
+                    return (
+                      <div 
+                        key={booking.id} 
+                        className={`rounded-xl border transition-all ${
+                          statusColor === 'green' ? 'bg-green-500/5 border-green-400/20' :
+                          statusColor === 'yellow' ? 'bg-yellow-500/5 border-yellow-400/20' :
+                          'bg-white/5 border-white/10'
+                        }`}
+                      >
+                        {/* Booking Header - Clickable */}
+                        <div 
+                          onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                          className="p-6 cursor-pointer hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 flex-1">
+                              <div className={`w-3 h-3 rounded-full ${
+                                statusColor === 'green' ? 'bg-green-400' :
+                                statusColor === 'yellow' ? 'bg-yellow-400' :
+                                'bg-gray-400'
+                              }`}></div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-lg">{booking.location}</div>
+                                <div className="text-sm text-gray-400 mt-1">
+                                  {startDate.toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric' 
+                                  })} - {endDate.toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric' 
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <div className="text-right">
+                                <div className="font-semibold">SEK {booking.amount.toFixed(2)}</div>
+                                <div className={`text-xs ${
+                                  statusColor === 'green' ? 'text-green-400' :
+                                  statusColor === 'yellow' ? 'text-yellow-400' :
+                                  'text-gray-400'
+                                }`}>
+                                  {booking.status}
+                                </div>
+                              </div>
+                              <svg 
+                                className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Booking Details */}
+                        {isExpanded && (
+                          <div className="px-6 pb-6 border-t border-white/10 pt-6 space-y-6">
+                            {/* Booking Details */}
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-3">Booking Details</h3>
+                              <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Booking ID</span>
+                                  <span className="text-sm font-medium text-gray-200 font-mono text-xs">{booking.id.slice(0, 8)}...</span>
+                                </div>
+                                {booking.standDisplayId && (
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Stand ID</span>
+                                    <span className="text-sm font-medium text-gray-200">#{booking.standDisplayId}</span>
+                                  </div>
+                                )}
+                                {booking.boxDisplayId && (
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Box ID</span>
+                                    <span className="text-sm font-medium text-gray-200">#{booking.boxDisplayId}</span>
+                                  </div>
+                                )}
+                                {booking.locationAddress && (
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Address</span>
+                                    <span className="text-sm font-medium text-gray-200 text-right max-w-xs">{booking.locationAddress}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Status</span>
+                                  <span className={`text-sm font-medium capitalize ${
+                                    booking.status === 'active' || booking.status === 'completed' || booking.status === 'confirmed' ? 'text-green-400' :
+                                    booking.status === 'pending' ? 'text-yellow-400' :
+                                    booking.status === 'cancelled' ? 'text-red-400' :
+                                    'text-gray-400'
+                                  }`}>
+                                    {booking.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Model Info */}
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-3">Model</h3>
+                              <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Type</span>
+                                  <span className="text-sm font-medium text-gray-200">{modelName}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Description</span>
+                                  <span className="text-sm font-medium text-gray-200 text-right max-w-xs">{modelDescription}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Schedule */}
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-3">Schedule</h3>
+                              <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">From</span>
+                                  <span className="text-sm font-medium text-gray-200">
+                                    {startDate.toLocaleString('en-US', {
+                                      month: 'long',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">To</span>
+                                  <span className="text-sm font-medium text-gray-200">
+                                    {endDate.toLocaleString('en-US', {
+                                      month: 'long',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Duration</span>
+                                  <span className="text-sm font-medium text-gray-200">{days} {days === 1 ? 'day' : 'days'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Payment Info */}
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-3">Payment</h3>
+                              <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                                {booking.paymentId && (
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Payment ID</span>
+                                    <span className="text-sm font-medium text-gray-200 font-mono text-xs">{booking.paymentId.slice(0, 8)}...</span>
+                                  </div>
+                                )}
+                                {booking.paymentStatus && (
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Payment Status</span>
+                                    <span className={`text-sm font-medium ${
+                                      booking.paymentStatus === 'Completed' ? 'text-green-400' :
+                                      booking.paymentStatus === 'Pending' ? 'text-yellow-400' :
+                                      'text-gray-400'
+                                    }`}>
+                                      {booking.paymentStatus}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Base Price/Day</span>
+                                  <span className="text-sm font-medium text-gray-200">SEK {pricePerDay.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Days</span>
+                                  <span className="text-sm font-medium text-gray-200">{days}</span>
+                                </div>
+                                <div className="border-t border-white/10 pt-3 flex justify-between">
+                                  <span className="text-sm font-medium text-gray-200">Total</span>
+                                  <span className="text-sm font-medium text-cyan-400">SEK {totalPrice.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Lock PIN */}
+                            {booking.lockPin && (
+                              <div>
+                                <h3 className="text-sm font-medium text-gray-400 mb-3">Access Information</h3>
+                                <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg p-4 border border-cyan-400/20">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-400">Lock Access PIN</span>
+                                    <span className="text-2xl font-bold text-cyan-400 font-mono">{booking.lockPin}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-2">Use this PIN to access your box during the booking period.</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Booking Created Date */}
+                            {booking.createdAt && (
+                              <div>
+                                <h3 className="text-sm font-medium text-gray-400 mb-3">Booking Information</h3>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                  <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Booked On</span>
+                                    <span className="text-sm font-medium text-gray-200">
+                                      {new Date(booking.createdAt).toLocaleString('en-US', {
+                                        month: 'long',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            {(booking.status === 'pending' || booking.status === 'active' || booking.status === 'confirmed') && (
+                              <div className="flex gap-3 pt-4 border-t border-white/10">
+                                <button
+                                  onClick={() => {
+                                    console.log('Modify booking:', booking.id);
+                                    // TODO: Implement modify booking
+                                  }}
+                                  className="flex-1 py-2 px-4 border border-white/20 rounded-lg text-sm font-medium text-gray-200 bg-white/5 hover:bg-white/10 transition-colors"
+                                >
+                                  Modify Booking
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    console.log('Cancel booking:', booking.id);
+                                    // TODO: Implement cancel booking
+                                  }}
+                                  className="flex-1 py-2 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600/80 hover:bg-red-600 transition-colors"
+                                >
+                                  Cancel Booking
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -671,7 +984,7 @@
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-semibold">Recent Bookings</h2>
                       <button
-                        onClick={() => setActiveSection("book")}
+                        onClick={() => setActiveSection("bookings")}
                         className="text-cyan-300 hover:text-cyan-200 text-sm font-medium"
                       >
                         View All →
@@ -687,7 +1000,7 @@
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {bookings.slice(0, 5).map((booking) => {
+                        {bookings.map((booking) => {
                           const statusLower = booking.status.toLowerCase();
                           const statusColor = 
                             statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
@@ -695,7 +1008,11 @@
                             'gray';
                           
                           return (
-                            <div key={booking.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+                            <div 
+                              key={booking.id} 
+                              onClick={() => setActiveSection("bookings")}
+                              className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                            >
                               <div className="flex items-center space-x-4">
                                 <div className={`w-3 h-3 rounded-full ${
                                   statusColor === 'green' ? 'bg-green-400' :
@@ -884,6 +1201,8 @@
         </button>
 
         <Footer />
+        
+        {/* Booking Details Modal */}
       </div>
     );
   }

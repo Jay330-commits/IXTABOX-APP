@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { BookingStatus } from '@prisma/client';
+import type Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +26,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find payment by Stripe payment intent ID
+    // Get payment intent from Stripe to extract charge ID (actual payment ID)
+    const { PaymentProcessingService } = await import('@/services/bookings/PaymentProcessingService');
+    const paymentService = new PaymentProcessingService();
+    const paymentIntent = await paymentService.retrievePaymentIntent(paymentIntentId);
+    
+    // Get the charge ID from the payment intent (this is the actual payment ID)
+    const chargeId = paymentIntent.latest_charge;
+    if (!chargeId) {
+      return NextResponse.json(
+        { error: 'Payment not completed yet' },
+        { status: 404 }
+      );
+    }
+
+    // Extract charge ID (could be string or expanded object)
+    const actualChargeId = typeof chargeId === 'string' ? chargeId : (chargeId as Stripe.Charge).id;
+
+    // Find payment by charge ID (the actual payment ID)
     const payment = await prisma.payments.findUnique({
       where: {
-        stripe_payment_intent_id: paymentIntentId,
+        charge_id: actualChargeId,
       },
       include: {
         bookings: {
@@ -78,7 +96,7 @@ export async function POST(request: NextRequest) {
         id: payment.id,
         amount: payment.amount.toString(),
         currency: payment.currency,
-        status: payment.status,
+        chargeId: payment.charge_id,
       },
     });
   } catch (error) {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import LogoutConfirmationModal from "./LogoutConfirmationModal";
 
 type NavItem = {
@@ -16,6 +16,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Dashboard", section: "dashboard", icon: "📊" },
   { label: "Book", section: "book", icon: "📅" },
+  { label: "Bookings", section: "bookings", icon: "📋" },
   { label: "Payments", section: "payments", icon: "💳" },
   { label: "Notifications", section: "notifications", icon: "🔔" },
 ];
@@ -34,7 +35,19 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const logoPath = "/images/logo/test.png";
+  
+  // Handle navigation - if not on customer page, navigate there; otherwise change section
+  const handleNavClick = (section: string) => {
+    if (pathname !== '/customer') {
+      // If we're on a different page (like /payment), navigate to customer page with the section
+      router.push(`/customer?section=${section}`);
+    } else {
+      // If we're already on customer page, just change the section
+      onSectionChange(section);
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -113,7 +126,7 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
               return (
                 <button
                   key={item.label}
-                  onClick={() => onSectionChange(item.section)}
+                  onClick={() => handleNavClick(item.section)}
                   className={navButtonClasses(active)}
                   aria-current={active ? "page" : undefined}
                 >
@@ -364,7 +377,7 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
                   <button
                     key={item.section}
                     onClick={() => {
-                      onSectionChange(item.section);
+                      handleNavClick(item.section);
                       setMobileOpen(false);
                     }}
                     className={`${navButtonClasses(active)} w-full justify-start`}

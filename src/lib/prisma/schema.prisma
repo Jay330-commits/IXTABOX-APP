@@ -416,7 +416,7 @@ model bookings {
   start_date    DateTime        @db.Timestamp(6)
   end_date      DateTime        @db.Timestamp(6)
   total_amount  Decimal         @db.Decimal
-  lock_pin      Int             // Mandatory: PIN must be generated during booking creation
+  lock_pin      Int
   created_at    DateTime?       @default(now()) @db.Timestamp(6)
   status        BookingStatus?  @default(Pending)
   boxes         boxes           @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -574,17 +574,15 @@ model payment_methods {
 }
 
 model payments {
-  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                  String?            @db.Uuid
-  amount                   Decimal            @db.Decimal
-  currency                 String?            @default("SEK")
-  status                   PaymentStatus?     @default(Pending)
-  stripe_payment_intent_id String             @unique
-  created_at               DateTime?          @default(now()) @db.Timestamp(6)
-  completed_at             DateTime?          @db.Timestamp(6)
-  bookings                 bookings?
-  contract_payments        contract_payments?
-  users                    public_users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String?            @db.Uuid
+  amount            Decimal            @db.Decimal
+  currency          String?            @default("SEK")
+  completed_at      DateTime?          @db.Timestamp(6)
+  charge_id         String             @unique(map: "payments_payment_id_key")
+  bookings          bookings?
+  contract_payments contract_payments?
+  users             public_users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user_id])
   @@schema("public")

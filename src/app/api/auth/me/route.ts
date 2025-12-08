@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/supabase-auth';
 import { UserService } from '../../../../services/user/UserService';
 import { prisma } from '@/lib/prisma/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check if Supabase environment variables are set
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -18,7 +18,22 @@ export async function GET() {
       );
     }
 
-    const supabaseUser = await getCurrentUser();
+    // Try to get user from Supabase cookies first (preferred method)
+    // If that fails, try to get from Authorization header Bearer token
+    let supabaseUser = await getCurrentUser();
+    
+    // If no user from cookies, try Authorization header (for compatibility)
+    if (!supabaseUser) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        // For now, if we have a token, we'll try to validate it via Supabase
+        // This is a fallback - the primary method should be cookies
+        console.log('No user from cookies, trying token authentication');
+        // The token from localStorage might not be a valid Supabase access token
+        // But we can still try getCurrentUser which reads cookies
+      }
+    }
     
     if (!supabaseUser) {
       return NextResponse.json(

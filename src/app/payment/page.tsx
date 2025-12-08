@@ -12,15 +12,15 @@ import { Role } from '@/types/auth';
 
 function PaymentContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [clientSecret, setClientSecret] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [isProcessingSuccess, setIsProcessingSuccess] = useState(false);
   const [activeSection, setActiveSection] = useState("dashboard");
   
-  // Determine if user is a customer
-  const isCustomer = user && user.role === Role.CUSTOMER;
+  // Determine if user is a customer (wait for auth to load)
+  const isCustomer = !authLoading && user && user.role === Role.CUSTOMER;
   
   // Notification preferences
   const [customerEmail, setCustomerEmail] = useState('');
@@ -290,7 +290,7 @@ function PaymentContent() {
     setError(errorMessage);
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
         {isCustomer ? (

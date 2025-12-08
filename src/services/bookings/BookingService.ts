@@ -1,5 +1,5 @@
 import 'server-only';
-import { BookingStatus, PaymentStatus, BoxModel, boxStatus } from '@prisma/client';
+import { BookingStatus, BoxModel, boxStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { IglooService } from '../locations/IglooService';
 import { mergeRanges, normalizeDate, type Range } from '@/utils/dates';
@@ -508,12 +508,11 @@ export class BookingService extends BaseService {
     const { boxId, startDate, endDate, startTime, endTime, amountStr } = bookingData;
 
     return await this.prisma.$transaction(async (tx) => {
-      // Update payment status
+      // Update payment with user_id and completed_at (payment is already verified since it exists in DB)
       await tx.payments.update({
         where: { id: paymentId },
         data: {
           user_id: userId,
-          status: PaymentStatus.Completed,
           completed_at: new Date(),
         },
       });

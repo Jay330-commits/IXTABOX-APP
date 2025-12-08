@@ -35,7 +35,7 @@ interface LockPin {
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentState | null>(null);
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [lockPin, setLockPin] = useState<LockPin | null>(null);
@@ -44,8 +44,8 @@ function PaymentSuccessContent() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("dashboard");
   
-  // Determine if user is a customer
-  const isCustomer = user && user.role === Role.CUSTOMER;
+  // Determine if user is a customer (wait for auth to load)
+  const isCustomer = !authLoading && user && user.role === Role.CUSTOMER;
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -431,10 +431,21 @@ function PaymentSuccessContent() {
     fetchBookingData(finalEmail);
   }, [searchParams]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+      <div className="min-h-screen bg-gray-900 text-white">
+        {isCustomer ? (
+          <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
+        ) : (
+          <GuestHeader />
+        )}
+        <main className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+            <p className="text-gray-300">Loading payment confirmation...</p>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -444,7 +455,7 @@ function PaymentSuccessContent() {
       {isCustomer ? (
         <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
       ) : (
-        <GuestHeader />
+      <GuestHeader />
       )}
       
       <main className="max-w-4xl mx-auto px-6 py-8">
@@ -515,39 +526,39 @@ function PaymentSuccessContent() {
                     <div className="pt-2 border-t border-white/10 mt-2">
                       <span className="text-gray-400">Payment ID:</span>
                       <span className="text-white ml-2 font-mono text-xs">{paymentIntent.id}</span>
-                    </div>
+              </div>
                     <div>
                       <span className="text-gray-400">Payment Status:</span>
                       <span className="text-white ml-2 capitalize">{paymentIntent.status}</span>
-                    </div>
+                </div>
                   </>
                 )}
               </div>
-              
+
               {/* Lock PIN Section - Replaces Email Section */}
-              {paymentIntent && (lockPin || pinLoading || pinError) && (
+          {paymentIntent && (lockPin || pinLoading || pinError) && (
                 <div className="mt-4 pt-4 border-t border-white/10">
-                  {pinLoading ? (
+              {pinLoading ? (
                     <div className="flex items-center justify-center py-3">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-cyan-500 mr-2"></div>
                       <span className="text-sm text-gray-300">Generating your lock PIN...</span>
-                    </div>
-                  ) : pinError ? (
+                </div>
+              ) : pinError ? (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                       <p className="text-sm text-red-400">{pinError}</p>
-                      <button
-                        onClick={() => {
-                          const tomorrow = new Date();
-                          tomorrow.setDate(tomorrow.getDate() + 1);
-                          const tomorrowDate = tomorrow.toISOString().split('T')[0];
-                          generateLockPin('', tomorrowDate, null, '17:00');
-                        }}
+                  <button
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const tomorrowDate = tomorrow.toISOString().split('T')[0];
+                      generateLockPin('', tomorrowDate, null, '17:00');
+                    }}
                         className="mt-2 text-sm text-cyan-400 hover:text-cyan-300 underline"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  ) : lockPin ? (
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : lockPin ? (
                     <div className="space-y-2">
                       <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
                         <p className="text-sm text-gray-400 mb-1 text-center">Your Lock PIN</p>
@@ -557,13 +568,13 @@ function PaymentSuccessContent() {
                       </div>
                       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
                         <p className="text-xs text-yellow-200">
-                          <strong>Important:</strong> Save this PIN securely. You&apos;ll need it to access your stand during your booking period.
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
+                      <strong>Important:</strong> Save this PIN securely. You&apos;ll need it to access your stand during your booking period.
+                    </p>
+                  </div>
                 </div>
-              )}
+              ) : null}
+            </div>
+          )}
             </div>
           )}
 
@@ -606,11 +617,15 @@ function PaymentSuccessContent() {
 export default function PaymentSuccess() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-          <p className="text-gray-300">Loading payment confirmation...</p>
-        </div>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <GuestHeader />
+        <main className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+            <p className="text-gray-300">Loading payment confirmation...</p>
+          </div>
+        </main>
+        <Footer />
       </div>
     }>
       <PaymentSuccessContent />
