@@ -1,6 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 
-// Lazy initialization of Supabase client
+// Lazy initialization of Supabase client (client-side)
 let supabaseClient: SupabaseClient | null = null;
 
 function getSupabaseClient() {
@@ -16,6 +18,69 @@ function getSupabaseClient() {
   }
   
   return supabaseClient;
+}
+
+// Create server-side Supabase client that reads cookies from request
+function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+
+  // Read cookies from request (for serverless environments like Vercel)
+  const cookieStore = request ? request.cookies : cookies();
+  
+  // Supabase stores session in cookies with names like:
+  // - sb-<project-ref>-auth-token (contains access_token)
+  // - sb-<project-ref>-auth-token-code-verifier
+  // Extract the access token from cookies
+  const accessToken = cookieStore.get(`sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0]}-auth-token`)?.value;
+  
+  // Create client with access token if available
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  
+  // If we have an access token, set it on the client
+  if (accessToken) {
+    try {
+      // Parse the cookie value (it's JSON encoded)
+      const sessionData = JSON.parse(decodeURIComponent(accessToken));
+      if (sessionData?.access_token) {
+        client.auth.setSession({
+          access_token: sessionData.access_token,
+          refresh_token: sessionData.refresh_token || '',
+        } as any);
+      }
+    } catch (e) {
+      // Cookie might not be JSON, try to find access_token in all cookies
+      const allCookies = cookieStore.getAll();
+      for (const cookie of allCookies) {
+        if (cookie.name.includes('auth-token') && cookie.value.includes('access_token')) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(cookie.value));
+            if (parsed.access_token) {
+              client.auth.setSession({
+                access_token: parsed.access_token,
+                refresh_token: parsed.refresh_token || '',
+              } as any);
+              break;
+            }
+          } catch {
+            // Continue searching
+          }
+        }
+      }
+    }
+  }
+  
+  return client;
 }
 
 export const supabase = {
@@ -193,10 +258,18 @@ export async function loginWithSupabase(email: string, password: string): Promis
   }
 }
 
-// Get current user
-export async function getCurrentUser(): Promise<SupabaseUser | null> {
+// Get current user (server-side version that reads cookies from request)
+export async function getCurrentUser(request?: NextRequest): Promise<SupabaseUser | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Use server-side client if request is provided (for API routes)
+    const client = request ? createServerSupabaseClient(request) : getSupabaseClient();
+    const { data: { user }, error } = await client.auth.getUser();
+    
+    if (error) {
+      console.error('Get current user error:', error);
+      return null;
+    }
+    
     return user as SupabaseUser;
   } catch (error) {
     console.error('Get current user error:', error);

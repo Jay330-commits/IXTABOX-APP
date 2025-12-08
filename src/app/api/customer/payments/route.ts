@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabaseUser = await getCurrentUser();
+    const supabaseUser = await getCurrentUser(request);
     
     if (!supabaseUser) {
       return NextResponse.json(
