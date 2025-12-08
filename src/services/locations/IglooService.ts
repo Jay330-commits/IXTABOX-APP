@@ -202,7 +202,7 @@ export class IglooService {
       (pinResult.unlockCode as string | number | undefined);
     
     if (!pinValue) {
-      console.error('⚠️ PIN not found in Igloo API response:', pinResult);
+      console.error('PIN not found in Igloo API response:', pinResult);
       throw new Error('PIN not found in Igloo API response');
     }
     
@@ -210,7 +210,7 @@ export class IglooService {
     const parsedPin: number = typeof pinValue === 'string' ? parseInt(pinValue, 10) : Number(pinValue);
     
     if (isNaN(parsedPin)) {
-      console.error('⚠️ Generated PIN is not a valid number:', pinValue);
+      console.error('Generated PIN is not a valid number:', pinValue);
       throw new Error('Invalid PIN format from Igloo API');
     }
     
@@ -243,7 +243,7 @@ export class IglooService {
     // Extract and parse using shared function
     const parsedPin = this.extractAndParsePin(pinResult);
     
-    console.log('✅ Lock PIN generated and parsed successfully:', parsedPin);
+    console.log('Lock PIN generated and parsed successfully:', parsedPin);
     return parsedPin;
   }
 

@@ -453,7 +453,7 @@ export class UserService extends BaseService {
         throw new Error(`Failed to create or retrieve guest user with ID: ${finalUserId}`);
       }
 
-      console.log('✅ Guest user ready:', user.id, user.email, user.role);
+      console.log('Guest user ready:', user.id, user.email, user.role);
       return user;
     } catch (error) {
       this.handleError(error, 'UserService.createGuestUserFromStripeBilling');

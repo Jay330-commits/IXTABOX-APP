@@ -14,11 +14,11 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", section: "dashboard", icon: "📊" },
-  { label: "Book", section: "book", icon: "📅" },
-  { label: "Bookings", section: "bookings", icon: "📋" },
-  { label: "Payments", section: "payments", icon: "💳" },
-  { label: "Notifications", section: "notifications", icon: "🔔" },
+  { label: "Dashboard", section: "dashboard", icon: "" },
+  { label: "Book", section: "book", icon: "" },
+  { label: "Bookings", section: "bookings", icon: "" },
+  { label: "Payments", section: "payments", icon: "" },
+  { label: "Notifications", section: "notifications", icon: "" },
 ];
 
 interface CustomerHeaderProps {

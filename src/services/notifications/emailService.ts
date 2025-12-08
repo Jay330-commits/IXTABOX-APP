@@ -68,14 +68,14 @@ export class EmailService {
         html: options.html,
       });
 
-      console.log('📧 Email sent to:', options.to);
+      console.log('Email sent to:', options.to);
 
       return {
         success: true,
         messageId: info.messageId,
       };
     } catch (error) {
-      console.error('📧 Failed to send email:', error instanceof Error ? error.message : String(error));
+      console.error('Failed to send email:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

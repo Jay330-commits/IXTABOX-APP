@@ -112,8 +112,6 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check SMTP configuration
 export async function GET() {
   try {
-    const emailService = new EmailService();
-
     // Check if SMTP configuration is present
     const smtpHost = process.env.SMTP_HOST;
     const smtpUser = process.env.SMTP_USER;

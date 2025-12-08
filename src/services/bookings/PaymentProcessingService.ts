@@ -189,17 +189,17 @@ export class PaymentProcessingService {
       ? stripeChargeId 
       : (stripeChargeId as Stripe.Charge).id;
 
-    console.log('✅ Stripe Charge ID (actual payment ID from Stripe):', chargeId);
+    console.log('Stripe Charge ID (actual payment ID from Stripe):', chargeId);
 
     // Try to find existing payment record by charge ID (the actual payment ID)
     let existingPayment = await this.findPaymentRecordByChargeId(chargeId).catch(() => {
-      console.log('⚠️ Payment record not found - will create it now (payment confirmed, creating record)');
+      console.log('Payment record not found - will create it now (payment confirmed, creating record)');
       return null;
     });
 
     // If payment record doesn't exist, create it now (payment is confirmed via Stripe)
     if (!existingPayment) {
-      console.log('🔨 Creating payment record for confirmed payment with Stripe payment ID:', chargeId);
+      console.log('Creating payment record for confirmed payment with Stripe payment ID:', chargeId);
       const amountInCents = fullPaymentIntent.amount;
       const amountStr = (amountInCents / 100).toFixed(2);
 
@@ -214,7 +214,7 @@ export class PaymentProcessingService {
         },
       });
 
-      console.log('✅ Created payment record:', existingPayment.id, 'with Stripe payment ID:', chargeId);
+      console.log('Created payment record:', existingPayment.id, 'with Stripe payment ID:', chargeId);
     }
 
     // Type guard to ensure existingPayment is not null
@@ -239,7 +239,7 @@ export class PaymentProcessingService {
     const address = extractedDetails.address;
     
     // CRITICAL: Log email extraction for debugging webhook issues
-    console.log('📧 Email extraction for payment:', {
+    console.log('Email extraction for payment:', {
       paymentIntentId,
       providedEmail: providedEmail || 'none',
       extractedEmail: extractedDetails.email || 'none',
@@ -249,11 +249,11 @@ export class PaymentProcessingService {
     });
     
     if (providedEmail) {
-      console.log('✅ Using email from form/parameter:', providedEmail);
+      console.log('Using email from form/parameter:', providedEmail);
     } else if (extractedDetails.email) {
-      console.log('✅ Using email extracted from Stripe payment intent:', extractedDetails.email);
+      console.log('Using email extracted from Stripe payment intent:', extractedDetails.email);
     } else {
-      console.error('❌ CRITICAL: No email available in payment intent - user linking will fail!');
+      console.error('CRITICAL: No email available in payment intent - user linking will fail!');
       console.error('Payment intent metadata:', JSON.stringify(fullPaymentIntent.metadata || {}, null, 2));
       console.error('Payment intent receipt_email:', fullPaymentIntent.receipt_email);
       if (fullPaymentIntent.payment_method && typeof fullPaymentIntent.payment_method === 'object') {
@@ -306,10 +306,10 @@ export class PaymentProcessingService {
               user_id: userId!,
             },
           });
-          console.log('✅ Updated payment user_id to customer (booking already confirmed):', userId);
+          console.log('Updated payment user_id to customer (booking already confirmed):', userId);
         } else if (!existingPayment.user_id) {
           // Payment has no user_id but we couldn't determine it - log warning
-          console.warn('⚠️ Payment has no user_id and we could not determine it:', {
+          console.warn('Payment has no user_id and we could not determine it:', {
             paymentId: existingPayment.id,
             hasEmail: !!email,
           });
@@ -360,7 +360,7 @@ export class PaymentProcessingService {
         });
         if (authenticatedUser) {
           userId = authenticatedUser.id;
-          console.log('✅ Using authenticated customer user:', authenticatedUser.id, authenticatedUser.email);
+          console.log('Using authenticated customer user:', authenticatedUser.id, authenticatedUser.email);
         }
       }
     } catch (authError) {
@@ -371,7 +371,7 @@ export class PaymentProcessingService {
     // Don't use existingPayment.user_id as it might be distributor's ID
     if (!userId) {
       if (!email) {
-        console.error('❌ No email provided and no authenticated user - cannot create guest user');
+        console.error('No email provided and no authenticated user - cannot create guest user');
         throw new Error('Email is required to create guest user for booking');
       }
       
@@ -385,12 +385,12 @@ export class PaymentProcessingService {
           address
         );
         if (!userId) {
-          console.error('❌ Failed to create/find guest user - getOrCreateGuestUser returned null');
+          console.error('Failed to create/find guest user - getOrCreateGuestUser returned null');
           throw new Error('Failed to create or find guest user');
         }
-        console.log('✅ Guest user created/found:', userId);
+        console.log('Guest user created/found:', userId);
       } catch (userError) {
-        console.error('❌ Error creating guest user:', userError instanceof Error ? userError.message : String(userError));
+        console.error('Error creating guest user:', userError instanceof Error ? userError.message : String(userError));
         console.error('Error stack:', userError instanceof Error ? userError.stack : undefined);
         throw new Error(`Failed to create guest user: ${userError instanceof Error ? userError.message : 'Unknown error'}`);
       }
@@ -400,7 +400,7 @@ export class PaymentProcessingService {
       throw new Error('User ID is required to create booking');
     }
 
-    console.log('🔑 Customer user ID for payment:', userId);
+    console.log('Customer user ID for payment:', userId);
 
     // CRITICAL: Update payment with the correct user_id (the customer paying, not the distributor)
     // Always update to ensure payment is linked to the correct user
@@ -412,7 +412,7 @@ export class PaymentProcessingService {
       },
     });
     
-    console.log('✅ Updated payment with user_id:', {
+    console.log('Updated payment with user_id:', {
       paymentId: existingPayment.id,
       userId: userId,
       previousUserId: existingPayment.user_id || 'none',
@@ -431,40 +431,40 @@ export class PaymentProcessingService {
     // Create notification for the distributor (location owner) about the new booking
     try {
       await notificationService.createBookingNotificationForDistributor(booking.id, BookingStatus.Confirmed);
-      console.log('🔔 Booking notification created for distributor');
+      console.log('Booking notification created for distributor');
     } catch (notificationError) {
-      console.error('❌ Failed to create booking notification for distributor:', notificationError instanceof Error ? notificationError.message : String(notificationError));
+      console.error('Failed to create booking notification for distributor:', notificationError instanceof Error ? notificationError.message : String(notificationError));
       // Don't throw - notification failure shouldn't break booking creation
     }
 
     // Create notification for the customer about their booking (only if customer user_id exists)
     if (userId) {
       try {
-        console.log('🔔 Creating customer notification with user_id:', userId, 'for booking:', booking.id);
+        console.log('Creating customer notification with user_id:', userId, 'for booking:', booking.id);
         await notificationService.createBookingNotificationForCustomer(booking.id, userId, BookingStatus.Confirmed);
-        console.log('✅ Booking notification created for customer with user_id:', userId);
+        console.log('Booking notification created for customer with user_id:', userId);
       } catch (notificationError) {
-        console.error('❌ Failed to create booking notification for customer:', notificationError instanceof Error ? notificationError.message : String(notificationError));
+        console.error('Failed to create booking notification for customer:', notificationError instanceof Error ? notificationError.message : String(notificationError));
         console.error('Customer user_id that failed:', userId);
         // Don't throw - notification failure shouldn't break booking creation
       }
     } else {
-      console.warn('⚠️ No userId found - skipping customer notification creation');
+      console.warn('No userId found - skipping customer notification creation');
     }
 
     // Send booking confirmation email if email is available
     if (email) {
       try {
         await this.sendBookingConfirmationEmail(booking.id, email);
-        console.log('📧 Email sent to:', email);
+        console.log('Email sent to:', email);
       } catch (emailError) {
-        console.error('📧 Failed to send email:', emailError instanceof Error ? emailError.message : String(emailError));
+        console.error('Failed to send email:', emailError instanceof Error ? emailError.message : String(emailError));
       }
     } else {
-      console.log('📧 No email - skipping email send');
+      console.log('No email - skipping email send');
     }
 
-    console.log('✅ Payment processing completed successfully:', {
+    console.log('Payment processing completed successfully:', {
       paymentId: existingPayment.id,
       userId: userId,
       bookingId: booking.id,

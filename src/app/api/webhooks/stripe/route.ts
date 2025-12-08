@@ -8,7 +8,7 @@ import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingS
  * POST /api/webhooks/stripe
  */
 export async function POST(request: NextRequest) {
-  console.log(' WEBHOOK ENDPOINT CALLED at', new Date().toISOString());
+  console.log('WEBHOOK ENDPOINT CALLED at', new Date().toISOString());
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
   console.log('Request headers:', {
@@ -91,14 +91,14 @@ export async function POST(request: NextRequest) {
       let verifiedPaymentIntent: Stripe.PaymentIntent;
       try {
         verifiedPaymentIntent = await paymentService.retrievePaymentIntent(paymentIntent.id);
-        console.log('✅ Payment intent verified from Stripe API');
+        console.log('Payment intent verified from Stripe API');
       } catch (retrieveError) {
         // Handle test webhooks that don't have real payment intents
         if (retrieveError instanceof Error && retrieveError.message.includes('Payment intent not found')) {
-          console.warn('⚠️ Test webhook detected - payment intent not found in Stripe. Using event data.');
+          console.warn('Test webhook detected - payment intent not found in Stripe. Using event data.');
           verifiedPaymentIntent = paymentIntent;
         } else {
-          console.error('❌ Failed to retrieve payment intent:', retrieveError);
+          console.error('Failed to retrieve payment intent:', retrieveError);
           throw retrieveError;
         }
       }
@@ -132,29 +132,24 @@ export async function POST(request: NextRequest) {
       try {
         // Extract email from payment intent for user linking (webhook has no auth context)
         // The processPaymentSuccess method will extract email and link user, but we log it here for debugging
-        console.log('🔍 Extracting user info from payment intent for webhook processing...');
+        console.log('Extracting user info from payment intent for webhook processing...');
         
         const result = await paymentService.processPaymentSuccess(paymentIntent.id);
         
-        if (result.alreadyProcessed) {
-          console.log('ℹ️ Payment already processed via webhook');
-          return NextResponse.json({ received: true, message: 'Payment already processed' });
-        }
-        
         if (result.alreadyConfirmed) {
-          console.log('ℹ️ Booking already confirmed via webhook');
+          console.log('Booking already confirmed via webhook');
           return NextResponse.json({ received: true, message: 'Booking already confirmed' });
         }
 
         // Success - booking created
-        console.log('✅ Webhook successfully processed payment and created booking');
-        console.log('✅ Payment linked to user:', result.booking ? 'Yes' : 'Unknown');
+        console.log('Webhook successfully processed payment and created booking');
+        console.log('Payment linked to user:', result.booking ? 'Yes' : 'Unknown');
         return NextResponse.json({ 
           received: true,
           message: 'Payment processed and booking created successfully'
         });
       } catch (dbError) {
-        console.error('❌ Failed to process payment success in database:', {
+        console.error(' Failed to process payment success in database:', {
           error: dbError,
           paymentIntentId: verifiedPaymentIntent.id,
           errorMessage: dbError instanceof Error ? dbError.message : String(dbError),

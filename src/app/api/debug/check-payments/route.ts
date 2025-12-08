@@ -1,25 +1,42 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
+import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 
 export async function GET() {
   try {
     const paymentIntentId = 'pi_3SZDEKHRKSWWZIGs1S83gCMI'; // From your logs
 
-    // Check specific payment
-    const payment = await prisma.payments.findUnique({
+    // Retrieve payment intent from Stripe to get charge ID
+    const paymentService = new PaymentProcessingService();
+    let chargeId: string | null = null;
+    try {
+      const paymentIntent = await paymentService.retrievePaymentIntent(paymentIntentId, {
+        expand: ['latest_charge'],
+      });
+      if (paymentIntent.latest_charge) {
+        chargeId = typeof paymentIntent.latest_charge === 'string' 
+          ? paymentIntent.latest_charge 
+          : paymentIntent.latest_charge.id;
+      }
+    } catch (error) {
+      console.error('Failed to retrieve payment intent from Stripe:', error);
+    }
+
+    // Check specific payment by charge_id
+    const payment = chargeId ? await prisma.payments.findUnique({
       where: {
-        stripe_payment_intent_id: paymentIntentId,
+        charge_id: chargeId,
       },
       include: {
         bookings: true,
       },
-    });
+    }) : null;
 
-    // Get recent payments
+    // Get recent payments (order by id descending as proxy for most recent)
     const recentPayments = await prisma.payments.findMany({
       take: 10,
       orderBy: {
-        created_at: 'desc',
+        id: 'desc',
       },
       include: {
         bookings: {
@@ -33,25 +50,15 @@ export async function GET() {
       },
     });
 
-    // Count by status
-    const allPayments = await prisma.payments.findMany({
-      select: {
-        status: true,
-      },
-    });
-
-    const statusCounts = allPayments.reduce((acc, p) => {
-      const status = p.status || 'null';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Count total payments (status field removed - all payments are completed)
+    const totalPayments = await prisma.payments.count();
 
     return NextResponse.json({
       specificPayment: payment ? {
         id: payment.id,
-        status: payment.status,
+        charge_id: payment.charge_id,
         amount: payment.amount.toString(),
-        created_at: payment.created_at,
+        currency: payment.currency,
         completed_at: payment.completed_at,
         hasBooking: !!payment.bookings,
         booking: payment.bookings ? {
@@ -62,15 +69,14 @@ export async function GET() {
         } : null,
       } : null,
       recentPayments: recentPayments.map(p => ({
-        payment_intent_id: p.stripe_payment_intent_id,
-        status: p.status,
+        charge_id: p.charge_id,
         amount: p.amount.toString(),
-        created_at: p.created_at,
+        currency: p.currency,
         completed_at: p.completed_at,
         hasBooking: !!p.bookings,
         bookingStatus: p.bookings?.status,
       })),
-      statusCounts,
+      totalPayments,
     });
   } catch (error) {
     console.error('Error checking database:', error);

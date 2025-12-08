@@ -88,7 +88,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       if (!googleMapsApiKey) {
-        console.warn('⚠️ Google Maps API key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your .env file');
+        console.warn('Google Maps API key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your .env file');
       }
     }
   }, [googleMapsApiKey]);

@@ -21,9 +21,9 @@ export async function GET(
       end_date: range.end.toISOString(),
     }));
 
-    console.log(`📅 [Blocked Ranges] Box ${boxId}: Found ${blockedRanges.length} active/pending bookings`);
+    console.log(`[Blocked Ranges] Box ${boxId}: Found ${blockedRanges.length} active/pending bookings`);
     if (blockedRanges.length > 0) {
-      console.log(`📅 [Blocked Ranges] Box ${boxId} ranges:`, JSON.stringify(bookingRanges, null, 2));
+      console.log(`[Blocked Ranges] Box ${boxId} ranges:`, JSON.stringify(bookingRanges, null, 2));
     }
 
     return NextResponse.json({

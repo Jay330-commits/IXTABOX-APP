@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       compartment,
     });
 
-    console.log('🔍 Booking calculation:', {
+    console.log('Booking calculation:', {
       start: booking.validatedDates.start.toISOString(),
       end: booking.validatedDates.end.toISOString(),
       amount: booking.amountStr,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       const supabaseUser = await getCurrentUser();
       if (supabaseUser?.email) {
         customerEmail = supabaseUser.email;
-        console.log('📧 Adding authenticated user email to payment intent metadata:', customerEmail);
+        console.log('Adding authenticated user email to payment intent metadata:', customerEmail);
       }
     } catch {
       // User not authenticated - that's fine, email will be collected during payment
@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create payment intent: No payment intent ID returned');
     }
 
-    console.log('✅ Stripe payment intent created:', paymentIntent.id);
-    console.log('⚠️ SECURITY: Payment record will be created ONLY when payment is confirmed via webhook or payment success handler');
+    console.log('Stripe payment intent created:', paymentIntent.id);
+    console.log('SECURITY: Payment record will be created ONLY when payment is confirmed via webhook or payment success handler');
 
     // Return ONLY the payment intent ID (no sensitive data)
     // Booking will be created after payment succeeds via webhook

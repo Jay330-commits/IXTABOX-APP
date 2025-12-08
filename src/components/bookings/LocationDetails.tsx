@@ -137,7 +137,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     classic: { pricePerDay: number; multiplier: number };
     pro: { pricePerDay: number; multiplier: number };
   } | null>(null);
-  const [loadingPricing, setLoadingPricing] = useState(false);
+  const [, setLoadingPricing] = useState(false);
 
   // Update state when initial values change
   useEffect(() => {
@@ -461,7 +461,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       } finally {
         setLoadingBoxes(false);
       }
-  }, [selectedModel, startDate, endDate, startTime, endTime, allBoxes, modelBlockedRangesState, location.id, boxBlockedRanges]);
+  }, [selectedModel, startDate, endDate, startTime, endTime, allBoxes, location.id, boxBlockedRanges]);
 
   // Debounced effect for processing boxes (300ms delay on mobile-friendly)
   useEffect(() => {
@@ -752,9 +752,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 
   // Log form status to server
   React.useEffect(() => {
-    const formColor = isBooked ? 'RED' : 'GREEN/WHITE';
-    const statusText = location.isFullyBooked ? 'Booked' : location.status.charAt(0).toUpperCase() + location.status.slice(1);
-    
     // Form status updated (logging removed for performance)
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
@@ -973,7 +970,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         
                         // Ensure selected datetime is at least 1 minute from now
                         if (selectedDateTime < oneMinuteFromNow) {
-                          alert('⚠️ Please select a date and time at least 1 minute from now.');
+                          alert('Please select a date and time at least 1 minute from now.');
                           return;
                         }
                         
@@ -986,7 +983,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         
                         if (rangesToCheck.length > 0 && isDateBlocked(selectedDateTime, rangesToCheck)) {
                           // Only log warnings, not every date change (performance optimization)
-                          alert('⚠️ This date is blocked by an existing booking. Please choose a different date.');
+                          alert('This date is blocked by an existing booking. Please choose a different date.');
                           return;
                         }
                         
@@ -1017,7 +1014,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         
                         // Ensure selected datetime is at least 1 minute from now
                         if (selectedDateTime < oneMinuteFromNow) {
-                          alert('⚠️ Please select a date and time at least 1 minute from now.');
+                          alert('Please select a date and time at least 1 minute from now.');
                           return;
                         }
                         
@@ -1030,7 +1027,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         
                         if (rangesToCheck.length > 0 && isDateBlocked(selectedDateTime, rangesToCheck)) {
                           // Only log warnings, not every date change (performance optimization)
-                          alert('⚠️ This date is blocked by an existing booking. Please choose a different date.');
+                          alert('This date is blocked by an existing booking. Please choose a different date.');
                           return;
                         }
                         
@@ -1049,7 +1046,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               {selectedBox && isSelectedRangeBlocked && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm font-medium text-red-900">
-                    ⚠️ Selected date range overlaps with existing bookings
+                    Selected date range overlaps with existing bookings
                   </p>
                   <p className="text-xs text-red-700 mt-1">
                     Please choose different dates to complete your booking.
@@ -1208,7 +1205,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                   : [];
                 
                 if (rangesToCheck.length > 0 && isRangeBlocked(start, end, rangesToCheck)) {
-                  logger.warn('⚠️ [Booking Form] Booking attempt with blocked date range', {
+                  logger.warn('[Booking Form] Booking attempt with blocked date range', {
                     boxId: selectedBox?.boxId || null,
                     model: selectedModel,
                     startDate: `${startDate}T${startTime}`,
@@ -1216,14 +1213,14 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                     blockedRangesCount: rangesToCheck.length,
                     usingModelRanges: modelBlockedRangesState.length > 0,
                   });
-                  alert('⚠️ The selected date range overlaps with existing bookings. Please choose different dates.');
+                  alert('The selected date range overlaps with existing bookings. Please choose different dates.');
                   return;
                 }
               }
               
               if (onBook && selectedBox && !isBooking) {
                 setIsBooking(true);
-                logger.info('✅ [Booking Form] Booking submitted', {
+                logger.info('[Booking Form] Booking submitted', {
                   locationId: location.id,
                   boxId: selectedBox.boxId,
                   standId: selectedBox.standId,

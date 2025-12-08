@@ -158,7 +158,7 @@ function PaymentSuccessContent() {
       try {
         emailFromStorage = localStorage.getItem(`payment_email_${paymentIntentId}`);
         if (emailFromStorage) {
-          console.log('📧 [Success Page] Email from localStorage:', emailFromStorage);
+          console.log('[Success Page] Email from localStorage:', emailFromStorage);
         }
       } catch {
         // localStorage might not be available
@@ -169,9 +169,9 @@ function PaymentSuccessContent() {
     const finalEmail = emailFromUrl ? decodeURIComponent(emailFromUrl) : emailFromStorage;
     
     if (finalEmail) {
-      console.log('📧 [Success Page] Final email to use:', finalEmail);
+      console.log('[Success Page] Final email to use:', finalEmail);
     } else {
-      console.log('📧 [Success Page] No email found (URL or localStorage)');
+      console.log('[Success Page] No email found (URL or localStorage)');
     }
 
     const fetchBookingData = async (emailToUse: string | null) => {
@@ -196,7 +196,7 @@ function PaymentSuccessContent() {
 
         const data = await response.json();
         
-        console.log('📋 Payment data received:', {
+        console.log('Payment data received:', {
           paymentIntentStatus: data.paymentIntent?.status,
           bookingExists: data.bookingExists,
           hasBooking: !!data.booking,
@@ -226,8 +226,8 @@ function PaymentSuccessContent() {
         // Create booking if payment succeeded and booking doesn't exist yet
         let bookingWasCreated = false;
         if (data.paymentIntent.status === 'succeeded' && !data.bookingExists) {
-          console.log('🔄 Payment succeeded, creating booking for:', paymentIntentId);
-          console.log('📊 Booking creation check:', {
+          console.log('Payment succeeded, creating booking for:', paymentIntentId);
+          console.log('Booking creation check:', {
             status: data.paymentIntent.status,
             bookingExists: data.bookingExists,
             willCreate: true,
@@ -235,7 +235,7 @@ function PaymentSuccessContent() {
           
           try {
             // Use the email passed to this function
-            console.log('📧 [Success Page] Sending email to process-success:', emailToUse || 'NOT PROVIDED');
+            console.log('[Success Page] Sending email to process-success:', emailToUse || 'NOT PROVIDED');
             
             const requestBody = emailToUse ? { customerEmail: emailToUse } : {};
             const createBookingResponse = await fetch(`/api/payments/${paymentIntentId}/process-success`, {
@@ -247,7 +247,7 @@ function PaymentSuccessContent() {
             
             if (createBookingResponse.ok) {
               const bookingData = await createBookingResponse.json();
-              console.log('✅ Booking creation response:', {
+              console.log('Booking creation response:', {
                 bookingId: bookingData.booking?.id,
                 message: bookingData.message,
                 success: bookingData.success,
@@ -271,7 +271,7 @@ function PaymentSuccessContent() {
                 if (updatedResponse.ok) {
                   const updatedData = await updatedResponse.json();
                   if (updatedData.bookingExists && updatedData.booking) {
-                    console.log('✅ Booking found in database after creation');
+                    console.log('Booking found in database after creation');
                     data.booking = updatedData.booking;
                     data.bookingExists = true;
                     bookingWasCreated = true;
@@ -294,22 +294,22 @@ function PaymentSuccessContent() {
                         pin: String(pinValue),
                         pinCode: String(pinValue),
                       });
-                      console.log('✅ Booking created with PIN:', pinValue);
+                      console.log('Booking created with PIN:', pinValue);
                     } else {
-                      console.warn('⚠️ Booking created but PIN not found in response');
+                      console.warn('Booking created but PIN not found in response');
                     }
                   } else {
-                    console.warn('⚠️ Booking creation succeeded but booking not found in updated data');
+                    console.warn('Booking creation succeeded but booking not found in updated data');
                   }
                 } else {
-                  console.error('❌ Failed to fetch updated payment data after booking creation');
+                  console.error('Failed to fetch updated payment data after booking creation');
                 }
               } else {
-                console.warn('⚠️ Booking creation returned success=false:', bookingData);
+                console.warn('Booking creation returned success=false:', bookingData);
               }
             } else {
               const errorData = await createBookingResponse.json().catch(() => ({}));
-              console.error('❌ Failed to create booking - API error:', {
+              console.error('Failed to create booking - API error:', {
                 status: createBookingResponse.status,
                 statusText: createBookingResponse.statusText,
                 error: errorData,
@@ -317,7 +317,7 @@ function PaymentSuccessContent() {
               // Continue - webhook may still create it
             }
           } catch (bookingError) {
-            console.error('❌ Error creating booking - exception:', {
+            console.error('Error creating booking - exception:', {
               error: bookingError,
               message: bookingError instanceof Error ? bookingError.message : String(bookingError),
               stack: bookingError instanceof Error ? bookingError.stack : undefined,
@@ -352,7 +352,7 @@ function PaymentSuccessContent() {
               if (pollResponse.ok) {
                 const pollData = await pollResponse.json();
                 if (pollData.bookingExists && pollData.booking) {
-                  console.log('✅ Booking found after webhook processing');
+                  console.log('Booking found after webhook processing');
                   data.booking = pollData.booking;
                   data.bookingExists = true;
                   // Trigger re-render with booking data
@@ -371,7 +371,7 @@ function PaymentSuccessContent() {
                       pin: String(pinValue),
                       pinCode: String(pinValue),
                     });
-                    console.log('✅ PIN found in booking:', pinValue);
+                    console.log('PIN found in booking:', pinValue);
                   }
                   return;
                 }
@@ -411,9 +411,9 @@ function PaymentSuccessContent() {
               pin: String(pinValue),
               pinCode: String(pinValue),
             });
-            console.log('✅ Using PIN from existing booking:', pinValue);
+            console.log('Using PIN from existing booking:', pinValue);
           } else {
-            console.warn('⚠️ PIN not found in booking data, but should have been generated during creation');
+            console.warn('PIN not found in booking data, but should have been generated during creation');
           }
         }
       } catch (error) {
@@ -620,10 +620,10 @@ export default function PaymentSuccess() {
       <div className="min-h-screen bg-gray-900 text-white">
         <GuestHeader />
         <main className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-            <p className="text-gray-300">Loading payment confirmation...</p>
-          </div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading payment confirmation...</p>
+        </div>
         </main>
         <Footer />
       </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { boxStatus, BoxModel } from '@prisma/client';
 import { BookingService } from '@/services/bookings/BookingService';
 import { LocationService } from '@/services/locations/LocationService';
 

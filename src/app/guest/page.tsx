@@ -40,21 +40,21 @@ const STAT_METRICS = [
 
 const JOURNEY_STEPS = [
   {
-    icon: "🔍",
+    icon: "",
     title: "Browse availability",
     highlight: "Step 1",
     description:
       "Open the map, pick the stand closest to you, and check which IXTAbox sizes are free for your dates.",
   },
   {
-    icon: "📝",
+    icon: "",
     title: "Reserve & schedule",
     highlight: "Step 2",
     description:
       "Choose your time window, add extras like racks or straps, and confirm the booking with secure checkout.",
   },
   {
-    icon: "⚙️",
+    icon: "",
     title: "Mount in minutes",
     highlight: "Step 3",
     description:

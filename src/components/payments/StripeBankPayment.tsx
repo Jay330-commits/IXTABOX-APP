@@ -90,9 +90,9 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
     // The payment page should have already stored it, but we ensure it's there
     const storedEmail = localStorage.getItem(`payment_email_${paymentIntentId}`);
     if (storedEmail) {
-      console.log('📧 [StripeBankPayment] Email already stored, proceeding with payment');
+      console.log('[StripeBankPayment] Email already stored, proceeding with payment');
     } else {
-      console.log('📧 [StripeBankPayment] No email found in localStorage before redirect');
+      console.log('[StripeBankPayment] No email found in localStorage before redirect');
     }
 
     const { error } = await stripe.confirmPayment({

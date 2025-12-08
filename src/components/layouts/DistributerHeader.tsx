@@ -11,11 +11,11 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", section: "dashboard", icon: "📊" },
-  { label: "Inventory", section: "inventory", icon: "📦" },
-  { label: "Marketing", section: "marketing", icon: "📢" },
-  { label: "Contracts", section: "contracts", icon: "📄" },
-  { label: "Statistics", section: "statistics", icon: "📈" },
+  { label: "Dashboard", section: "dashboard", icon: "" },
+  { label: "Inventory", section: "inventory", icon: "" },
+  { label: "Marketing", section: "marketing", icon: "" },
+  { label: "Contracts", section: "contracts", icon: "" },
+  { label: "Statistics", section: "statistics", icon: "" },
 ];
 
 interface DistributerHeaderProps {

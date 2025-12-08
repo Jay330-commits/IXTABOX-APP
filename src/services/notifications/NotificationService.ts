@@ -227,7 +227,7 @@ export class NotificationService extends BaseService {
         read: false,
       },
     });
-    console.log('✅ Notification created successfully with id:', notification.id, 'user_id:', notification.user_id);
+    console.log('Notification created successfully with id:', notification.id, 'user_id:', notification.user_id);
   }
 
   /**

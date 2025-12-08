@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: locationId } = await params;
+    await params; // Extract params to satisfy route signature
 
     // Try to get pricing from platform_settings first
     const basePriceSetting = await prisma.platform_settings.findUnique({

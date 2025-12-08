@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatusService } from '@/services/bookings/BookingStatusService';
 
 export async function GET() {
   try {
@@ -76,27 +76,40 @@ export async function GET() {
 
     console.log('[Bookings API] Found bookings:', bookings.length);
 
+    // Calculate current status for each booking based on dates
+    const statusService = new BookingStatusService();
+    const now = new Date();
+
     // Transform bookings to match the frontend format
-    const formattedBookings = bookings.map((booking) => ({
-      id: booking.id,
-      location: booking.boxes.stands.locations.name || 'Unknown Location',
-      locationAddress: booking.boxes.stands.locations.address || null,
-      date: booking.start_date.toISOString().split('T')[0],
-      status: booking.status || BookingStatus.Pending,
-      amount: parseFloat(booking.total_amount.toString()),
-      startDate: booking.start_date.toISOString(),
-      endDate: booking.end_date.toISOString(),
-      boxId: booking.box_id,
-      boxDisplayId: booking.boxes.display_id,
-      standId: booking.boxes.stand_id,
-      standDisplayId: booking.boxes.stands.display_id,
-      locationId: booking.boxes.stands.location_id,
-      lockPin: booking.lock_pin || null,
-      paymentId: booking.payment_id,
-      paymentStatus: booking.payments?.status || null,
-      createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
-      model: booking.boxes.model || 'Classic',
-    }));
+    const formattedBookings = bookings.map((booking) => {
+      // Calculate current status based on dates (ensures accuracy)
+      const calculatedStatus = statusService.calculateBookingStatus(
+        booking.start_date,
+        booking.end_date,
+        now
+      );
+
+      return {
+        id: booking.id,
+        location: booking.boxes.stands.locations.name || 'Unknown Location',
+        locationAddress: booking.boxes.stands.locations.address || null,
+        date: booking.start_date.toISOString().split('T')[0],
+        status: calculatedStatus.toLowerCase(), // Use calculated status
+        amount: parseFloat(booking.total_amount.toString()),
+        startDate: booking.start_date.toISOString(),
+        endDate: booking.end_date.toISOString(),
+        boxId: booking.box_id,
+        boxDisplayId: booking.boxes.display_id,
+        standId: booking.boxes.stand_id,
+        standDisplayId: booking.boxes.stands.display_id,
+        locationId: booking.boxes.stands.location_id,
+        lockPin: booking.lock_pin || null,
+        paymentId: booking.payment_id,
+        paymentStatus: null, // Payment status removed - payments are only created after successful payment
+        createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
+        model: booking.boxes.model || 'Classic',
+      };
+    });
 
     return NextResponse.json({ bookings: formattedBookings });
   } catch (error) {

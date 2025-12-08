@@ -251,7 +251,7 @@ function PaymentContent() {
     // Redirect after processing completes (so email is sent)
     // Pass email in URL so success page can use it
     const emailParam = encodeURIComponent(emailToUse);
-    console.log('📧 [handlePaymentSuccess] Redirecting with email:', emailToUse);
+    console.log('[handlePaymentSuccess] Redirecting with email:', emailToUse);
     window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}&email=${emailParam}`);
   };
 
@@ -296,7 +296,7 @@ function PaymentContent() {
         {isCustomer ? (
           <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
         ) : (
-          <GuestHeader />
+        <GuestHeader />
         )}
         <main className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center animate-fadeIn">
@@ -323,7 +323,7 @@ function PaymentContent() {
         {isCustomer ? (
           <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
         ) : (
-          <GuestHeader />
+        <GuestHeader />
         )}
         <main className="max-w-4xl mx-auto px-6 py-16">
           <div className="text-center">
@@ -366,7 +366,7 @@ function PaymentContent() {
       {isCustomer ? (
         <CustomerHeader activeSection={activeSection} onSectionChange={setActiveSection} />
       ) : (
-        <GuestHeader />
+      <GuestHeader />
       )}
       
       {/* Success Processing Overlay */}

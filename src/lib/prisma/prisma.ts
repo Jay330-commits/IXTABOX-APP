@@ -18,13 +18,13 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): LegacyPrismaClient {
   // Check if DATABASE_URL is set
   if (!process.env.DATABASE_URL) {
-    console.error('⚠️  DATABASE_URL environment variable is not set!');
+    console.error('DATABASE_URL environment variable is not set!');
     console.error('Please ensure DATABASE_URL is set in your .env.local file');
   } else {
     // Log connection info (without sensitive data)
     const dbUrl = process.env.DATABASE_URL;
     const urlObj = new URL(dbUrl);
-    console.log('📊 Database connection:', {
+    console.log('Database connection:', {
       host: urlObj.hostname,
       port: urlObj.port,
       database: urlObj.pathname.split('/').pop(),
@@ -60,7 +60,7 @@ function createPrismaClient(): LegacyPrismaClient {
 // This helps when enum types change and the dev server needs to reload
 const shouldForceRecreate = process.env.PRISMA_FORCE_RECREATE === 'true';
 if (shouldForceRecreate && globalForPrisma.prisma) {
-  console.log('🔄 Forcing Prisma client recreation...');
+  console.log('Forcing Prisma client recreation...');
   // Disconnect existing client asynchronously (don't await to avoid blocking)
   globalForPrisma.prisma.$disconnect().catch(() => {
     // Ignore disconnect errors

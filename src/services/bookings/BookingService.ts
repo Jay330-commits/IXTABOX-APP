@@ -1,21 +1,35 @@
 import 'server-only';
-import { BookingStatus, BoxModel, boxStatus } from '@prisma/client';
+import { boxStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { IglooService } from '../locations/IglooService';
-import { mergeRanges, normalizeDate, type Range } from '@/utils/dates';
+import { BookingStatusService } from './BookingStatusService';
+import { BookingValidationService } from './BookingValidationService';
+import { BookingAvailabilityService } from './BookingAvailabilityService';
 
 /**
  * BookingService
- * Handles all booking-related operations
- * Separated from payment processing for better code organization
+ * Handles core booking operations (creation, metadata extraction)
+ * Delegates validation, pricing, and availability to specialized services
  */
 export class BookingService extends BaseService {
+  private validationService: BookingValidationService;
+  private availabilityService: BookingAvailabilityService;
+  private statusService: BookingStatusService;
+
+  constructor() {
+    super();
+    this.validationService = new BookingValidationService();
+    this.availabilityService = new BookingAvailabilityService();
+    this.statusService = new BookingStatusService();
+  }
+
   // ============================================================================
-  // Date Validation & Parsing
+  // Delegated Methods (for backward compatibility)
   // ============================================================================
 
   /**
    * Validate and parse booking dates
+   * @deprecated Use BookingValidationService directly
    */
   validateBookingDates(
     startDate: string,
@@ -23,69 +37,27 @@ export class BookingService extends BaseService {
     startTime: string,
     endTime: string
   ): { start: Date; end: Date; isValid: boolean; error?: string } {
-    try {
-      const start = new Date(`${startDate}T${startTime}`);
-      const end = new Date(`${endDate}T${endTime}`);
-
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        return {
-          start,
-          end,
-          isValid: false,
-          error: 'Invalid date or time format',
-        };
-      }
-
-      if (end <= start) {
-        return {
-          start,
-          end,
-          isValid: false,
-          error: 'End date must be after start date',
-        };
-      }
-
-      return { start, end, isValid: true };
-    } catch (error) {
-      return {
-        start: new Date(),
-        end: new Date(),
-        isValid: false,
-        error: error instanceof Error ? error.message : 'Invalid date format',
-      };
-    }
+    return this.validationService.validateBookingDates(startDate, endDate, startTime, endTime);
   }
 
   /**
    * Calculate number of days for booking
+   * @deprecated Use BookingValidationService directly
    */
   calculateBookingDays(start: Date, end: Date): number {
-    return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    return this.validationService.calculateBookingDays(start, end);
   }
-
-  // ============================================================================
-  // Price Calculation
-  // ============================================================================
 
   /**
    * Calculate booking price based on dates and model
+   * @deprecated Use BookingValidationService directly
    */
   calculateBookingPrice(
     days: number,
     modelId: string | null,
     basePrice: number = 299.99
   ): { amount: number; amountStr: string; days: number; basePrice: number; multiplier: number } {
-    const multiplier = modelId === 'pro' || modelId === 'Pro' ? 1.5 : 1.0;
-    const amount = basePrice * multiplier * days;
-    const amountStr = amount.toFixed(2);
-
-    return {
-      amount,
-      amountStr,
-      days,
-      basePrice,
-      multiplier,
-    };
+    return this.validationService.calculateBookingPrice(days, modelId, basePrice);
   }
 
   /**
@@ -108,49 +80,8 @@ export class BookingService extends BaseService {
     metadata: Record<string, string>;
     validatedDates: { start: Date; end: Date };
   }> {
-    // Validate dates
-    const dateValidation = this.validateBookingDates(
-      bookingData.startDate,
-      bookingData.endDate,
-      bookingData.startTime,
-      bookingData.endTime
-    );
-
-    if (!dateValidation.isValid) {
-      throw new Error(dateValidation.error || 'Invalid booking dates');
-    }
-
-    const { start, end } = dateValidation;
-    const days = this.calculateBookingDays(start, end);
-    const priceCalculation = this.calculateBookingPrice(days, bookingData.modelId || null);
-
-    // Prepare metadata
-    const metadata: Record<string, string> = {
-      locationId: bookingData.locationId,
-      boxId: bookingData.boxId,
-      standId: bookingData.standId,
-      modelId: bookingData.modelId || '',
-      startDate: bookingData.startDate,
-      endDate: bookingData.endDate,
-      startTime: bookingData.startTime,
-      endTime: bookingData.endTime,
-      locationDisplayId: bookingData.locationDisplayId || bookingData.locationId,
-      compartment: bookingData.compartment || '',
-      amount: priceCalculation.amountStr,
-      source: 'ixtabox-app',
-    };
-
-    return {
-      amount: priceCalculation.amount,
-      amountStr: priceCalculation.amountStr,
-      metadata,
-      validatedDates: { start, end },
-    };
+    return this.validationService.validateAndPrepareBooking(bookingData);
   }
-
-  // ============================================================================
-  // Box Verification
-  // ============================================================================
 
   /**
    * Verify box exists and is available
@@ -168,88 +99,44 @@ export class BookingService extends BaseService {
     return { exists: true, box };
   }
 
-  // ============================================================================
-  // Date Overlap & Conflict Detection
-  // ============================================================================
-
   /**
    * Check if two date ranges overlap
+   * @deprecated Use BookingAvailabilityService directly
    */
   hasDateOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
-    return start1 <= end2 && end1 >= start2;
+    return this.availabilityService.hasDateOverlap(start1, end1, start2, end2);
   }
 
   /**
    * Find bookings that conflict with the requested date range
+   * @deprecated Use BookingAvailabilityService directly
    */
   findConflictingBookings(
     bookings: Array<{ start_date: Date; end_date: Date }>,
     requestedStart: Date,
     requestedEnd: Date
   ): Array<{ start_date: Date; end_date: Date }> {
-    return bookings.filter((booking) =>
-      this.hasDateOverlap(
-        new Date(booking.start_date),
-        new Date(booking.end_date),
-        requestedStart,
-        requestedEnd
-      )
-    );
+    return this.availabilityService.findConflictingBookings(bookings, requestedStart, requestedEnd);
   }
 
   /**
    * Get the latest end date from a list of bookings
+   * @deprecated Use BookingAvailabilityService directly
    */
   getLatestEndDate(bookings: Array<{ end_date: Date }>): Date | null {
-    if (bookings.length === 0) return null;
-
-    return bookings.reduce((latest, booking) => {
-      const bookingEnd = new Date(booking.end_date);
-      return bookingEnd > latest ? bookingEnd : latest;
-    }, new Date(0));
+    return this.availabilityService.getLatestEndDate(bookings);
   }
-
-  // ============================================================================
-  // Availability Calculations
-  // ============================================================================
 
   /**
    * Calculate box availability based on bookings and requested dates
+   * @deprecated Use BookingAvailabilityService directly
    */
   calculateAvailability(
     bookings: Array<{ start_date: Date; end_date: Date }>,
     requestedStartDate: string | null,
     requestedEndDate: string | null
   ): { isAvailable: boolean; nextAvailableDate: string | null } {
-    // If no bookings, box is available
-    if (bookings.length === 0) {
-      return { isAvailable: true, nextAvailableDate: null };
-    }
-
-    // If no dates specified, check all bookings
-    if (!requestedStartDate || !requestedEndDate) {
-      const latestEndDate = this.getLatestEndDate(bookings);
-      return {
-        isAvailable: false,
-        nextAvailableDate: latestEndDate ? latestEndDate.toISOString() : null,
-      };
-    }
-
-    // Check for conflicts with requested dates
-    const requestedStart = new Date(requestedStartDate);
-    const requestedEnd = new Date(requestedEndDate);
-    const conflictingBookings = this.findConflictingBookings(bookings, requestedStart, requestedEnd);
-
-    if (conflictingBookings.length === 0) {
-      return { isAvailable: true, nextAvailableDate: null };
-    }
-
-    // Get the latest end date from conflicting bookings
-    const latestEndDate = this.getLatestEndDate(conflictingBookings);
-    return {
-      isAvailable: false,
-      nextAvailableDate: latestEndDate ? latestEndDate.toISOString() : null,
-    };
+    return this.availabilityService.calculateAvailability(bookings, requestedStartDate, requestedEndDate);
   }
 
   /**
@@ -264,36 +151,7 @@ export class BookingService extends BaseService {
     nextAvailableDate: Date | null;
     conflictingBookings: Array<{ start_date: Date; end_date: Date }>;
   }> {
-    const bookings = await this.prisma.bookings.findMany({
-      where: {
-        box_id: boxId,
-        status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
-        },
-      },
-      select: {
-        start_date: true,
-        end_date: true,
-      },
-    });
-
-    if (requestedStart && requestedEnd) {
-      const conflicting = this.findConflictingBookings(bookings, requestedStart, requestedEnd);
-      const nextAvailable = this.getLatestEndDate(conflicting);
-
-      return {
-        isAvailable: conflicting.length === 0,
-        nextAvailableDate: nextAvailable,
-        conflictingBookings: conflicting,
-      };
-    }
-
-    const nextAvailable = this.getLatestEndDate(bookings);
-    return {
-      isAvailable: bookings.length === 0,
-      nextAvailableDate: nextAvailable,
-      conflictingBookings: bookings,
-    };
+    return this.availabilityService.getBoxAvailability(boxId, requestedStart, requestedEnd);
   }
 
   /**
@@ -301,194 +159,66 @@ export class BookingService extends BaseService {
    */
   async calculateModelAvailability(
     locationId: string,
-    model: BoxModel
+    model: import('@prisma/client').BoxModel
   ): Promise<{
     isFullyBooked: boolean;
     nextAvailableDate: Date | null;
     availableBoxes: number;
     totalBoxes: number;
   }> {
-    const location = await this.prisma.locations.findUnique({
-      where: { id: locationId },
-      include: {
-        stands: {
-          include: {
-            boxes: {
-              where: {
-                model: model,
-                status: boxStatus.Active,
-              },
-              include: {
-                bookings: {
-                  where: {
-                    status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
-                    },
-                  },
-                  select: {
-                    end_date: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!location) {
-      throw new Error(`Location ${locationId} not found`);
-    }
-
-    let availableBoxes = 0;
-    let totalBoxes = 0;
-    const allEndDates: Date[] = [];
-
-    location.stands.forEach((stand) => {
-      stand.boxes.forEach((box) => {
-        totalBoxes++;
-        if (box.bookings.length === 0) {
-          availableBoxes++;
-        } else {
-          box.bookings.forEach((booking) => {
-            allEndDates.push(new Date(booking.end_date));
-          });
-        }
-      });
-    });
-
-    const isFullyBooked = totalBoxes > 0 && availableBoxes === 0;
-    const nextAvailableDate = allEndDates.length > 0
-      ? allEndDates.reduce((latest, date) => (date > latest ? date : latest), new Date(0))
-      : null;
-
-    return {
-      isFullyBooked,
-      nextAvailableDate,
-      availableBoxes,
-      totalBoxes,
-    };
+    return this.availabilityService.calculateModelAvailability(locationId, model);
   }
-
-  // ============================================================================
-  // Blocked Ranges
-  // ============================================================================
 
   /**
    * Get blocked date ranges for a specific box
    */
-  async getBoxBlockedRanges(boxId: string): Promise<Range[]> {
-    const bookings = await this.prisma.bookings.findMany({
-      where: {
-        box_id: boxId,
-        status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
-        },
-      },
-      select: {
-        start_date: true,
-        end_date: true,
-      },
-      orderBy: {
-        start_date: 'asc',
-      },
-    });
-
-    return bookings.map((booking) => ({
-      start: normalizeDate(booking.start_date),
-      end: normalizeDate(booking.end_date),
-    }));
+  async getBoxBlockedRanges(boxId: string): Promise<import('@/utils/dates').Range[]> {
+    return this.availabilityService.getBoxBlockedRanges(boxId);
   }
 
   /**
    * Get merged blocked ranges for all boxes of a specific model at a location
    */
-  async getModelBlockedRanges(locationId: string, model: BoxModel): Promise<{
-    ranges: Range[];
+  async getModelBlockedRanges(
+    locationId: string,
+    model: import('@prisma/client').BoxModel
+  ): Promise<{
+    ranges: import('@/utils/dates').Range[];
     totalBookings: number;
     mergedRangesCount: number;
   }> {
-    const location = await this.prisma.locations.findUnique({
-      where: { id: locationId },
-      include: {
-        stands: {
-          include: {
-            boxes: {
-              where: {
-                model: model,
-                status: boxStatus.Active,
-              },
-              include: {
-                bookings: {
-                  where: {
-                    status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
-                    },
-                  },
-                  select: {
-                    start_date: true,
-                    end_date: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!location) {
-      throw new Error(`Location ${locationId} not found`);
-    }
-
-    const allRanges: Range[] = [];
-
-    location.stands.forEach((stand) => {
-      stand.boxes.forEach((box) => {
-        box.bookings.forEach((booking) => {
-          allRanges.push({
-            start: normalizeDate(booking.start_date),
-            end: normalizeDate(booking.end_date),
-          });
-        });
-      });
-    });
-
-    const mergedRanges = mergeRanges(allRanges);
-
-    return {
-      ranges: mergedRanges,
-      totalBookings: allRanges.length,
-      mergedRangesCount: mergedRanges.length,
-    };
+    return this.availabilityService.getModelBlockedRanges(locationId, model);
   }
 
   /**
    * Merge blocked ranges (utility function)
+   * @deprecated Use BookingAvailabilityService directly
    */
-  mergeBlockedRanges(ranges: Range[]): Range[] {
-    return mergeRanges(ranges);
+  mergeBlockedRanges(ranges: import('@/utils/dates').Range[]): import('@/utils/dates').Range[] {
+    return this.availabilityService.mergeBlockedRanges(ranges);
   }
-
-  // ============================================================================
-  // Earliest Available Date
-  // ============================================================================
 
   /**
    * Get earliest available date for a box
    */
   async getEarliestAvailableDate(boxId: string): Promise<Date | null> {
-    const availability = await this.getBoxAvailability(boxId);
-    return availability.nextAvailableDate;
+    return this.availabilityService.getEarliestAvailableDate(boxId);
   }
 
   /**
    * Get earliest available date for a model at a location
    */
-  async getEarliestAvailableDateForModel(locationId: string, model: BoxModel): Promise<Date | null> {
-    const availability = await this.calculateModelAvailability(locationId, model);
-    return availability.nextAvailableDate;
+  async getEarliestAvailableDateForModel(
+    locationId: string,
+    model: import('@prisma/client').BoxModel
+  ): Promise<Date | null> {
+    return this.availabilityService.getEarliestAvailableDateForModel(locationId, model);
   }
+
+  // ============================================================================
+  // Core Booking Operations
+  // ============================================================================
+
   /**
    * Create booking record in database
    * Generates lock PIN and handles all booking creation logic
@@ -535,14 +265,13 @@ export class BookingService extends BaseService {
         throw new Error(`Box with id ${boxId} not found`);
       }
 
-      // Determine booking status based on start date
-      const now = new Date();
-      const bookingStatus = start > now ? BookingStatus.Pending : BookingStatus.Active;
+      // Determine booking status based on dates using BookingStatusService
+      const bookingStatus = this.statusService.calculateBookingStatus(start, end);
       
       console.log('Booking status determined:', {
         startDate: start.toISOString(),
-        now: now.toISOString(),
-        isFuture: start > now,
+        endDate: end.toISOString(),
+        now: new Date().toISOString(),
         status: bookingStatus,
       });
 
@@ -632,4 +361,3 @@ export class BookingService extends BaseService {
     };
   }
 }
-

@@ -1,6 +1,6 @@
   "use client";
 
-  import { useState, useEffect } from "react";
+  import { useState, useEffect, Suspense } from "react";
   import { useRouter, useSearchParams } from "next/navigation";
   import { useAuth } from "@/contexts/AuthContext";
   import { Role } from "@/types/auth";
@@ -73,7 +73,7 @@
     totalRewards: number;
   };
 
-  export default function CustomerDashboard() {
+  function CustomerDashboardContent() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -228,6 +228,76 @@
         cancelled = true;
       };
     }, [user, loading]);
+
+    // Periodic booking status sync
+    useEffect(() => {
+      if (!user || bookings.length === 0) return;
+
+      /**
+       * Calculate booking status based on dates (client-side)
+       * Matches the logic in BookingStatusService
+       */
+      const calculateBookingStatus = (startDate: string, endDate: string): string => {
+        const now = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return 'pending';
+        }
+        
+        if (end < now) {
+          return 'completed';
+        } else if (start <= now && end >= now) {
+          return 'active';
+        } else {
+          return 'pending';
+        }
+      };
+
+      const syncStatuses = async () => {
+        const updates: Array<{ bookingId: string; newStatus: string }> = [];
+        const updatedBookings = bookings.map(booking => {
+          if (!booking.startDate || !booking.endDate) {
+            return booking;
+          }
+
+          const calculatedStatus = calculateBookingStatus(booking.startDate, booking.endDate);
+          
+          // Only update if status changed
+          if (calculatedStatus !== booking.status.toLowerCase()) {
+            updates.push({
+              bookingId: booking.id,
+              newStatus: calculatedStatus,
+            });
+            
+            return { ...booking, status: calculatedStatus };
+          }
+          return booking;
+        });
+
+        // Update UI immediately (optimistic update)
+        if (updates.length > 0) {
+          setBookings(updatedBookings);
+          
+          // Sync with DB in background (fire and forget)
+          fetch('/api/bookings/sync-statuses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates }),
+          }).catch(err => {
+            console.error('Failed to sync booking statuses in DB:', err);
+            // Optionally revert UI update on error, but for now we keep optimistic update
+          });
+        }
+      };
+
+      // Run immediately, then every 30 seconds
+      syncStatuses();
+      const interval = setInterval(syncStatuses, 30000);
+
+      return () => clearInterval(interval);
+    }, [user, bookings]);
 
     // Load locations when book section is active
     useEffect(() => {
@@ -907,7 +977,7 @@
           <p className="text-xl lg:text-2xl font-bold text-cyan-300">{userStats.totalBookings}</p>
         </div>
         <div className="w-10 h-10 lg:w-12 lg:h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl">📅</span>
+          <span className="text-xl lg:text-2xl"></span>
         </div>
       </div>
       <div className="mt-2 lg:mt-4 flex items-center text-xs lg:text-sm text-green-400">
@@ -1201,8 +1271,21 @@
         </button>
 
         <Footer />
-        
-        {/* Booking Details Modal */}
       </div>
+    );
+  }
+
+  export default function CustomerDashboard() {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mb-4"></div>
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+      }>
+        <CustomerDashboardContent />
+      </Suspense>
     );
   }

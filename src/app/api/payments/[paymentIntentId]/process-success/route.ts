@@ -30,34 +30,26 @@ export async function POST(
             const body = JSON.parse(text);
             customerEmail = body.customerEmail || null;
             if (customerEmail) {
-              console.log('📧 Email from form:', customerEmail);
+              console.log('Email from form:', customerEmail);
             } else {
-              console.log('📧 No email in request body');
+              console.log('No email in request body');
             }
           } catch {
-            console.log('📧 Invalid JSON in request body');
+            console.log('Invalid JSON in request body');
           }
         } else {
-          console.log('📧 Empty request body');
+          console.log('Empty request body');
         }
       } else {
-        console.log('📧 No JSON content type, skipping body parse');
+        console.log('No JSON content type, skipping body parse');
       }
     } catch (error) {
-      console.log('📧 Could not read request body:', error instanceof Error ? error.message : String(error));
+      console.log('Could not read request body:', error instanceof Error ? error.message : String(error));
     }
 
-    console.log('🔄 Processing payment success locally for:', paymentIntentId);
+    console.log('Processing payment success locally for:', paymentIntentId);
 
     const result = await processPaymentSuccess(paymentIntentId, customerEmail);
-
-    if (result.alreadyProcessed) {
-      return NextResponse.json({
-        success: true,
-        message: 'Payment already processed',
-        booking: result.booking,
-      });
-    }
 
     if (result.alreadyConfirmed) {
       return NextResponse.json({
@@ -67,14 +59,14 @@ export async function POST(
       });
     }
 
-    console.log('✅ Payment processed and booking created successfully');
+    console.log('Payment processed and booking created successfully');
     return NextResponse.json({
       success: true,
       message: 'Payment processed and booking created successfully',
       booking: result.booking,
     });
   } catch (error) {
-    console.error('❌ Failed to process payment success:', {
+    console.error('Failed to process payment success:', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { status, boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { status, boxStatus, BoxModel } from '@prisma/client';
 import { LocationService } from '@/services/locations/LocationService';
-import { BookingService } from '@/services/bookings/BookingService';
 
 type ApiLocation = {
   id: string;
@@ -45,7 +44,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function GET() {
   try {
     const locationService = new LocationService();
-    const bookingService = new BookingService();
 
     // Get all active locations using LocationService
     const locations = await locationService.getActiveLocations();
@@ -113,9 +111,7 @@ export async function GET() {
         // Location is fully booked if all boxes have active/pending bookings
         const isFullyBooked = totalBoxes > 0 && bookedBoxes === totalBoxes;
         
-        // Calculate earliest next available date per model using BookingService
-        const bookingService = new BookingService();
-        
+        // Calculate earliest next available date per model
         const getLatestEndDate = (dates: Date[]): Date | null => {
           if (dates.length === 0) return null;
           return dates.reduce((latest, endDate) => {
