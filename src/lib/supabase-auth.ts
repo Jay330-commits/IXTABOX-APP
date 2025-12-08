@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
 
 // Lazy initialization of Supabase client (client-side)
 let supabaseClient: SupabaseClient | null = null;
@@ -30,13 +29,38 @@ function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
   }
 
   // Read cookies from request (for serverless environments like Vercel)
-  const cookieStore = request ? request.cookies : cookies();
+  // Only use request.cookies - don't use next/headers cookies() to avoid client-side import issues
+  if (!request) {
+    // Fallback to regular client if no request provided (client-side usage)
+    return getSupabaseClient();
+  }
   
-  // Supabase stores session in cookies with names like:
-  // - sb-<project-ref>-auth-token (contains access_token)
-  // - sb-<project-ref>-auth-token-code-verifier
-  // Extract the access token from cookies
-  const accessToken = cookieStore.get(`sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0]}-auth-token`)?.value;
+  const cookieStore = request.cookies;
+  
+  // Supabase stores session in cookies - find the auth token cookie
+  // Cookie names vary, so we'll search for any cookie containing 'auth-token'
+  let accessToken: string | undefined;
+  const allCookies = cookieStore.getAll();
+  
+  for (const cookie of allCookies) {
+    // Look for Supabase auth token cookies (various formats)
+    if (cookie.name.includes('auth-token') || cookie.name.includes('supabase')) {
+      try {
+        // Try to parse as JSON first
+        const parsed = JSON.parse(decodeURIComponent(cookie.value));
+        if (parsed?.access_token) {
+          accessToken = parsed.access_token;
+          break;
+        }
+      } catch {
+        // If not JSON, check if it's a direct token
+        if (cookie.value.length > 50) {
+          accessToken = cookie.value;
+          break;
+        }
+      }
+    }
+  }
   
   // Create client with access token if available
   const client = createClient(supabaseUrl, supabaseAnonKey, {
@@ -50,33 +74,39 @@ function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
   // If we have an access token, set it on the client
   if (accessToken) {
     try {
-      // Parse the cookie value (it's JSON encoded)
-      const sessionData = JSON.parse(decodeURIComponent(accessToken));
-      if (sessionData?.access_token) {
-        client.auth.setSession({
-          access_token: sessionData.access_token,
-          refresh_token: sessionData.refresh_token || '',
-        } as any);
-      }
-    } catch (e) {
-      // Cookie might not be JSON, try to find access_token in all cookies
-      const allCookies = cookieStore.getAll();
+      // Set the session with the access token
+      // Note: We need both access_token and refresh_token for full session
+      // Try to find refresh token from cookies
+      let refreshToken = '';
       for (const cookie of allCookies) {
-        if (cookie.name.includes('auth-token') && cookie.value.includes('access_token')) {
+        if (cookie.name.includes('refresh-token') || cookie.name.includes('auth-refresh')) {
           try {
             const parsed = JSON.parse(decodeURIComponent(cookie.value));
-            if (parsed.access_token) {
-              client.auth.setSession({
-                access_token: parsed.access_token,
-                refresh_token: parsed.refresh_token || '',
-              } as any);
-              break;
+            if (parsed?.refresh_token) {
+              refreshToken = parsed.refresh_token;
+            } else if (typeof parsed === 'string') {
+              refreshToken = parsed;
             }
           } catch {
-            // Continue searching
+            refreshToken = cookie.value;
           }
+          break;
         }
       }
+      
+      // Set session if we have access token
+      // Note: setSession is async but we can't await here in sync context
+      // The getUser() call will handle authentication
+      client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      } as { access_token: string; refresh_token: string }).catch(() => {
+        // Ignore errors - getUser() will still work
+      });
+    } catch (e) {
+      // If setting session fails, continue without it
+      // The getUser() call will still work if cookies are properly set
+      console.log('Could not set session from cookies:', e);
     }
   }
   
