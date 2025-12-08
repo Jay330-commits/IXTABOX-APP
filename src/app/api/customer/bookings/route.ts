@@ -5,14 +5,22 @@ import { BookingStatusService } from '@/services/bookings/BookingStatusService';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[Bookings API] Request headers:', {
+      hasAuth: !!request.headers.get('authorization'),
+      cookieCount: request.cookies.getAll().length,
+    });
+    
     const supabaseUser = await getCurrentUser(request);
     
     if (!supabaseUser) {
+      console.error('[Bookings API] No Supabase user found - authentication failed');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+    
+    console.log('[Bookings API] Authenticated user:', supabaseUser.email);
 
     // Get user from database
     const user = await prisma.public_users.findUnique({

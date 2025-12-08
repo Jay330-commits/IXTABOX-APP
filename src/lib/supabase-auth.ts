@@ -291,8 +291,79 @@ export async function loginWithSupabase(email: string, password: string): Promis
 // Get current user (server-side version that reads cookies from request)
 export async function getCurrentUser(request?: NextRequest): Promise<SupabaseUser | null> {
   try {
-    // Use server-side client if request is provided (for API routes)
-    const client = request ? createServerSupabaseClient(request) : getSupabaseClient();
+    // If request is provided, try multiple authentication methods
+    if (request) {
+      // Method 1: Try reading from Supabase cookies
+      const client = createServerSupabaseClient(request);
+      const { data: { user: cookieUser }, error: cookieError } = await client.auth.getUser();
+      
+      if (!cookieError && cookieUser) {
+        return cookieUser as SupabaseUser;
+      }
+      
+      // Method 2: Try reading from Authorization header (for serverless/Vercel)
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        
+        try {
+          // Create a client and set the session with the token
+          const tokenClient = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false,
+              },
+            }
+          );
+          
+          // Set the session with the access token
+          // We need to call Supabase API directly to verify the token
+          // Use the REST API endpoint to get user info
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+              },
+            }
+          );
+          
+          if (response.ok) {
+            const userData = await response.json();
+            if (userData && userData.id) {
+              // Map Supabase REST API response to SupabaseUser format
+              return {
+                id: userData.id,
+                email: userData.email || userData.user_metadata?.email || '',
+                user_metadata: userData.user_metadata || {},
+              } as SupabaseUser;
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.log('[getCurrentUser] Token validation failed:', {
+              status: response.status,
+              error: errorData,
+            });
+          }
+        } catch (tokenError) {
+          console.log('Token validation error:', tokenError instanceof Error ? tokenError.message : String(tokenError));
+        }
+      }
+      
+      // If both methods failed, return null
+      if (cookieError) {
+        console.error('Get current user error:', cookieError);
+      }
+      return null;
+    }
+    
+    // Client-side: use regular client
+    const client = getSupabaseClient();
     const { data: { user }, error } = await client.auth.getUser();
     
     if (error) {

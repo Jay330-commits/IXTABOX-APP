@@ -166,12 +166,19 @@
           setIsLoadingData(true);
           setDataError(null);
 
-          // Fetch all data in parallel
+          // Get auth token from localStorage to send with requests
+          const authToken = localStorage.getItem('auth-token');
+          const headers: HeadersInit = {};
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          // Fetch all data in parallel with Authorization header
           const [statsRes, bookingsRes, paymentsRes, notificationsRes] = await Promise.all([
-            fetch('/api/customer/stats'),
-            fetch('/api/customer/bookings'),
-            fetch('/api/customer/payments'),
-            fetch('/api/customer/notifications'),
+            fetch('/api/customer/stats', { headers }),
+            fetch('/api/customer/bookings', { headers }),
+            fetch('/api/customer/payments', { headers }),
+            fetch('/api/customer/notifications', { headers }),
           ]);
 
           if (!cancelled) {
@@ -186,9 +193,19 @@
             // Handle bookings
             if (bookingsRes.ok) {
               const bookingsData = await bookingsRes.json();
+              console.log('[Customer Page] Bookings response:', {
+                hasBookings: !!bookingsData.bookings,
+                count: bookingsData.bookings?.length || 0,
+                data: bookingsData,
+              });
               setBookings(bookingsData.bookings || []);
             } else {
-              console.error('Failed to load bookings:', bookingsRes.status);
+              const errorData = await bookingsRes.json().catch(() => ({}));
+              console.error('Failed to load bookings:', {
+                status: bookingsRes.status,
+                statusText: bookingsRes.statusText,
+                error: errorData,
+              });
               setBookings([]);
             }
 
