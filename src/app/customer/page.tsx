@@ -6,6 +6,8 @@
   import { Role } from "@/types/auth";
   import CustomerHeader from "@/components/layouts/CustomerHeader";
   import Footer from "@/components/layouts/Footer";
+  import ReturnBoxModal from "@/components/bookings/ReturnBoxModal";
+  import CancelBookingModal from "@/components/bookings/CancelBookingModal";
   import dynamic from "next/dynamic";
   import type { MapProps } from "@/components/maps/googlemap";
 
@@ -42,7 +44,9 @@
     lockPin?: string | null;
     paymentId?: string;
     paymentStatus?: string | null;
+    chargeId?: string | null;
     createdAt?: string;
+    returnedAt?: string | null;
     model?: string;
   };
 
@@ -54,6 +58,7 @@
     status: string;
     currency?: string;
     completedAt?: string;
+    chargeId?: string;
   };
 
   type Notification = {
@@ -115,6 +120,25 @@
   
   // Expanded booking state (for expandable bookings list)
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
+  const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
+  
+  // Cancel/Return state
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
+  const [returnPhotos, setReturnPhotos] = useState<{
+    boxFrontTop: File | null;
+    boxFrontBackTop: File | null;
+    closedStandLock: File | null;
+  }>({
+    boxFrontTop: null,
+    boxFrontBackTop: null,
+    closedStandLock: null,
+  });
+  const [returnConfirmed, setReturnConfirmed] = useState(false);
 
     // Protect route - check authentication and role
     useEffect(() => {
@@ -154,6 +178,7 @@
     useEffect(() => {
       setMounted(true);
     }, []);
+
 
     // Load customer data when user is authenticated
     useEffect(() => {
@@ -198,7 +223,16 @@
                 count: bookingsData.bookings?.length || 0,
                 data: bookingsData,
               });
-              setBookings(bookingsData.bookings || []);
+              console.log('[Customer Page] Booking statuses received:', bookingsData.bookings?.map((b: Booking) => ({
+                id: b.id.slice(0, 8),
+                status: b.status,
+                statusType: typeof b.status,
+                statusLower: b.status?.toLowerCase()
+              })));
+              // Force new array reference to ensure React detects changes
+              const bookingsArray = bookingsData.bookings || [];
+              console.log('[Customer Page] Setting bookings state with', bookingsArray.length, 'bookings');
+              setBookings(bookingsArray.map((b: Booking) => ({ ...b })));
             } else {
               const errorData = await bookingsRes.json().catch(() => ({}));
               console.error('Failed to load bookings:', {
@@ -279,10 +313,27 @@
             return booking;
           }
 
+          const currentStatusLower = booking.status?.toLowerCase() || '';
+          
+          // Skip only "confirmed" status - keep it on hold, don't recalculate
+          if (currentStatusLower === 'confirmed') {
+            console.log(`[Status Sync] Skipping ${booking.id.slice(0, 8)} - status is "confirmed" (manually set, keeping on hold)`);
+            return booking;
+          }
+
+          // Include all other statuses (pending, active, completed, cancelled) in periodic updates
           const calculatedStatus = calculateBookingStatus(booking.startDate, booking.endDate);
           
-          // Only update if status changed
-          if (calculatedStatus !== booking.status.toLowerCase()) {
+          // For cancelled/completed: keep them as final states (don't change them even if calculated status differs)
+          if (currentStatusLower === 'cancelled' || currentStatusLower === 'completed') {
+            // Keep cancelled/completed as final states - don't change them
+            console.log(`[Status Sync] ${booking.id.slice(0, 8)}: Keeping ${currentStatusLower} (final state, calculated would be: ${calculatedStatus})`);
+            return booking;
+          }
+          
+          // For pending/active: update if calculated status changed
+          if (calculatedStatus !== currentStatusLower) {
+            console.log(`[Status Sync] Status change for ${booking.id.slice(0, 8)}: ${currentStatusLower} -> ${calculatedStatus}`);
             updates.push({
               bookingId: booking.id,
               newStatus: calculatedStatus,
@@ -298,9 +349,15 @@
           setBookings(updatedBookings);
           
           // Sync with DB in background (fire and forget)
+          const authToken = localStorage.getItem('auth-token');
+          const headers: HeadersInit = { 'Content-Type': 'application/json' };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
           fetch('/api/bookings/sync-statuses', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ updates }),
           }).catch(err => {
             console.error('Failed to sync booking statuses in DB:', err);
@@ -407,26 +464,145 @@
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {payments.map((payment) => (
-                    <div key={payment.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-2xl font-bold">{payment.currency || 'SEK'} {payment.amount.toFixed(2)}</div>
-                          <div className="text-gray-400">{payment.method}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-gray-300">{payment.date}</div>
-                          <div className={`font-medium ${
-                            payment.status === 'Completed' ? 'text-green-400' :
-                            payment.status === 'Pending' ? 'text-yellow-400' :
-                            'text-gray-400'
-                          }`}>
-                            {payment.status}
+                  {payments.map((payment) => {
+                    const isExpanded = expandedPaymentId === payment.id;
+                    return (
+                      <div key={payment.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-2xl font-bold">{payment.currency || 'SEK'} {payment.amount.toFixed(2)}</div>
+                              <div className="text-gray-400">{payment.method}</div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-gray-300">{payment.date}</div>
+                                <div className={`font-medium ${
+                                  payment.status === 'Completed' ? 'text-green-400' :
+                                  payment.status === 'Refunded' ? 'text-orange-400 font-semibold' :
+                                  payment.status === 'Pending' ? 'text-yellow-400' :
+                                  'text-gray-400'
+                                }`}>
+                                  {payment.status === 'Refunded' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-500/20 border border-orange-400/30">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                      {payment.status}
+                                    </span>
+                                  ) : (
+                                    payment.status
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setExpandedPaymentId(isExpanded ? null : payment.id)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 group"
+                                aria-label={isExpanded ? 'Collapse payment details' : 'Expand payment details'}
+                              >
+                                <svg 
+                                  className={`w-5 h-5 text-gray-400 group-hover:text-white transition-all duration-200 ${isExpanded ? 'transform rotate-180' : ''}`}
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         </div>
+                        
+                        {/* Expanded Payment Details */}
+                        {isExpanded && (
+                          <div className="px-6 pb-6 border-t border-white/10 pt-6">
+                            <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-400">Payment ID</span>
+                                <div className="flex items-center gap-2 max-w-[60%]">
+                                  <span className="text-sm font-medium text-gray-200 font-mono break-all">{payment.id}</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(payment.id);
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded transition-colors"
+                                    title="Copy Payment ID"
+                                    aria-label="Copy Payment ID"
+                                  >
+                                    <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                              {payment.chargeId && (
+                                <div className="flex justify-between items-center gap-2">
+                                  <span className="text-sm text-gray-400">Charge ID</span>
+                                  <div className="flex items-center gap-2 max-w-[60%]">
+                                    <span className="text-sm font-medium text-gray-200 font-mono break-all">{payment.chargeId}</span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(payment.chargeId!);
+                                      }}
+                                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                                      title="Copy Charge ID"
+                                      aria-label="Copy Charge ID"
+                                    >
+                                      <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-400">Amount</span>
+                                <span className="text-sm font-medium text-gray-200">{payment.currency || 'SEK'} {payment.amount.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-400">Status</span>
+                                <span className={`text-sm font-medium ${
+                                  payment.status === 'Completed' ? 'text-green-400' :
+                                  payment.status === 'Refunded' ? 'text-orange-400 font-semibold' :
+                                  payment.status === 'Pending' ? 'text-yellow-400' :
+                                  'text-gray-400'
+                                }`}>
+                                  {payment.status === 'Refunded' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-500/20 border border-orange-400/30">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                      {payment.status}
+                                    </span>
+                                  ) : (
+                                    payment.status
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-400">Method</span>
+                                <span className="text-sm font-medium text-gray-200">{payment.method}</span>
+                              </div>
+                              {payment.completedAt && (
+                                <div className="flex justify-between">
+                                  <span className="text-sm text-gray-400">Completed At</span>
+                                  <span className="text-sm font-medium text-gray-200">
+                                    {new Date(payment.completedAt).toLocaleString('en-US', {
+                                      month: 'long',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -450,10 +626,23 @@
               ) : (
                 <div className="space-y-4">
                   {bookings.map((booking) => {
-                    const statusLower = booking.status.toLowerCase();
+                    // Use status in key to force re-render when status changes
+                    const status = booking.status || '';
+                    const statusLower = status.toLowerCase();
+                    
+                    // Debug: Log status for each booking
+                    if (statusLower === 'cancelled') {
+                      console.log('[UI Render] Rendering cancelled booking:', {
+                        id: booking.id.slice(0, 8),
+                        status,
+                        statusLower,
+                        statusType: typeof status
+                      });
+                    }
                     const statusColor = 
                       statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
                       statusLower === 'pending' ? 'yellow' :
+                      statusLower === 'cancelled' ? 'red' :
                       'gray';
                     
                     const isExpanded = expandedBookingId === booking.id;
@@ -470,61 +659,146 @@
 
                     return (
                       <div 
-                        key={booking.id} 
-                        className={`rounded-xl border transition-all ${
+                        key={`${booking.id}-${status}`}
+                        className={`rounded-xl border transition-all shadow-lg ${
                           statusColor === 'green' ? 'bg-green-500/5 border-green-400/20' :
                           statusColor === 'yellow' ? 'bg-yellow-500/5 border-yellow-400/20' :
+                          statusColor === 'red' ? 'bg-red-500/10 border-red-400/30' :
                           'bg-white/5 border-white/10'
                         }`}
                       >
-                        {/* Booking Header - Clickable */}
-                        <div 
-                          onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
-                          className="p-6 cursor-pointer hover:bg-white/5 transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4 flex-1">
-                              <div className={`w-3 h-3 rounded-full ${
+                        {/* Booking Header */}
+                        <div className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-4 flex-1 min-w-0">
+                              <div className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
                                 statusColor === 'green' ? 'bg-green-400' :
                                 statusColor === 'yellow' ? 'bg-yellow-400' :
+                                statusColor === 'red' ? 'bg-red-400' :
                                 'bg-gray-400'
                               }`}></div>
-                              <div className="flex-1">
-                                <div className="font-semibold text-lg">{booking.location}</div>
-                                <div className="text-sm text-gray-400 mt-1">
-                                  {startDate.toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric' 
-                                  })} - {endDate.toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric' 
-                                  })}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-lg text-white mb-1 truncate">{booking.location}</h3>
+                                <div className="flex items-center gap-3 text-sm text-gray-400">
+                                  <span>
+                                    {startDate.toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric', 
+                                      year: 'numeric' 
+                                    })}
+                                  </span>
+                                  <span className="text-gray-500">-</span>
+                                  <span>
+                                    {endDate.toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric', 
+                                      year: 'numeric' 
+                                    })}
+                                  </span>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-start gap-4 ml-4 flex-shrink-0">
                               <div className="text-right">
-                                <div className="font-semibold">SEK {booking.amount.toFixed(2)}</div>
-                                <div className={`text-xs ${
+                                <div className="font-semibold text-lg text-white">SEK {booking.amount.toFixed(2)}</div>
+                                <div className={`text-xs font-medium uppercase tracking-wide mt-1 ${
                                   statusColor === 'green' ? 'text-green-400' :
                                   statusColor === 'yellow' ? 'text-yellow-400' :
+                                  statusColor === 'red' ? 'text-red-400' :
                                   'text-gray-400'
                                 }`}>
                                   {booking.status}
                                 </div>
                               </div>
-                              <svg 
-                                className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
+                              <button
+                                onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 group"
+                                aria-label={isExpanded ? 'Collapse booking details' : 'Expand booking details'}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
+                                <svg 
+                                  className={`w-5 h-5 text-gray-400 group-hover:text-white transition-all duration-200 ${isExpanded ? 'transform rotate-180' : ''}`}
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
                             </div>
                           </div>
+                        </div>
+                        
+                        {/* Action Buttons Bar - Always visible, separated */}
+                        <div className="px-6 pb-6">
+                          <div className="border-t border-white/10 pt-4">
+                            {/* Cancel Button - for pending/confirmed bookings only (NOT cancelled or completed) */}
+                            {(() => {
+                              const shouldShow = (statusLower === 'pending' || statusLower === 'confirmed') && 
+                                               statusLower !== 'cancelled' && 
+                                               statusLower !== 'completed';
+                              // Debug log for cancelled bookings
+                              if (statusLower === 'cancelled') {
+                                console.log('[UI] Cancelled booking detected - hiding cancel button:', {
+                                  bookingId: booking.id.slice(0, 8),
+                                  status,
+                                  statusLower,
+                                  shouldShow
+                                });
+                              }
+                              return shouldShow;
+                            })() && (
+                              <button
+                                onClick={() => {
+                                  setCancellingBookingId(booking.id);
+                                  setCancelError(null);
+                                  setShowCancelModal(true);
+                                }}
+                                className="w-full py-3 px-5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                              >
+                                <span>Cancel Booking</span>
+                              </button>
+                            )}
+                            
+                            {/* Return Box Button - for active bookings */}
+                            {statusLower === 'active' && (
+                              <button
+                                onClick={() => {
+                                  setReturningBookingId(booking.id);
+                                  setReturnError(null);
+                                  setReturnPhotos({
+                                    boxFrontTop: null,
+                                    boxFrontBackTop: null,
+                                    closedStandLock: null,
+                                  });
+                                  setReturnConfirmed(false);
+                                }}
+                                className="w-full py-3 px-5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Return Box</span>
+                              </button>
+                            )}
+                            
+                            {/* No actions available message */}
+                            {(statusLower === 'completed' || statusLower === 'cancelled') && (
+                              <div className={`w-full py-3 px-5 text-sm font-medium text-center rounded-lg border ${
+                                statusLower === 'cancelled' 
+                                  ? 'text-red-300 bg-red-500/10 border-red-400/30' 
+                                  : 'text-gray-400 bg-white/5 border-white/10'
+                              }`}>
+                                {statusLower === 'completed' ? 'Booking Completed' : 'Booking Cancelled'}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Error Messages */}
+                          {cancelError && cancellingBookingId === booking.id && (
+                            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                              <div className="text-sm text-red-400 font-medium">{cancelError}</div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Expanded Booking Details */}
@@ -534,9 +808,24 @@
                             <div>
                               <h3 className="text-sm font-medium text-gray-400 mb-3">Booking Details</h3>
                               <div className="bg-white/5 rounded-lg p-4 space-y-3">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center gap-2">
                                   <span className="text-sm text-gray-400">Booking ID</span>
-                                  <span className="text-sm font-medium text-gray-200 font-mono text-xs">{booking.id.slice(0, 8)}...</span>
+                                  <div className="flex items-center gap-2 max-w-[60%]">
+                                    <span className="text-sm font-medium text-gray-200 font-mono break-all">{booking.id}</span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(booking.id);
+                                        // You could add a toast notification here
+                                      }}
+                                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                                      title="Copy Booking ID"
+                                      aria-label="Copy Booking ID"
+                                    >
+                                      <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
                                 {booking.standDisplayId && (
                                   <div className="flex justify-between">
@@ -559,12 +848,12 @@
                                 <div className="flex justify-between">
                                   <span className="text-sm text-gray-400">Status</span>
                                   <span className={`text-sm font-medium capitalize ${
-                                    booking.status === 'active' || booking.status === 'completed' || booking.status === 'confirmed' ? 'text-green-400' :
-                                    booking.status === 'pending' ? 'text-yellow-400' :
-                                    booking.status === 'cancelled' ? 'text-red-400' :
+                                    statusLower === 'active' || statusLower === 'completed' || statusLower === 'confirmed' ? 'text-green-400' :
+                                    statusLower === 'pending' ? 'text-yellow-400' :
+                                    statusLower === 'cancelled' ? 'text-red-400' :
                                     'text-gray-400'
                                   }`}>
-                                    {booking.status}
+                                    {status}
                                   </span>
                                 </div>
                               </div>
@@ -625,16 +914,50 @@
                               <h3 className="text-sm font-medium text-gray-400 mb-3">Payment</h3>
                               <div className="bg-white/5 rounded-lg p-4 space-y-3">
                                 {booking.paymentId && (
-                                  <div className="flex justify-between">
+                                  <div className="flex justify-between items-center gap-2">
                                     <span className="text-sm text-gray-400">Payment ID</span>
-                                    <span className="text-sm font-medium text-gray-200 font-mono text-xs">{booking.paymentId.slice(0, 8)}...</span>
+                                    <div className="flex items-center gap-2 max-w-[60%]">
+                                      <span className="text-sm font-medium text-gray-200 font-mono break-all">{booking.paymentId}</span>
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(booking.paymentId!);
+                                        }}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                        title="Copy Payment ID"
+                                        aria-label="Copy Payment ID"
+                                      >
+                                        <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                {booking.chargeId && (
+                                  <div className="flex justify-between items-center gap-2">
+                                    <span className="text-sm text-gray-400">Charge ID</span>
+                                    <div className="flex items-center gap-2 max-w-[60%]">
+                                      <span className="text-sm font-medium text-gray-200 font-mono break-all">{booking.chargeId}</span>
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(booking.chargeId!);
+                                        }}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                        title="Copy Charge ID"
+                                        aria-label="Copy Charge ID"
+                                      >
+                                        <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      </button>
+                                    </div>
                                   </div>
                                 )}
                                 {booking.paymentStatus && (
                                   <div className="flex justify-between">
                                     <span className="text-sm text-gray-400">Payment Status</span>
                                     <span className={`text-sm font-medium ${
-                                      booking.paymentStatus === 'Completed' ? 'text-green-400' :
+                                      booking.paymentStatus === 'Completed' || booking.paymentStatus === 'Refunded' ? 'text-green-400' :
                                       booking.paymentStatus === 'Pending' ? 'text-yellow-400' :
                                       'text-gray-400'
                                     }`}>
@@ -692,27 +1015,10 @@
                               </div>
                             )}
 
-                            {/* Actions */}
-                            {(booking.status === 'pending' || booking.status === 'active' || booking.status === 'confirmed') && (
-                              <div className="flex gap-3 pt-4 border-t border-white/10">
-                                <button
-                                  onClick={() => {
-                                    console.log('Modify booking:', booking.id);
-                                    // TODO: Implement modify booking
-                                  }}
-                                  className="flex-1 py-2 px-4 border border-white/20 rounded-lg text-sm font-medium text-gray-200 bg-white/5 hover:bg-white/10 transition-colors"
-                                >
-                                  Modify Booking
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    console.log('Cancel booking:', booking.id);
-                                    // TODO: Implement cancel booking
-                                  }}
-                                  className="flex-1 py-2 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600/80 hover:bg-red-600 transition-colors"
-                                >
-                                  Cancel Booking
-                                </button>
+                            {/* Error Messages */}
+                            {cancelError && cancellingBookingId === booking.id && (
+                              <div className="pt-4 border-t border-white/10">
+                                <div className="text-sm text-red-400">{cancelError}</div>
                               </div>
                             )}
                           </div>
@@ -1092,6 +1398,7 @@
                           const statusColor = 
                             statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
                             statusLower === 'pending' ? 'yellow' :
+                            statusLower === 'cancelled' ? 'red' :
                             'gray';
                           
                           return (
@@ -1104,6 +1411,7 @@
                                 <div className={`w-3 h-3 rounded-full ${
                                   statusColor === 'green' ? 'bg-green-400' :
                                   statusColor === 'yellow' ? 'bg-yellow-400' :
+                                  statusColor === 'red' ? 'bg-red-400' :
                                   'bg-gray-400'
                                 }`}></div>
                                 <div>
@@ -1116,6 +1424,7 @@
                                 <div className={`text-xs ${
                                   statusColor === 'green' ? 'text-green-400' :
                                   statusColor === 'yellow' ? 'text-yellow-400' :
+                                  statusColor === 'red' ? 'text-red-400' :
                                   'text-gray-400'
                                 }`}>
                                   {booking.status}
@@ -1286,6 +1595,283 @@
             </svg>
           </span>
         </button>
+
+        {/* Return Box Modal - Rendered at page level */}
+        {returningBookingId && (
+          <ReturnBoxModal
+            bookingId={returningBookingId}
+            isOpen={true}
+            onClose={() => {
+              setReturningBookingId(null);
+              setReturnError(null);
+              setReturnPhotos({
+                boxFrontTop: null,
+                boxFrontBackTop: null,
+                closedStandLock: null,
+              });
+              setReturnConfirmed(false);
+            }}
+            onSuccess={async () => {
+              const authToken = localStorage.getItem('auth-token');
+              const headersGet: HeadersInit = {};
+              if (authToken) {
+                headersGet['Authorization'] = `Bearer ${authToken}`;
+              }
+              
+              // Optimistically update UI immediately
+              setBookings(prevBookings => 
+                prevBookings.map(booking => 
+                  booking.id === returningBookingId 
+                    ? { ...booking, status: 'completed' }
+                    : booking
+                )
+              );
+              
+              // Reload all data to ensure consistency
+              const [statsRes, bookingsRes, paymentsRes, notificationsRes] = await Promise.all([
+                fetch('/api/customer/stats', { headers: headersGet }),
+                fetch('/api/customer/bookings', { headers: headersGet }),
+                fetch('/api/customer/payments', { headers: headersGet }),
+                fetch('/api/customer/notifications', { headers: headersGet }),
+              ]);
+              
+              // Update all data
+              if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                setUserStats(statsData.stats);
+              }
+              if (bookingsRes.ok) {
+                const bookingsData = await bookingsRes.json();
+                console.log('[Return Box] Reloaded bookings:', bookingsData.bookings?.map((b: Booking) => ({
+                  id: b.id.slice(0, 8),
+                  status: b.status
+                })));
+                // Force new array reference to ensure React detects changes
+                setBookings((bookingsData.bookings || []).map((b: Booking) => ({ ...b })));
+              }
+              if (paymentsRes.ok) {
+                const paymentsData = await paymentsRes.json();
+                setPayments(paymentsData.payments || []);
+              }
+              if (notificationsRes.ok) {
+                const notificationsData = await notificationsRes.json();
+                setNotifications(notificationsData.notifications || []);
+              }
+              
+              // Show success message
+              setCancelSuccess('Box returned successfully! Your deposit is being released.');
+              setTimeout(() => setCancelSuccess(null), 5000);
+              
+              // Close modal and clear expanded booking if it was the returned one
+              if (expandedBookingId === returningBookingId) {
+                setExpandedBookingId(null);
+              }
+            }}
+            returnPhotos={returnPhotos}
+            setReturnPhotos={setReturnPhotos}
+            returnConfirmed={returnConfirmed}
+            setReturnConfirmed={setReturnConfirmed}
+          />
+        )}
+
+        {/* Cancel Booking Modal - Rendered at page level */}
+        {showCancelModal && cancellingBookingId && (
+          <CancelBookingModal
+            bookingId={cancellingBookingId}
+            isOpen={showCancelModal}
+            onClose={() => {
+              setShowCancelModal(false);
+              setCancellingBookingId(null);
+              setCancelError(null);
+            }}
+            onConfirm={async () => {
+              try {
+                const authToken = localStorage.getItem('auth-token');
+                const headers: HeadersInit = { 'Content-Type': 'application/json' };
+                if (authToken) {
+                  headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch(`/api/bookings/${cancellingBookingId}/cancel`, {
+                  method: 'POST',
+                  headers,
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                  throw new Error(data.error || 'Failed to cancel booking');
+                }
+                
+                // Reload all data to ensure consistency
+                const [statsRes, bookingsRes, paymentsRes, notificationsRes] = await Promise.all([
+                  fetch('/api/customer/stats', { headers }),
+                  fetch('/api/customer/bookings', { headers }),
+                  fetch('/api/customer/payments', { headers }),
+                  fetch('/api/customer/notifications', { headers }),
+                ]);
+                
+                // Update all data
+                if (statsRes.ok) {
+                  const statsData = await statsRes.json();
+                  setUserStats(statsData.stats);
+                }
+                if (bookingsRes.ok) {
+                  const bookingsData = await bookingsRes.json();
+                  console.log('[Cancel] Reloaded bookings:', bookingsData.bookings?.length, 'bookings');
+                  console.log('[Cancel] All booking statuses:', bookingsData.bookings?.map((b: Booking) => ({ 
+                    id: b.id.slice(0, 8), 
+                    status: b.status,
+                    statusType: typeof b.status,
+                    statusLower: b.status?.toLowerCase()
+                  })));
+                  // Find the cancelled booking
+                  const cancelledBooking = bookingsData.bookings?.find((b: Booking) => b.id === cancellingBookingId);
+                  console.log('[Cancel] Cancelled booking details:', cancelledBooking ? { 
+                    id: cancelledBooking.id.slice(0, 8), 
+                    status: cancelledBooking.status,
+                    statusType: typeof cancelledBooking.status,
+                    statusLower: cancelledBooking.status?.toLowerCase(),
+                    willShowCancelButton: (cancelledBooking.status?.toLowerCase() === 'pending' || cancelledBooking.status?.toLowerCase() === 'confirmed') && 
+                                          cancelledBooking.status?.toLowerCase() !== 'cancelled' &&
+                                          cancelledBooking.status?.toLowerCase() !== 'completed'
+                  } : 'NOT FOUND');
+                  // Force state update by creating completely new array with new object references
+                  const updatedBookings = (bookingsData.bookings || []).map((b: Booking) => ({ ...b }));
+                  console.log('[Cancel] Setting bookings state with', updatedBookings.length, 'bookings');
+                  setBookings(updatedBookings);
+                  // Also force a re-render by updating a dummy state if needed
+                  setExpandedBookingId((prev) => prev === cancellingBookingId ? null : prev);
+                }
+                if (paymentsRes.ok) {
+                  const paymentsData = await paymentsRes.json();
+                  setPayments(paymentsData.payments || []);
+                }
+                if (notificationsRes.ok) {
+                  const notificationsData = await notificationsRes.json();
+                  setNotifications(notificationsData.notifications || []);
+                }
+                
+                // Show success message
+                const refundMsg = data.cancellation?.refundAmount > 0 
+                  ? ` Refund of SEK ${data.cancellation.refundAmount.toFixed(2)} will be processed.`
+                  : '';
+                setCancelSuccess('Booking cancelled successfully.' + refundMsg);
+                setTimeout(() => setCancelSuccess(null), 5000);
+                
+                // Close modal and clear expanded booking if it was the cancelled one
+                setShowCancelModal(false);
+                if (expandedBookingId === cancellingBookingId) {
+                  setExpandedBookingId(null);
+                }
+                setCancellingBookingId(null);
+              } catch (error) {
+                setCancelError(error instanceof Error ? error.message : 'Failed to cancel booking');
+                throw error; // Re-throw to let modal handle the error display
+              }
+            }}
+          />
+        )}
+
+        {/* Return Box Modal - Rendered at page level */}
+        {returningBookingId && (
+          <ReturnBoxModal
+            bookingId={returningBookingId}
+            isOpen={true}
+            onClose={() => {
+              setReturningBookingId(null);
+              setReturnError(null);
+              setReturnPhotos({
+                boxFrontTop: null,
+                boxFrontBackTop: null,
+                closedStandLock: null,
+              });
+              setReturnConfirmed(false);
+            }}
+            onSuccess={async () => {
+              const authToken = localStorage.getItem('auth-token');
+              const headersGet: HeadersInit = {};
+              if (authToken) {
+                headersGet['Authorization'] = `Bearer ${authToken}`;
+              }
+              
+              // Optimistically update UI immediately
+              setBookings(prevBookings => 
+                prevBookings.map(booking => 
+                  booking.id === returningBookingId 
+                    ? { ...booking, status: 'completed' }
+                    : booking
+                )
+              );
+              
+              // Reload all data to ensure consistency
+              const [statsRes, bookingsRes, paymentsRes, notificationsRes] = await Promise.all([
+                fetch('/api/customer/stats', { headers: headersGet }),
+                fetch('/api/customer/bookings', { headers: headersGet }),
+                fetch('/api/customer/payments', { headers: headersGet }),
+                fetch('/api/customer/notifications', { headers: headersGet }),
+              ]);
+              
+              // Update all data
+              if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                setUserStats(statsData.stats);
+              }
+              if (bookingsRes.ok) {
+                const bookingsData = await bookingsRes.json();
+                console.log('[Return Box] Reloaded bookings:', bookingsData.bookings?.map((b: Booking) => ({
+                  id: b.id.slice(0, 8),
+                  status: b.status
+                })));
+                // Force new array reference to ensure React detects changes
+                setBookings((bookingsData.bookings || []).map((b: Booking) => ({ ...b })));
+              }
+              if (paymentsRes.ok) {
+                const paymentsData = await paymentsRes.json();
+                setPayments(paymentsData.payments || []);
+              }
+              if (notificationsRes.ok) {
+                const notificationsData = await notificationsRes.json();
+                setNotifications(notificationsData.notifications || []);
+              }
+              
+              // Show success message
+              setCancelSuccess('Box returned successfully! Your deposit is being released.');
+              setTimeout(() => setCancelSuccess(null), 5000);
+              
+              // Close modal and clear expanded booking if it was the returned one
+              if (expandedBookingId === returningBookingId) {
+                setExpandedBookingId(null);
+              }
+            }}
+            returnPhotos={returnPhotos}
+            setReturnPhotos={setReturnPhotos}
+            returnConfirmed={returnConfirmed}
+            setReturnConfirmed={setReturnConfirmed}
+          />
+        )}
+
+        {/* Success/Error Notifications */}
+        {cancelSuccess && (
+          <div className="fixed top-20 right-4 z-50 bg-green-500/90 border border-green-400/30 rounded-lg p-4 shadow-lg max-w-md">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-white">{cancelSuccess}</div>
+              </div>
+              <button
+                onClick={() => setCancelSuccess(null)}
+                className="text-white/80 hover:text-white"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         <Footer />
       </div>

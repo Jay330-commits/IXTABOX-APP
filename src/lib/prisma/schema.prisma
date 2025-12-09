@@ -419,6 +419,7 @@ model bookings {
   lock_pin      Int
   created_at    DateTime?       @default(now()) @db.Timestamp(6)
   status        BookingStatus?  @default(Pending)
+  returned_at   DateTime?       @db.Timestamp(6)
   boxes         boxes           @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payments      payments        @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   notifications notifications[]
@@ -580,6 +581,7 @@ model payments {
   currency          String?            @default("SEK")
   completed_at      DateTime?          @db.Timestamp(6)
   charge_id         String             @unique(map: "payments_payment_id_key")
+  status            PaymentStatus?
   bookings          bookings?
   contract_payments contract_payments?
   users             public_users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)

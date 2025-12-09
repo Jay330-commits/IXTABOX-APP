@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       amount: parseFloat(payment.amount.toString()),
       date: payment.completed_at?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
       method: 'Credit Card', // You may want to store this in payment_methods table
-      status: 'Completed', // All payments in DB are confirmed by Stripe
+      status: payment.status || 'Completed', // Use payment status from DB
       currency: payment.currency || 'SEK',
       completedAt: payment.completed_at?.toISOString(),
       chargeId: payment.charge_id,

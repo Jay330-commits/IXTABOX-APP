@@ -191,4 +191,137 @@ Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
       html,
     });
   }
+
+  /**
+   * Send box return confirmation email
+   */
+  async sendBoxReturnConfirmation(params: {
+    to: string;
+    bookingId: string;
+    locationName: string;
+    boxNumber: string;
+    standNumber: string;
+    returnDate: string;
+    returnTime: string;
+    photos: {
+      boxFrontTop: string;
+      boxFrontBackTop: string;
+      closedStandLock: string;
+    };
+    depositReleased: boolean;
+    helpUrl?: string;
+  }): Promise<EmailResult> {
+    const boxStand = `Box ${params.boxNumber}, Stand ${params.standNumber}`;
+
+    const text = `Box Return Confirmation
+
+Your box has been successfully returned:
+${boxStand}
+Location: ${params.locationName}
+Return Date: ${params.returnDate}
+Return Time: ${params.returnTime}
+
+${params.depositReleased ? 'Your deposit has been released.' : 'Your deposit will be processed shortly.'}
+
+Return photos have been recorded:
+- Box Front/Top: ${params.photos.boxFrontTop}
+- Box Front Back/Top: ${params.photos.boxFrontBackTop}
+- Closed Stand with Lock: ${params.photos.closedStandLock}
+
+Thank you for using IXTArent!
+
+Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #10b981; color: white; padding: 20px; text-align: center; }
+    .content { background-color: #ffffff; padding: 20px; }
+    .return-info { background-color: #f0fdf4; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #10b981; }
+    .info-row { margin: 10px 0; }
+    .info-label { font-weight: bold; color: #6b7280; }
+    .info-value { color: #111827; }
+    .deposit-info { background-color: #fef3c7; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #f59e0b; }
+    .photos-section { margin: 20px 0; }
+    .photo-item { margin: 10px 0; padding: 10px; background-color: #f9fafb; border-radius: 5px; }
+    .photo-label { font-weight: bold; color: #06b6d4; }
+    .photo-link { color: #06b6d4; text-decoration: none; word-break: break-all; }
+    .help-link { margin-top: 20px; text-align: center; }
+    .help-link a { color: #06b6d4; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Box Return Confirmation</h1>
+    </div>
+    <div class="content">
+      <p>Your box has been successfully returned!</p>
+      
+      <div class="return-info">
+        <div class="info-row">
+          <span class="info-label">Box & Stand:</span>
+          <span class="info-value">${boxStand}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Location:</span>
+          <span class="info-value">${params.locationName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Return Date:</span>
+          <span class="info-value">${params.returnDate}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Return Time:</span>
+          <span class="info-value">${params.returnTime}</span>
+        </div>
+      </div>
+
+      ${params.depositReleased 
+        ? `<div class="deposit-info">
+            <p><strong>Your deposit has been released.</strong></p>
+          </div>`
+        : `<div class="deposit-info">
+            <p><strong>Your deposit will be processed shortly.</strong></p>
+          </div>`
+      }
+
+      <div class="photos-section">
+        <p><strong>Return Photos Recorded:</strong></p>
+        <div class="photo-item">
+          <div class="photo-label">Box Front/Top:</div>
+          <a href="${params.photos.boxFrontTop}" class="photo-link" target="_blank">${params.photos.boxFrontTop}</a>
+        </div>
+        <div class="photo-item">
+          <div class="photo-label">Box Front Back/Top:</div>
+          <a href="${params.photos.boxFrontBackTop}" class="photo-link" target="_blank">${params.photos.boxFrontBackTop}</a>
+        </div>
+        <div class="photo-item">
+          <div class="photo-label">Closed Stand with Lock:</div>
+          <a href="${params.photos.closedStandLock}" class="photo-link" target="_blank">${params.photos.closedStandLock}</a>
+        </div>
+      </div>
+
+      <p style="margin-top: 20px;">Thank you for using IXTArent!</p>
+
+      <div class="help-link">
+        <p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/help'}">${params.helpUrl || 'https://ixtarent.com/help'}</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    return this.sendEmail({
+      to: params.to,
+      subject: 'Box Return Confirmation - IXTArent',
+      text,
+      html,
+    });
+  }
 }
