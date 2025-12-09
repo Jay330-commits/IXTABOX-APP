@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Using DB status (${dbStatus}) -> ${finalStatus} (final state)`);
       } else {
         // Calculate status for pending/active bookings based on dates
-        // Include cancelled/completed in calculation check, but they're handled above as final states
+        // (Confirmed, Cancelled, Completed are handled above as final states)
         const calculatedStatus = statusService.calculateBookingStatus(
           booking.start_date,
           booking.end_date,
@@ -153,19 +153,16 @@ export async function GET(request: NextRequest) {
         console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Calculated status (${calculatedStatus}) -> ${finalStatus}`);
         
         // If calculated status differs from DB status, queue it for update
-        // But skip if status is Confirmed (kept on hold), Cancelled, or Completed (final states)
+        // Note: We're already in the else block, so dbStatus can only be Pending or Active
         const dbStatusLower = dbStatus?.toLowerCase() || '';
-        if (dbStatusLower !== finalStatus && 
-            dbStatus !== BookingStatus.Confirmed && 
-            dbStatus !== BookingStatus.Cancelled && 
-            dbStatus !== BookingStatus.Completed) {
+        if (dbStatusLower !== finalStatus) {
           console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Status mismatch - DB: "${dbStatusLower}", Calculated: "${finalStatus}". Queuing update.`);
           statusUpdates.push({
             bookingId: booking.id,
             newStatus: calculatedStatus, // Use the enum value (BookingStatus)
           });
         } else {
-          console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Status matches DB or is excluded from updates (confirmed/cancelled/completed).`);
+          console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Status matches DB.`);
         }
       }
       

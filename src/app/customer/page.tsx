@@ -128,6 +128,7 @@
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returnPhotos, setReturnPhotos] = useState<{
     boxFrontTop: File | null;
@@ -731,22 +732,8 @@
                         {/* Action Buttons Bar - Always visible, separated */}
                         <div className="px-6 pb-6">
                           <div className="border-t border-white/10 pt-4">
-                            {/* Cancel Button - for pending/confirmed bookings only (NOT cancelled or completed) */}
-                            {(() => {
-                              const shouldShow = (statusLower === 'pending' || statusLower === 'confirmed') && 
-                                               statusLower !== 'cancelled' && 
-                                               statusLower !== 'completed';
-                              // Debug log for cancelled bookings
-                              if (statusLower === 'cancelled') {
-                                console.log('[UI] Cancelled booking detected - hiding cancel button:', {
-                                  bookingId: booking.id.slice(0, 8),
-                                  status,
-                                  statusLower,
-                                  shouldShow
-                                });
-                              }
-                              return shouldShow;
-                            })() && (
+                            {/* Cancel Button - for pending/confirmed bookings only */}
+                            {(statusLower === 'pending' || statusLower === 'confirmed') && (
                               <button
                                 onClick={() => {
                                   setCancellingBookingId(booking.id);
