@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Transform bookings to match the frontend format
     const formattedBookings = bookings.map((booking) => {
       const days = Math.max(1, Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)));
-      const pricePerDay = parseFloat(booking.total_amount.toString()) / days;
+      const pricePerDay = parseFloat(booking.payments?.amount.toString() || '0') / days;
 
       return {
         id: booking.id,

@@ -232,10 +232,9 @@ export class BookingService extends BaseService {
       endDate: string;
       startTime: string;
       endTime: string;
-      amountStr: string;
     }
   ) {
-    const { boxId, startDate, endDate, startTime, endTime, amountStr } = bookingData;
+    const { boxId, startDate, endDate, startTime, endTime } = bookingData;
 
     return await this.prisma.$transaction(async (tx) => {
       // Update payment with user_id and completed_at (payment is already verified since it exists in DB)
@@ -297,7 +296,6 @@ export class BookingService extends BaseService {
             payment_id: paymentId,
             start_date: start,
             end_date: end,
-            total_amount: amountStr,
             status: bookingStatus,
             lock_pin: lockPin, // Set the mandatory PIN
           },

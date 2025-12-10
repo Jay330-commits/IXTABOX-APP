@@ -415,7 +415,6 @@ model bookings {
   payment_id    String          @unique @db.Uuid
   start_date    DateTime        @db.Timestamp(6)
   end_date      DateTime        @db.Timestamp(6)
-  total_amount  Decimal         @db.Decimal
   lock_pin      Int
   created_at    DateTime?       @default(now()) @db.Timestamp(6)
   status        BookingStatus?  @default(Pending)
@@ -744,8 +743,7 @@ enum BookingStatus {
   Active
   Completed
   Cancelled
-  Confirmed
-
+  Confirmed 
   @@schema("public")
 }
 

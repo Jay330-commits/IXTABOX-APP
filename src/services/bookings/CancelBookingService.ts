@@ -59,17 +59,21 @@ export class CancelBookingService extends BaseService {
       id: string;
       start_date: Date;
       end_date: Date;
-      total_amount: { toString: () => string } | string | number;
+      payments?: { amount: { toString: () => string } | string | number };
       status: BookingStatus | null;
       created_at: Date | null;
     },
     cancellationTime: Date = new Date()
   ): RefundCalculation {
-    const totalAmount = typeof booking.total_amount === 'string'
-      ? parseFloat(booking.total_amount)
-      : typeof booking.total_amount === 'number'
-      ? booking.total_amount
-      : parseFloat(booking.total_amount.toString());
+    if (!booking.payments?.amount) {
+      throw new Error('Payment information not available for booking');
+    }
+    
+    const totalAmount = typeof booking.payments.amount === 'string'
+      ? parseFloat(booking.payments.amount)
+      : typeof booking.payments.amount === 'number'
+      ? booking.payments.amount
+      : parseFloat(booking.payments.amount.toString());
 
     // Check if booking is active (during rental period)
     const currentStatus = this.statusService.calculateBookingStatus(
@@ -218,7 +222,7 @@ export class CancelBookingService extends BaseService {
         id: booking.id,
         start_date: booking.start_date,
         end_date: booking.end_date,
-        total_amount: booking.total_amount,
+        payments: booking.payments ? { amount: booking.payments.amount } : undefined,
         status: booking.status,
         created_at: booking.created_at,
       },
@@ -227,7 +231,7 @@ export class CancelBookingService extends BaseService {
 
     console.log(`[CancelBookingService] Refund calculation:`, {
       bookingId,
-      totalAmount: booking.total_amount.toString(),
+      totalAmount: booking.payments?.amount?.toString() || '0',
       refundAmount: refundCalc.refundAmount,
       refundPercentage: refundCalc.refundPercentage,
       reason: refundCalc.reason,
@@ -437,7 +441,7 @@ export class CancelBookingService extends BaseService {
         id: booking.id,
         start_date: booking.start_date,
         end_date: booking.end_date,
-        total_amount: booking.total_amount,
+        payments: booking.payments ? { amount: booking.payments.amount } : undefined,
         status: booking.status,
         created_at: booking.created_at,
       });

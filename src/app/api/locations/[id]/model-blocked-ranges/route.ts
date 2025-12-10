@@ -40,7 +40,7 @@ export async function GET(
     }
 
     const bookingService = new BookingService();
-    
+
     // Get blocked ranges using BookingService
     const blockedRanges = await bookingService.getModelBlockedRanges(locationId, model);
 

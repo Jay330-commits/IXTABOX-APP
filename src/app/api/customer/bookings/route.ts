@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
         locationAddress: booking.boxes.stands.locations.address || null,
         date: booking.start_date.toISOString().split('T')[0],
         status: finalStatus, // Use DB status if Cancelled/Completed, otherwise calculated
-        amount: parseFloat(booking.total_amount.toString()),
+        amount: parseFloat(booking.payments?.amount.toString() || '0'),
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
         boxId: booking.box_id,
