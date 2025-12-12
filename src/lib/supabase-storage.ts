@@ -83,7 +83,7 @@ function getSupabaseStorageClient(accessToken?: string) {
     client.auth.setSession({
       access_token: accessToken,
       refresh_token: '', // Not needed for storage operations
-    } as any).catch(() => {
+    } as { access_token: string; refresh_token: string }).catch(() => {
       // Ignore errors - the token in headers will still work
     });
   }
@@ -132,42 +132,36 @@ export async function uploadToSupabaseStorage(
     });
   
   if (error) {
-    // Provide detailed error information for debugging
-    const errorDetails = {
-      message: error.message,
-      statusCode: error.statusCode,
-      error: error.error,
-      bucket,
-      path,
-    };
-    
     // Check for common errors and provide helpful messages
-    if (error.message?.includes('Bucket not found') || error.statusCode === 404) {
+    const errorMessage = error.message || '';
+    const statusCode = 'statusCode' in error ? (error as { statusCode?: number }).statusCode : undefined;
+    
+    if (errorMessage.includes('Bucket not found') || statusCode === 404) {
       throw new Error(
         `Bucket '${bucket}' not found in Supabase Storage. ` +
         `Please create it in your Supabase Dashboard → Storage. ` +
-        `Original error: ${error.message}`
+        `Original error: ${errorMessage}`
       );
     }
     
-    if (error.message?.includes('new row violates row-level security') || error.statusCode === 403) {
+    if (errorMessage.includes('new row violates row-level security') || statusCode === 403) {
       const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
       const errorMsg = hasServiceRole
         ? `Permission denied: Cannot upload to bucket '${bucket}' even with service role key. ` +
           `This might indicate the bucket doesn't exist or has incorrect permissions. ` +
           `Please check: 1) Bucket exists in Supabase Dashboard → Storage, 2) Bucket is public or has proper RLS policies. ` +
-          `Original error: ${error.message}`
+          `Original error: ${errorMessage}`
         : `Permission denied: Cannot upload to bucket '${bucket}'. ` +
           `You're using NEXT_PUBLIC_SUPABASE_ANON_KEY which requires RLS policies. ` +
           `Solution: Set SUPABASE_SERVICE_ROLE_KEY environment variable to bypass RLS, or configure RLS policies in Supabase Dashboard → Storage → ${bucket} → Policies. ` +
-          `Original error: ${error.message}`;
+          `Original error: ${errorMessage}`;
       
       throw new Error(errorMsg);
     }
     
     throw new Error(
-      `Failed to upload to Supabase Storage (bucket: ${bucket}, path: ${path}): ${error.message}. ` +
-      `Status: ${error.statusCode || 'unknown'}, Error: ${error.error || 'unknown'}`
+      `Failed to upload to Supabase Storage (bucket: ${bucket}, path: ${path}): ${errorMessage}. ` +
+      `Status: ${statusCode || 'unknown'}, Error: ${'error' in error ? (error as { error?: string }).error : 'unknown'}`
     );
   }
   

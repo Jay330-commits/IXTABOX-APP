@@ -121,6 +121,7 @@
   // Expanded booking state (for expandable bookings list)
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
+  const [statsExpanded, setStatsExpanded] = useState(false);
   
   // Cancel/Return state
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
@@ -449,7 +450,7 @@
           );
         case "payments":
           return (
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:pb-12">
               <h1 className="text-3xl font-bold mb-6">Payment History</h1>
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-12">
@@ -610,7 +611,7 @@
           );
         case "bookings":
           return (
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:pb-12">
               <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-12">
@@ -1019,7 +1020,7 @@
           );
         case "notifications":
           return (
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:pb-12">
               <h1 className="text-3xl font-bold mb-6">Notifications</h1>
               {isLoadingData ? (
                 <div className="flex items-center justify-center py-12">
@@ -1057,7 +1058,7 @@
           );
         case "profile":
           return (
-            <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
+            <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 lg:pb-12">
               <h1 className="text-3xl font-bold mb-8">Profile</h1>
               
               <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
@@ -1125,7 +1126,7 @@
           );
         case "settings":
           return (
-            <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
+            <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 lg:pb-12">
               <h1 className="text-3xl font-bold mb-8">Settings</h1>
               
               <div className="space-y-6">
@@ -1275,23 +1276,23 @@
       
         default:
           return (
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-{/* Stats Grid */}
-<div className="mb-8">
-  <div className="flex flex-wrap lg:grid lg:grid-cols-4 gap-2 lg:gap-6 px-2 lg:px-0">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 pb-24 lg:pb-8">
+{/* Stats Grid - Desktop */}
+<div className="hidden lg:block mb-8">
+  <div className="grid grid-cols-4 gap-6">
     {/* Total Bookings */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs lg:text-sm text-gray-400 mb-1">Total Bookings</p>
-          <p className="text-lg lg:text-2xl font-bold text-cyan-300">{userStats.totalBookings}</p>
+          <p className="text-sm text-gray-400 mb-1">Total Bookings</p>
+          <p className="text-2xl font-bold text-cyan-300">{userStats.totalBookings}</p>
         </div>
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl">📅</span>
+        <div className="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+          <span className="text-2xl">📅</span>
         </div>
       </div>
-      <div className="mt-2 lg:mt-4 flex items-center text-xs lg:text-sm text-green-400">
-        <svg className="w-3 h-3 lg:w-4 lg:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+      <div className="mt-4 flex items-center text-sm text-green-400">
+        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
         </svg>
         +1 this year
@@ -1299,17 +1300,17 @@
     </div>
 
     {/* Upcoming */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs lg:text-sm text-gray-400 mb-1">Upcoming</p>
-          <p className="text-lg lg:text-2xl font-bold text-yellow-300">{userStats.upcomingBookings}</p>
+          <p className="text-sm text-gray-400 mb-1">Upcoming</p>
+          <p className="text-2xl font-bold text-yellow-300">{userStats.upcomingBookings}</p>
         </div>
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl">⏰</span>
+        <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+          <span className="text-2xl">⏰</span>
         </div>
       </div>
-      <div className="mt-2 lg:mt-4 text-xs lg:text-sm text-gray-400">
+      <div className="mt-4 text-sm text-gray-400">
         {bookings.find(b => {
           const status = b.status.toLowerCase();
           const startDate = b.startDate ? new Date(b.startDate) : null;
@@ -1319,17 +1320,17 @@
     </div>
 
     {/* Loyalty Points */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs lg:text-sm text-gray-400 mb-1">Loyalty Points</p>
-          <p className="text-lg lg:text-2xl font-bold text-cyan-300">{userStats.loyaltyPoints}</p>
+          <p className="text-sm text-gray-400 mb-1">Loyalty Points</p>
+          <p className="text-2xl font-bold text-cyan-300">{userStats.loyaltyPoints}</p>
         </div>
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-lg lg:text-xl font-bold text-cyan-300">$</span>
+        <div className="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+          <span className="text-xl font-bold text-cyan-300">$</span>
         </div>
       </div>
-      <div className="mt-2 lg:mt-4 flex items-center text-xs lg:text-sm text-cyan-400">
+      <div className="mt-4 flex items-center text-sm text-cyan-400">
         <div className="w-full bg-gray-700 rounded-full h-2 mr-1">
           <div className="bg-cyan-500 h-2 rounded-full" style={{width: '65%'}}></div>
         </div>
@@ -1338,19 +1339,88 @@
     </div>
 
     {/* Membership */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs lg:text-sm text-gray-400 mb-1">Membership</p>
-          <p className="text-lg lg:text-xl font-bold text-yellow-300">{userStats.membershipTier}</p>
+          <p className="text-sm text-gray-400 mb-1">Membership</p>
+          <p className="text-xl font-bold text-yellow-300">{userStats.membershipTier}</p>
         </div>
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl">👑</span>
+        <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+          <span className="text-2xl">👑</span>
         </div>
       </div>
-      <div className="mt-2 lg:mt-4 text-xs lg:text-sm text-gray-400">
+      <div className="mt-4 text-sm text-gray-400">
         Since {userStats.memberSince}
       </div>
+    </div>
+  </div>
+</div>
+
+{/* Mobile Stats Bar - Under Header */}
+<div className="lg:hidden fixed top-16 left-0 right-0 z-[9999] bg-gray-900/95 backdrop-blur-md border-b border-white/10">
+  {/* Toggle Arrow Button */}
+  <button
+    onClick={() => setStatsExpanded(!statsExpanded)}
+    className="w-full flex justify-center py-1.5 bg-gradient-to-b from-gray-900/95 to-transparent backdrop-blur-sm"
+  >
+    <div className={`transition-transform duration-300 ${statsExpanded ? 'rotate-180' : ''}`}>
+      <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  </button>
+
+  {/* Stats Cards Container */}
+  <div className={`bg-gray-900/95 backdrop-blur-md transition-all duration-300 ease-in-out ${
+    statsExpanded ? 'max-h-24 opacity-100 pb-2' : 'max-h-0 opacity-0 overflow-hidden'
+  }`}>
+    <div className="px-4 py-2 flex gap-4 justify-center items-center overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Total Bookings */}
+      <button className="relative flex-shrink-0">
+        <div className="w-12 h-12 bg-cyan-500/20 rounded-full flex items-center justify-center">
+          <span className="text-xl">📅</span>
+        </div>
+        {userStats.totalBookings > 0 && (
+          <span className="absolute -top-1 -right-1 bg-cyan-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg border-2 border-gray-900">
+            {userStats.totalBookings > 99 ? '99+' : userStats.totalBookings}
+          </span>
+        )}
+        <p className="text-[9px] text-gray-400 mt-1 text-center">Total</p>
+      </button>
+
+      {/* Upcoming */}
+      <button className="relative flex-shrink-0">
+        <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center">
+          <span className="text-xl">⏰</span>
+        </div>
+        {userStats.upcomingBookings > 0 && (
+          <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg border-2 border-gray-900">
+            {userStats.upcomingBookings > 99 ? '99+' : userStats.upcomingBookings}
+          </span>
+        )}
+        <p className="text-[9px] text-gray-400 mt-1 text-center">Upcoming</p>
+      </button>
+
+      {/* Loyalty Points */}
+      <button className="relative flex-shrink-0">
+        <div className="w-12 h-12 bg-cyan-500/20 rounded-full flex items-center justify-center">
+          <span className="text-base font-bold text-cyan-300">$</span>
+        </div>
+        {userStats.loyaltyPoints > 0 && (
+          <span className="absolute -top-1 -right-1 bg-cyan-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg border-2 border-gray-900">
+            {userStats.loyaltyPoints > 99 ? '99+' : userStats.loyaltyPoints}
+          </span>
+        )}
+        <p className="text-[9px] text-gray-400 mt-1 text-center">Points</p>
+      </button>
+
+      {/* Membership */}
+      <button className="relative flex-shrink-0">
+        <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center">
+          <span className="text-xl">👑</span>
+        </div>
+        <p className="text-[9px] text-gray-400 mt-1 text-center">Member</p>
+      </button>
     </div>
   </div>
 </div>
@@ -1380,7 +1450,7 @@
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {bookings.map((booking) => {
+                        {bookings.slice(0, 3).map((booking) => {
                           const statusLower = booking.status.toLowerCase();
                           const statusColor = 
                             statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
