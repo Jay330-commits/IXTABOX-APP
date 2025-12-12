@@ -3,7 +3,7 @@ import { BookingService } from '@/services/bookings/BookingService';
 
 /**
  * GET /api/boxes/[boxId]/bookings
- * Fetches all active/pending bookings for a specific box
+ * Fetches all active/Upcoming bookings for a specific box
  */
 export async function GET(
   request: NextRequest,
@@ -21,7 +21,7 @@ export async function GET(
       end_date: range.end.toISOString(),
     }));
 
-    console.log(`[Blocked Ranges] Box ${boxId}: Found ${blockedRanges.length} active/pending bookings`);
+    console.log(`[Blocked Ranges] Box ${boxId}: Found ${blockedRanges.length} active/Upcoming bookings`);
     if (blockedRanges.length > 0) {
       console.log(`[Blocked Ranges] Box ${boxId} ranges:`, JSON.stringify(bookingRanges, null, 2));
     }

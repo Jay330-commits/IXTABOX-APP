@@ -131,12 +131,12 @@
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returnPhotos, setReturnPhotos] = useState<{
-    boxFrontTop: File | null;
-    boxFrontBackTop: File | null;
+    boxFrontView: File | null;
+    boxBackView: File | null;
     closedStandLock: File | null;
   }>({
-    boxFrontTop: null,
-    boxFrontBackTop: null,
+    boxFrontView: null,
+    boxBackView: null,
     closedStandLock: null,
   });
   const [returnConfirmed, setReturnConfirmed] = useState(false);
@@ -295,7 +295,7 @@
         const end = new Date(endDate);
         
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-          return 'pending';
+          return 'upcoming';
         }
         
         if (end < now) {
@@ -303,7 +303,7 @@
         } else if (start <= now && end >= now) {
           return 'active';
         } else {
-          return 'pending';
+          return 'upcoming';
         }
       };
 
@@ -322,7 +322,7 @@
             return booking;
           }
 
-          // Include all other statuses (pending, active, completed, cancelled) in periodic updates
+          // Include all other statuses (upcoming, active, completed, cancelled) in periodic updates
           const calculatedStatus = calculateBookingStatus(booking.startDate, booking.endDate);
           
           // For cancelled/completed: keep them as final states (don't change them even if calculated status differs)
@@ -332,7 +332,7 @@
             return booking;
           }
           
-          // For pending/active: update if calculated status changed
+          // For upcoming/active: update if calculated status changed
           if (calculatedStatus !== currentStatusLower) {
             console.log(`[Status Sync] Status change for ${booking.id.slice(0, 8)}: ${currentStatusLower} -> ${calculatedStatus}`);
             updates.push({
@@ -642,7 +642,7 @@
                     }
                     const statusColor = 
                       statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
-                      statusLower === 'pending' ? 'yellow' :
+                      statusLower === 'upcoming' ? 'yellow' :
                       statusLower === 'cancelled' ? 'red' :
                       'gray';
                     
@@ -708,7 +708,7 @@
                                   statusColor === 'red' ? 'text-red-400' :
                                   'text-gray-400'
                                 }`}>
-                                  {booking.status}
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                 </div>
                               </div>
                               <button
@@ -732,8 +732,8 @@
                         {/* Action Buttons Bar - Always visible, separated */}
                         <div className="px-6 pb-6">
                           <div className="border-t border-white/10 pt-4">
-                            {/* Cancel Button - for pending/confirmed bookings only */}
-                            {(statusLower === 'pending' || statusLower === 'confirmed') && (
+                            {/* Cancel Button - for upcoming/confirmed bookings only */}
+                            {(statusLower === 'upcoming' || statusLower === 'confirmed') && (
                               <button
                                 onClick={() => {
                                   setCancellingBookingId(booking.id);
@@ -753,8 +753,8 @@
                                   setReturningBookingId(booking.id);
                                   setReturnError(null);
                                   setReturnPhotos({
-                                    boxFrontTop: null,
-                                    boxFrontBackTop: null,
+                                    boxFrontView: null,
+                                    boxBackView: null,
                                     closedStandLock: null,
                                   });
                                   setReturnConfirmed(false);
@@ -834,13 +834,13 @@
                                 )}
                                 <div className="flex justify-between">
                                   <span className="text-sm text-gray-400">Status</span>
-                                  <span className={`text-sm font-medium capitalize ${
+                                  <span className={`text-sm font-medium ${
                                     statusLower === 'active' || statusLower === 'completed' || statusLower === 'confirmed' ? 'text-green-400' :
-                                    statusLower === 'pending' ? 'text-yellow-400' :
+                                    statusLower === 'upcoming' ? 'text-yellow-400' :
                                     statusLower === 'cancelled' ? 'text-red-400' :
                                     'text-gray-400'
                                   }`}>
-                                    {status}
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
                                   </span>
                                 </div>
                               </div>
@@ -1277,17 +1277,17 @@
           return (
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 {/* Stats Grid */}
-<div className="mb-8 overflow-x-auto lg:overflow-visible">
-  <div className="flex lg:grid lg:grid-cols-4 gap-6 px-2 lg:px-0">
+<div className="mb-8">
+  <div className="flex flex-wrap lg:grid lg:grid-cols-4 gap-2 lg:gap-6 px-2 lg:px-0">
     {/* Total Bookings */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs lg:text-sm text-gray-400 mb-1">Total Bookings</p>
-          <p className="text-xl lg:text-2xl font-bold text-cyan-300">{userStats.totalBookings}</p>
+          <p className="text-lg lg:text-2xl font-bold text-cyan-300">{userStats.totalBookings}</p>
         </div>
         <div className="w-10 h-10 lg:w-12 lg:h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl"></span>
+          <span className="text-xl lg:text-2xl">📅</span>
         </div>
       </div>
       <div className="mt-2 lg:mt-4 flex items-center text-xs lg:text-sm text-green-400">
@@ -1299,11 +1299,11 @@
     </div>
 
     {/* Upcoming */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs lg:text-sm text-gray-400 mb-1">Upcoming</p>
-          <p className="text-xl lg:text-2xl font-bold text-yellow-300">{userStats.upcomingBookings}</p>
+          <p className="text-lg lg:text-2xl font-bold text-yellow-300">{userStats.upcomingBookings}</p>
         </div>
         <div className="w-10 h-10 lg:w-12 lg:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
           <span className="text-xl lg:text-2xl">⏰</span>
@@ -1313,20 +1313,20 @@
         {bookings.find(b => {
           const status = b.status.toLowerCase();
           const startDate = b.startDate ? new Date(b.startDate) : null;
-          return (status === 'confirmed' || status === 'pending') && startDate && startDate >= new Date();
+          return (status === 'confirmed' || status === 'upcoming') && startDate && startDate >= new Date();
         })?.location || 'No upcoming bookings'}
       </div>
     </div>
 
     {/* Loyalty Points */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs lg:text-sm text-gray-400 mb-1">Loyalty Points</p>
-          <p className="text-xl lg:text-2xl font-bold text-cyan-300">{userStats.loyaltyPoints}</p>
+          <p className="text-lg lg:text-2xl font-bold text-cyan-300">{userStats.loyaltyPoints}</p>
         </div>
         <div className="w-10 h-10 lg:w-12 lg:h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-          <span className="text-xl lg:text-2xl">🎁</span>
+          <span className="text-lg lg:text-xl font-bold text-cyan-300">$</span>
         </div>
       </div>
       <div className="mt-2 lg:mt-4 flex items-center text-xs lg:text-sm text-cyan-400">
@@ -1338,7 +1338,7 @@
     </div>
 
     {/* Membership */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6 flex-shrink-0 w-56 lg:w-auto">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6 flex-1 min-w-[calc(50%-4px)] lg:min-w-0 lg:w-auto">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs lg:text-sm text-gray-400 mb-1">Membership</p>
@@ -1384,7 +1384,7 @@
                           const statusLower = booking.status.toLowerCase();
                           const statusColor = 
                             statusLower === 'confirmed' || statusLower === 'active' ? 'green' :
-                            statusLower === 'pending' ? 'yellow' :
+                            statusLower === 'upcoming' ? 'yellow' :
                             statusLower === 'cancelled' ? 'red' :
                             'gray';
                           
@@ -1414,7 +1414,7 @@
                                   statusColor === 'red' ? 'text-red-400' :
                                   'text-gray-400'
                                 }`}>
-                                  {booking.status}
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                 </div>
                               </div>
                             </div>
@@ -1592,8 +1592,8 @@
               setReturningBookingId(null);
               setReturnError(null);
               setReturnPhotos({
-                boxFrontTop: null,
-                boxFrontBackTop: null,
+                boxFrontView: null,
+                boxBackView: null,
                 closedStandLock: null,
               });
               setReturnConfirmed(false);
@@ -1719,7 +1719,7 @@
                     status: cancelledBooking.status,
                     statusType: typeof cancelledBooking.status,
                     statusLower: cancelledBooking.status?.toLowerCase(),
-                    willShowCancelButton: (cancelledBooking.status?.toLowerCase() === 'pending' || cancelledBooking.status?.toLowerCase() === 'confirmed') && 
+                    willShowCancelButton: (cancelledBooking.status?.toLowerCase() === 'upcoming' || cancelledBooking.status?.toLowerCase() === 'confirmed') && 
                                           cancelledBooking.status?.toLowerCase() !== 'cancelled' &&
                                           cancelledBooking.status?.toLowerCase() !== 'completed'
                   } : 'NOT FOUND');
@@ -1769,8 +1769,8 @@
               setReturningBookingId(null);
               setReturnError(null);
               setReturnPhotos({
-                boxFrontTop: null,
-                boxFrontBackTop: null,
+                boxFrontView: null,
+                boxBackView: null,
                 closedStandLock: null,
               });
               setReturnConfirmed(false);

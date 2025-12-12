@@ -264,7 +264,7 @@ export class BoxService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
               select: {
@@ -286,7 +286,7 @@ export class BoxService extends BaseService {
         // Check for active bookings
         if (box.bookings.length > 0 && !force) {
           throw new Error(
-            `Cannot delete box ${boxId}: Box has ${box.bookings.length} active/pending booking(s). Use force=true to delete anyway.`
+            `Cannot delete box ${boxId}: Box has ${box.bookings.length} active/Upcoming booking(s). Use force=true to delete anyway.`
           );
         }
 
@@ -340,7 +340,7 @@ export class BoxService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
               select: {
@@ -418,7 +418,7 @@ export class BoxService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
               select: {
@@ -461,7 +461,7 @@ export class BoxService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
               select: {
@@ -565,7 +565,7 @@ export class BoxService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
               select: {

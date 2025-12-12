@@ -417,10 +417,11 @@ model bookings {
   end_date      DateTime        @db.Timestamp(6)
   lock_pin      Int
   created_at    DateTime?       @default(now()) @db.Timestamp(6)
-  status        BookingStatus?  @default(Pending)
+  status        BookingStatus?  @default(Upcoming)
   returned_at   DateTime?       @db.Timestamp(6)
   boxes         boxes           @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payments      payments        @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  box_returns   box_returns?
   notifications notifications[]
 
   @@schema("public")
@@ -433,6 +434,7 @@ model boxes {
   display_id  String     @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
   compartment Int?
   status      boxStatus? @default(Active)
+  Score       BigInt?
   bookings    bookings[]
   stands      stands     @relation(fields: [stand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   locks       locks[]
@@ -668,6 +670,20 @@ model public_users {
   @@schema("public")
 }
 
+model box_returns {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking_id            String    @unique @db.Uuid
+  confirmed_good_status Boolean   @default(false)
+  box_front_view        String?   @db.VarChar(500)
+  box_back_view         String?   @db.VarChar(500)
+  closed_stand_lock     String?   @db.VarChar(500)
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+  bookings              bookings  @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_box_returns_booking")
+
+  @@index([booking_id], map: "idx_box_returns_booking_id")
+  @@schema("public")
+}
+
 enum aal_level {
   aal1
   aal2
@@ -743,7 +759,9 @@ enum BookingStatus {
   Active
   Completed
   Cancelled
-  Confirmed 
+  Confirmed
+  Upcoming
+
   @@schema("public")
 }
 
@@ -806,6 +824,7 @@ enum BoxModel {
 enum boxStatus {
   Active
   Inactive
+  Upcoming
 
   @@schema("public")
 }

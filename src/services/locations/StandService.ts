@@ -305,7 +305,7 @@ export class StandService extends BaseService {
                 bookings: {
                   where: {
                     status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
+                      in: [BookingStatus.Upcoming, BookingStatus.Active],
                     },
                   },
                   select: {

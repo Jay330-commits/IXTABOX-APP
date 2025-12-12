@@ -285,7 +285,7 @@ export default function DistributerDashboard() {
                         </td>
                       </tr>
 
-                      {/* Pending Booking */}
+                      {/* Upcoming Booking */}
                       <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="py-4 px-3">
                           <div className="flex items-center space-x-2">

@@ -109,7 +109,7 @@ export class BookingAvailabilityService extends BaseService {
       where: {
         box_id: boxId,
         status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
+          in: [BookingStatus.Upcoming, BookingStatus.Active],
         },
       },
       select: {
@@ -163,7 +163,7 @@ export class BookingAvailabilityService extends BaseService {
                 bookings: {
                   where: {
                     status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
+                      in: [BookingStatus.Upcoming, BookingStatus.Active],
                     },
                   },
                   select: {
@@ -223,7 +223,7 @@ export class BookingAvailabilityService extends BaseService {
       where: {
         box_id: boxId,
         status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
+          in: [BookingStatus.Upcoming, BookingStatus.Active],
         },
       },
       select: {
@@ -263,7 +263,7 @@ export class BookingAvailabilityService extends BaseService {
                 bookings: {
                   where: {
                     status: {
-                      in: [BookingStatus.Pending, BookingStatus.Active],
+                      in: [BookingStatus.Upcoming, BookingStatus.Active],
                     },
                   },
                   select: {

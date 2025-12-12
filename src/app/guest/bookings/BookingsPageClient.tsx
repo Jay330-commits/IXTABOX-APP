@@ -11,7 +11,7 @@ type Booking = {
   address: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'pending' | 'completed' | 'cancelled';
+  status: 'active' | 'upcoming' | 'completed' | 'cancelled';
     model: {
     name: string;
     description: string;
@@ -308,8 +308,8 @@ export default function BookingsPageClient() {
                   <span className="text-white">{bookings.filter(b => b.status === 'active').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Pending Bookings</span>
-                  <span className="text-white">{bookings.filter(b => b.status === 'pending').length}</span>
+                  <span className="text-gray-400">Upcoming Bookings</span>
+                  <span className="text-white">{bookings.filter(b => b.status === 'upcoming').length}</span>
                 </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Bookings</span>

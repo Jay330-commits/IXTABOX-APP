@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const totalBookings = bookings.length;
     const upcomingBookings = bookings.filter((booking) => {
-      const status = booking.status || BookingStatus.Pending;
+      const status = booking.status || BookingStatus.Upcoming;
       return (
-        (status === BookingStatus.Confirmed || status === BookingStatus.Pending) &&
+        (status === BookingStatus.Confirmed || status === BookingStatus.Upcoming) &&
         new Date(booking.start_date) >= now
       );
     }).length;

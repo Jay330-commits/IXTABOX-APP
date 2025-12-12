@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         address: booking.boxes.stands.locations.address || booking.boxes.stands.locations.name || 'Unknown Location',
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
-        status: (booking.status || BookingStatus.Pending).toLowerCase() as 'active' | 'pending' | 'completed' | 'cancelled',
+        status: (booking.status || BookingStatus.Upcoming).toLowerCase() as 'active' | 'upcoming' | 'completed' | 'cancelled',
         model: {
           name: booking.boxes.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic',
           description: booking.boxes.model === 'Pro' ? 'Premium model with advanced features' : 'Standard model with essential features',

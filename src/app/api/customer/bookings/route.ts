@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: [
-        // Sort by status priority using CASE: active/confirmed > pending > completed > cancelled
+        // Sort by status priority using CASE: active/confirmed > Upcoming > completed > cancelled
         // In Prisma, we'll sort manually in JavaScript since CASE expressions aren't directly supported
         {
           created_at: 'desc', // First sort by date
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     const statusPriority: Record<string, number> = {
       'active': 1,
       'confirmed': 2,
-      'pending': 3,
+      'upcoming': 3,
       'completed': 4,
       'cancelled': 5,
     };
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
         finalStatus = dbStatus.toLowerCase();
         console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Using DB status (${dbStatus}) -> ${finalStatus} (final state)`);
       } else {
-        // Calculate status for pending/active bookings based on dates
+        // Calculate status for Upcoming/active bookings based on dates
         // (Confirmed, Cancelled, Completed are handled above as final states)
         const calculatedStatus = statusService.calculateBookingStatus(
           booking.start_date,
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Calculated status (${calculatedStatus}) -> ${finalStatus}`);
         
         // If calculated status differs from DB status, queue it for update
-        // Note: We're already in the else block, so dbStatus can only be Pending or Active
+        // Note: We're already in the else block, so dbStatus can only be Upcoming or Active
         const dbStatusLower = dbStatus?.toLowerCase() || '';
         if (dbStatusLower !== finalStatus) {
           console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Status mismatch - DB: "${dbStatusLower}", Calculated: "${finalStatus}". Queuing update.`);
@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sort bookings: active/confirmed/pending first, then completed, then cancelled at bottom
+    // Sort bookings: active/confirmed/Upcoming first, then completed, then cancelled at bottom
     // Within each status group, sort by most recent first
     formattedBookings.sort((a, b) => {
       const priorityA = statusPriority[a.status] || 999;

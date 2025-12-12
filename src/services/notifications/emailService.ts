@@ -204,8 +204,8 @@ Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
     returnDate: string;
     returnTime: string;
     photos: {
-      boxFrontTop: string;
-      boxFrontBackTop: string;
+      boxFrontView: string;
+      boxBackView: string;
       closedStandLock: string;
     };
     depositReleased: boolean;
@@ -224,8 +224,8 @@ Return Time: ${params.returnTime}
 ${params.depositReleased ? 'Your deposit has been released.' : 'Your deposit will be processed shortly.'}
 
 Return photos have been recorded:
-- Box Front/Top: ${params.photos.boxFrontTop}
-- Box Front Back/Top: ${params.photos.boxFrontBackTop}
+- Box Front View: ${params.photos.boxFrontView}
+- Box Back View: ${params.photos.boxBackView}
 - Closed Stand with Lock: ${params.photos.closedStandLock}
 
 Thank you for using IXTArent!
@@ -294,12 +294,12 @@ Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
       <div class="photos-section">
         <p><strong>Return Photos Recorded:</strong></p>
         <div class="photo-item">
-          <div class="photo-label">Box Front/Top:</div>
-          <a href="${params.photos.boxFrontTop}" class="photo-link" target="_blank">${params.photos.boxFrontTop}</a>
+          <div class="photo-label">Box Front View:</div>
+          <a href="${params.photos.boxFrontView}" class="photo-link" target="_blank">${params.photos.boxFrontView}</a>
         </div>
         <div class="photo-item">
-          <div class="photo-label">Box Front Back/Top:</div>
-          <a href="${params.photos.boxFrontBackTop}" class="photo-link" target="_blank">${params.photos.boxFrontBackTop}</a>
+          <div class="photo-label">Box Back View:</div>
+          <a href="${params.photos.boxBackView}" class="photo-link" target="_blank">${params.photos.boxBackView}</a>
         </div>
         <div class="photo-item">
           <div class="photo-label">Closed Stand with Lock:</div>

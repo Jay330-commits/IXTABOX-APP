@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
         totalAmount: payment.amount.toString(),
-        status: (booking as BookingWithStatus).status ?? BookingStatus.Pending,
+        status: (booking as BookingWithStatus).status ?? BookingStatus.Upcoming,
       },
       payment: {
         id: payment.id,

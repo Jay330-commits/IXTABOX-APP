@@ -5,8 +5,8 @@ import { NotificationService } from '../notifications/NotificationService';
 import { EmailService } from '../notifications/emailService';
 
 export interface ReturnBoxPhotos {
-  boxFrontTop: string; // URL of photo: Box from front/top
-  boxFrontBackTop: string; // URL of photo: Box front back/top
+  boxFrontView: string; // URL of photo: Box front view
+  boxBackView: string; // URL of photo: Box back view
   closedStandLock: string; // URL of photo: Closed stand with lock
 }
 
@@ -97,23 +97,33 @@ export class ReturnBoxService extends BaseService {
     }
 
     // Validate all photos are provided
-    if (!params.photos.boxFrontTop || !params.photos.boxFrontBackTop || !params.photos.closedStandLock) {
-      throw new Error('All three photos are required: Box front/top, Box front back/top, and Closed stand with lock');
+    if (!params.photos.boxFrontView || !params.photos.boxBackView || !params.photos.closedStandLock) {
+      throw new Error('All three photos are required: Box front view, Box back view, and Closed stand with lock');
     }
 
     const returnedAt = new Date();
 
     try {
-      // Update booking with return information
+      // Update booking with return information and create box_returns record
       // Changing status to Completed means the booking has stopped (box returned)
       await this.executeTransaction(async (tx) => {
+        // Update booking status
         await tx.bookings.update({
           where: { id: params.bookingId },
           data: {
             status: BookingStatus.Completed,
-            returned_at: returnedAt, // Store when the box was returned
-            // Store return photos in metadata or a separate table if needed
-            // For now, photos are stored in Vercel Blob and URLs are sent via email
+            returned_at: returnedAt,
+          },
+        });
+
+        // Create box_returns record with photo URLs
+        await tx.box_returns.create({
+          data: {
+            booking_id: params.bookingId,
+            confirmed_good_status: params.confirmedGoodStatus,
+            box_front_view: params.photos.boxFrontView,
+            box_back_view: params.photos.boxBackView,
+            closed_stand_lock: params.photos.closedStandLock,
           },
         });
       }, 'ReturnBox');
@@ -207,6 +217,7 @@ export class ReturnBoxService extends BaseService {
         where: { id: bookingId },
         include: {
           payments: true,
+          box_returns: true, // Check if return already exists
         },
       });
 
@@ -225,8 +236,8 @@ export class ReturnBoxService extends BaseService {
         };
       }
 
-      // Check if already returned/completed
-      if (booking.status === BookingStatus.Completed) {
+      // Check if already returned/completed or return record exists
+      if (booking.status === BookingStatus.Completed || booking.box_returns) {
         return {
           canReturn: false,
           reason: 'Box has already been returned',
@@ -313,16 +324,16 @@ export class ReturnBoxService extends BaseService {
         title: 'Required Photos',
         photos: [
           {
-            label: 'Box Front/Top',
-            description: 'Photo of box from front/top view',
+            label: 'Box Front View',
+            description: 'Photo of the front side of the box',
           },
           {
-            label: 'Box Front Back/Top',
-            description: 'Photo of box front back/top view',
+            label: 'Box Back View',
+            description: 'Photo of the back side of the box',
           },
           {
             label: 'Closed Stand with Lock',
-            description: 'Photo of closed stand with lock',
+            description: 'Photo showing the stand is closed and locked',
           },
         ],
       },

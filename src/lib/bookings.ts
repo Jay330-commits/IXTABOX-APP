@@ -3,7 +3,7 @@ import { BookingStatus } from '@prisma/client';
 
 /**
  * Sets the booking status based on the booking's start date
- * - If start date is in the future: sets status to Pending
+ * - If start date is in the future: sets status to Upcoming
  * - If start date is current or past: sets status to Active
  * 
  * @param bookingId - The ID of the booking to update
@@ -24,8 +24,8 @@ export async function setBookingStatus(bookingId: string) {
   const now = new Date();
   const startDate = new Date(booking.start_date);
   
-  // If start date is in the future, set to Pending, otherwise Active
-  const newStatus = startDate > now ? BookingStatus.Pending : BookingStatus.Active;
+  // If start date is in the future, set to Upcoming, otherwise Active
+  const newStatus = startDate > now ? BookingStatus.Upcoming : BookingStatus.Active;
 
   // Update the booking status
   const updatedBooking = await prisma.bookings.update({

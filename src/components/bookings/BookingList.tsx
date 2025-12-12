@@ -8,7 +8,7 @@ interface BookingListProps {
     address: string;
     startDate: string;
     endDate: string;
-    status: 'pending' | 'active' | 'completed' | 'cancelled';
+    status: 'upcoming' | 'active' | 'completed' | 'cancelled';
     model: {
       name: string;
       priceMultiplier: number;

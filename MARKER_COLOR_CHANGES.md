@@ -24,7 +24,7 @@ include: {
   bookings: {
     where: {
       status: {
-        in: [BookingStatus.Active, BookingStatus.Pending],
+        in: [BookingStatus.Active, BookingStatus.Upcoming],
       },
     },
   },

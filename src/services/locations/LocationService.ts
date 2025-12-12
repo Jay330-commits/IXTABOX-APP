@@ -346,7 +346,7 @@ export class LocationService extends BaseService {
                     bookings: {
                       where: {
                         status: {
-                          in: [BookingStatus.Pending, BookingStatus.Active],
+                          in: [BookingStatus.Upcoming, BookingStatus.Active],
                         },
                       },
                       select: {
@@ -479,7 +479,7 @@ export class LocationService extends BaseService {
                     bookings: {
                       where: {
                         status: {
-                          in: [BookingStatus.Pending, BookingStatus.Active],
+                          in: [BookingStatus.Upcoming, BookingStatus.Active],
                         },
                       },
                     },

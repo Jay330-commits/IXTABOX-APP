@@ -7,9 +7,9 @@ async function checkEnum() {
   try {
     // Try to query with each status
     await prisma.bookings.findFirst({
-      where: { status: 'Pending' },
+      where: { status: 'Upcoming' },
     });
-    console.log('✅ Pending status works');
+    console.log('✅ Upcoming status works');
 
     await prisma.bookings.findFirst({
       where: { status: 'Active' },

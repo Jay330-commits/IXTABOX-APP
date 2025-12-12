@@ -1,0 +1,14 @@
+Here is how the fection of the boxes should go from the database.
+fectch all the boxes related to location,booking
+order them by the booked order
+but boxed booked for a long time are going to be rebooked again.
+so order should be by time booked from start to return time.
+skip the cancelled bookings 
+meaning we need a score column in boxes to store score
+
+
+
+
+
+
+

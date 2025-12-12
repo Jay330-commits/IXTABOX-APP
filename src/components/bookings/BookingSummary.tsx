@@ -9,7 +9,7 @@ interface BookingSummaryProps {
     address: string;
     startDate: string;
     endDate: string;
-    status: 'pending' | 'active' | 'completed' | 'cancelled';
+    status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'confirmed';
     model: {
       name: string;
       description: string;
@@ -53,13 +53,13 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Status</span>
-            <span className={`text-sm font-medium capitalize ${
+            <span className={`text-sm font-medium ${
               booking.status === 'active' || booking.status === 'completed' ? 'text-green-600' :
-              booking.status === 'pending' ? 'text-yellow-600' :
+              booking.status === 'upcoming' || booking.status === 'confirmed' ? 'text-yellow-600' :
               booking.status === 'cancelled' ? 'text-red-600' :
               'text-gray-600'
             }`}>
-              {booking.status}
+              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
             </span>
           </div>
         </div>

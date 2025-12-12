@@ -1,14 +1,14 @@
 import React from 'react';
 
 interface BookingActionsProps {
-  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
   onCancel?: () => void;
   onModify?: () => void;
 }
 
 const BookingActions: React.FC<BookingActionsProps> = ({ status, onCancel, onModify }) => {
-  const canModify = status === 'pending' || status === 'active';
-  const canCancel = status === 'pending' || status === 'active';
+  const canModify = status === 'upcoming' || status === 'active';
+  const canCancel = status === 'upcoming' || status === 'active';
 
   return (
     <div className="flex gap-3">

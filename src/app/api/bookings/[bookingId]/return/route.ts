@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { ReturnBoxService } from '@/services/bookings/ReturnBoxService';
-import { put } from '@vercel/blob';
+import { uploadToSupabaseStorage } from '@/lib/supabase-storage';
 
 /**
  * Get return instructions
@@ -73,8 +73,8 @@ export async function GET(
  * POST /api/bookings/[bookingId]/return
  * 
  * Expects multipart/form-data with:
- * - boxFrontTop: File
- * - boxFrontBackTop: File
+ * - boxFrontView: File
+ * - boxBackView: File
  * - closedStandLock: File
  * - confirmedGoodStatus: string (boolean)
  */
@@ -118,17 +118,17 @@ export async function POST(
     const formData = await request.formData();
 
     // Get photo files
-    const boxFrontTopFile = formData.get('boxFrontTop') as File | null;
-    const boxFrontBackTopFile = formData.get('boxFrontBackTop') as File | null;
+    const boxFrontViewFile = formData.get('boxFrontView') as File | null;
+    const boxBackViewFile = formData.get('boxBackView') as File | null;
     const closedStandLockFile = formData.get('closedStandLock') as File | null;
 
     // Get confirmation checkbox
     const confirmedGoodStatus = formData.get('confirmedGoodStatus') === 'true' || formData.get('confirmedGoodStatus') === 'on';
 
     // Validate required fields
-    if (!boxFrontTopFile || !boxFrontBackTopFile || !closedStandLockFile) {
+    if (!boxFrontViewFile || !boxBackViewFile || !closedStandLockFile) {
       return NextResponse.json(
-        { error: 'All three photos are required: boxFrontTop, boxFrontBackTop, closedStandLock' },
+        { error: 'All three photos are required: boxFrontView, boxBackView, closedStandLock' },
         { status: 400 }
       );
     }
@@ -140,39 +140,53 @@ export async function POST(
       );
     }
 
-    // Upload photos to Vercel Blob Storage
+    // Upload photos to Supabase Storage
     const returnService = new ReturnBoxService();
 
     let photoUrls: {
-      boxFrontTop: string;
-      boxFrontBackTop: string;
+      boxFrontView: string;
+      boxBackView: string;
       closedStandLock: string;
     };
 
     try {
-      // Upload all photos in parallel
-      const [boxFrontTopUrl, boxFrontBackTopUrl, closedStandLockUrl] = await Promise.all([
-        put(`bookings/${bookingId}/return/box-front-top-${Date.now()}.jpg`, boxFrontTopFile, {
-          access: 'public',
-          contentType: boxFrontTopFile.type || 'image/jpeg',
-        }),
-        put(`bookings/${bookingId}/return/box-front-back-top-${Date.now()}.jpg`, boxFrontBackTopFile, {
-          access: 'public',
-          contentType: boxFrontBackTopFile.type || 'image/jpeg',
-        }),
-        put(`bookings/${bookingId}/return/closed-stand-lock-${Date.now()}.jpg`, closedStandLockFile, {
-          access: 'public',
-          contentType: closedStandLockFile.type || 'image/jpeg',
-        }),
+      const timestamp = Date.now();
+      const bucket = 'box_returns'; // Make sure this bucket exists in Supabase Storage
+      
+      // Upload all photos in parallel to Supabase Storage
+      // Each photo type has its own folder inside box_returns bucket
+      // Pass request to extract access token for authenticated uploads (required for RLS policies)
+      const [boxFrontViewUrl, boxBackViewUrl, closedStandLockUrl] = await Promise.all([
+        uploadToSupabaseStorage(
+          bucket,
+          `box_front_view/${bookingId}-${timestamp}.jpg`,
+          boxFrontViewFile,
+          { contentType: boxFrontViewFile.type || 'image/jpeg' },
+          request
+        ),
+        uploadToSupabaseStorage(
+          bucket,
+          `box_back_view/${bookingId}-${timestamp}.jpg`,
+          boxBackViewFile,
+          { contentType: boxBackViewFile.type || 'image/jpeg' },
+          request
+        ),
+        uploadToSupabaseStorage(
+          bucket,
+          `closed_stand_view/${bookingId}-${timestamp}.jpg`,
+          closedStandLockFile,
+          { contentType: closedStandLockFile.type || 'image/jpeg' },
+          request
+        ),
       ]);
 
       photoUrls = {
-        boxFrontTop: boxFrontTopUrl.url,
-        boxFrontBackTop: boxFrontBackTopUrl.url,
+        boxFrontView: boxFrontViewUrl.url,
+        boxBackView: boxBackViewUrl.url,
         closedStandLock: closedStandLockUrl.url,
       };
     } catch (uploadError) {
-      console.error('Error uploading photos:', uploadError);
+      console.error('Error uploading photos to Supabase Storage:', uploadError);
       return NextResponse.json(
         {
           error: 'Failed to upload photos',

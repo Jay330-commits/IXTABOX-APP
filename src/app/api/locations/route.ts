@@ -62,7 +62,7 @@ export async function GET() {
         }
 
         // Count available boxes by model across all stands in this location
-        // A box is available only if it has no active/pending bookings
+        // A box is available only if it has no active/Upcoming bookings
         let classicCount = 0;
         let proCount = 0;
         let classicTotal = 0;
@@ -108,7 +108,7 @@ export async function GET() {
           });
         });
 
-        // Location is fully booked if all boxes have active/pending bookings
+        // Location is fully booked if all boxes have active/Upcoming bookings
         const isFullyBooked = totalBoxes > 0 && bookedBoxes === totalBoxes;
         
         // Calculate earliest next available date per model

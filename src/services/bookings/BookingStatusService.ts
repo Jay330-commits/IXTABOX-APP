@@ -33,7 +33,7 @@ export class BookingStatusService extends BaseService {
     // Validate dates
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       console.warn('Invalid dates provided to calculateBookingStatus', { startDate, endDate });
-      return BookingStatus.Pending;
+      return BookingStatus.Upcoming;
     }
     
     // Completed: end date has passed
@@ -46,8 +46,8 @@ export class BookingStatusService extends BaseService {
       return BookingStatus.Active;
     }
     
-    // Pending: start date is in the future
-    return BookingStatus.Pending;
+    // Upcoming: start date is in the future
+    return BookingStatus.Upcoming;
   }
 
   // ============================================================================
@@ -109,7 +109,7 @@ export class BookingStatusService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Pending, BookingStatus.Active],
+                  in: [BookingStatus.Upcoming, BookingStatus.Active],
                 },
               },
             },
@@ -175,7 +175,7 @@ export class BookingStatusService extends BaseService {
           in: bookingIds,
         },
         status: {
-          in: [BookingStatus.Pending, BookingStatus.Active],
+          in: [BookingStatus.Upcoming, BookingStatus.Active],
         },
       },
       select: {
