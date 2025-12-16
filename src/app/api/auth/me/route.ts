@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     // Try to get user from Supabase cookies first (preferred method)
     // If that fails, try to get from Authorization header Bearer token
-    const supabaseUser = await getCurrentUser();
+    const supabaseUser = await getCurrentUser(request);
     
     // If no user from cookies, try Authorization header (for compatibility)
     if (!supabaseUser) {
@@ -39,6 +39,52 @@ export async function GET(request: NextRequest) {
         { success: false, message: 'User not authenticated' },
         { status: 401 }
       );
+    }
+    
+    // SECURITY: CRITICAL - Verify this is not a guest user trying to authenticate
+    // Even though aud='authenticated' and role='authenticated' (required by Supabase schema),
+    // guest users have is_anonymous=true and no password, so they CANNOT authenticate.
+    // This check prevents guest users from bypassing session validation.
+    try {
+      const authUserCheck = await prisma.$queryRaw<Array<{ 
+        is_anonymous: boolean | null; 
+        encrypted_password: string | null;
+        raw_user_meta_data: Record<string, unknown> | null;
+      }>>`
+        SELECT is_anonymous, encrypted_password, raw_user_meta_data
+        FROM auth.users 
+        WHERE id = ${supabaseUser.id}::uuid
+      `;
+      
+      if (authUserCheck.length > 0) {
+        const authUser = authUserCheck[0];
+        const isGuest = authUser.raw_user_meta_data?.is_guest === true || 
+                       authUser.raw_user_meta_data?.cannot_authenticate === true;
+        
+        // Reject if: marked as anonymous, has no password, OR is marked as guest
+        // This ensures guest users (with misleading "authenticated" values) cannot authenticate
+        if (authUser.is_anonymous === true || 
+            authUser.encrypted_password === null || 
+            isGuest) {
+          console.warn('SECURITY BLOCKED: Guest user attempted authentication:', {
+            userId: supabaseUser.id,
+            email: supabaseUser.email,
+            is_anonymous: authUser.is_anonymous,
+            has_password: authUser.encrypted_password !== null,
+            is_guest: isGuest
+          });
+          return NextResponse.json(
+            { 
+              success: false, 
+              message: 'Guest users cannot authenticate. The "authenticated" status in the database is a schema requirement only - these users have no password and cannot log in. Please register to create an account.' 
+            },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (checkError) {
+      // If check fails, log but don't block (defense-in-depth, not primary security)
+      console.warn('Could not verify user type (non-critical):', checkError);
     }
 
     // Try to fetch user from Prisma database

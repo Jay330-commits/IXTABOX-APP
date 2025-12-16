@@ -22,9 +22,9 @@ export async function GET(
     });
 
     // Extract values from settings (defaults if not found)
-    let basePrice = 299.99; // Default fallback
+    let basePrice = 300; // Default fallback - all models are 300 per day
     let classicMultiplier = 1.0;
-    let proMultiplier = 1.5;
+    let proMultiplier = 1.0; // Pro model also 300 per day (same as classic)
 
     if (basePriceSetting?.value && typeof basePriceSetting.value === 'number') {
       basePrice = basePriceSetting.value;
@@ -66,14 +66,14 @@ export async function GET(
     // Return default pricing if there's an error
     return NextResponse.json({
       pricing: {
-        basePrice: 299.99,
+        basePrice: 300,
         classic: {
-          pricePerDay: 299.99,
+          pricePerDay: 300,
           multiplier: 1.0,
         },
         pro: {
-          pricePerDay: 449.99,
-          multiplier: 1.5,
+          pricePerDay: 300,
+          multiplier: 1.0,
         },
       },
     });

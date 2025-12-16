@@ -88,24 +88,43 @@ export async function POST(request: NextRequest) {
       console.log('No authenticated user - email will be collected during payment');
     }
 
-    // Verify box exists and create Stripe payment intent in parallel for better performance
-    const [boxVerification, paymentIntent] = await Promise.all([
-      // Verify box exists
-      bookingService.verifyBox(boxId),
+    // Verify box exists and check model match
+    const boxVerification = await bookingService.verifyBox(boxId);
+    
+    if (!boxVerification.exists || !boxVerification.box) {
+      throw new Error(`Box with id ${boxId} not found`);
+    }
+
+    // Validate that the box model matches the selected model
+    if (modelId && boxVerification.box.model) {
+      const expectedModel = modelId.toLowerCase() === 'classic' ? 'Classic' : modelId.toLowerCase() === 'pro' ? 'Pro' : modelId;
+      const boxModel = boxVerification.box.model;
+      
+      if (boxModel !== expectedModel) {
+        console.error('Model mismatch:', {
+          boxId,
+          boxModel,
+          selectedModel: modelId,
+          expectedModel,
+        });
+        return NextResponse.json(
+          { 
+            error: `Model mismatch: Selected box is ${boxModel} but you selected ${modelId}. Please select a box that matches your selected model.` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
       // Create payment intent with booking details in metadata (secure, server-side)
-      paymentService.createPaymentIntent({
+    const paymentIntent = await paymentService.createPaymentIntent({
         amount: booking.amount,
         currency: 'sek',
         metadata: {
           ...booking.metadata,
           ...(customerEmail ? { customerEmail } : {}), // Add customer email if authenticated
         },
-      })
-    ]);
-
-    if (!boxVerification.exists) {
-      throw new Error(`Box with id ${boxId} not found`);
-    }
+    });
 
     if (!paymentIntent || !paymentIntent.id) {
       throw new Error('Failed to create payment intent: No payment intent ID returned');

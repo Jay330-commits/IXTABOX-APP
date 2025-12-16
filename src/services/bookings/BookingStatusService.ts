@@ -19,12 +19,14 @@ export class BookingStatusService extends BaseService {
    * @param startDate - Booking start date
    * @param endDate - Booking end date
    * @param currentDate - Current date (defaults to now)
+   * @param returnedAt - Date when box was returned (optional)
    * @returns Calculated booking status
    */
   calculateBookingStatus(
     startDate: Date | string,
     endDate: Date | string,
-    currentDate?: Date
+    currentDate?: Date,
+    returnedAt?: Date | null
   ): BookingStatus {
     const now = currentDate || new Date();
     const start = new Date(startDate);
@@ -36,9 +38,14 @@ export class BookingStatusService extends BaseService {
       return BookingStatus.Upcoming;
     }
     
-    // Completed: end date has passed
-    if (end < now) {
+    // If returned, it's completed
+    if (returnedAt) {
       return BookingStatus.Completed;
+    }
+    
+    // Overdue: end date has passed but not returned
+    if (end < now) {
+      return BookingStatus.Overdue;
     }
     
     // Active: currently between start and end date
@@ -109,7 +116,12 @@ export class BookingStatusService extends BaseService {
             bookings: {
               where: {
                 status: {
-                  in: [BookingStatus.Upcoming, BookingStatus.Active],
+                  in: [
+                    BookingStatus.Upcoming,
+                    BookingStatus.Active,
+                    BookingStatus.Overdue,
+                    BookingStatus.Confirmed,
+                  ],
                 },
               },
             },
@@ -133,7 +145,8 @@ export class BookingStatusService extends BaseService {
         const calculatedStatus = this.calculateBookingStatus(
           booking.start_date,
           booking.end_date,
-          now
+          now,
+          booking.returned_at
         );
 
         if (calculatedStatus !== booking.status) {
@@ -175,7 +188,12 @@ export class BookingStatusService extends BaseService {
           in: bookingIds,
         },
         status: {
-          in: [BookingStatus.Upcoming, BookingStatus.Active],
+          in: [
+            BookingStatus.Upcoming,
+            BookingStatus.Active,
+            BookingStatus.Overdue,
+            BookingStatus.Confirmed,
+          ],
         },
       },
       select: {
@@ -183,6 +201,7 @@ export class BookingStatusService extends BaseService {
         start_date: true,
         end_date: true,
         status: true,
+        returned_at: true,
       },
     });
 
@@ -197,7 +216,8 @@ export class BookingStatusService extends BaseService {
       const calculatedStatus = this.calculateBookingStatus(
         booking.start_date,
         booking.end_date,
-        now
+        now,
+        booking.returned_at
       );
 
       if (calculatedStatus !== booking.status) {
@@ -213,6 +233,93 @@ export class BookingStatusService extends BaseService {
     }
 
     return await this.updateBookingStatuses(updates);
+  }
+
+  /**
+   * Sync booking statuses for all bookings belonging to a distributor
+   * Finds all bookings for distributor's locations and updates their statuses
+   * 
+   * @param distributorId - Distributor ID to sync bookings for
+   * @returns Number of bookings updated and total checked
+   */
+  async syncDistributorBookingStatuses(distributorId: string): Promise<{ updated: number; totalChecked: number }> {
+    return await this.logOperation(
+      'SYNC_DISTRIBUTOR_BOOKING_STATUSES',
+      async () => {
+        console.log(`[BookingStatusService] Syncing booking statuses for distributor: ${distributorId}`);
+
+        const now = new Date();
+
+        // Get all bookings for this distributor's locations
+        // Only check bookings that might need updates
+        const bookings = await this.prisma.bookings.findMany({
+          where: {
+            boxes: {
+              stands: {
+                locations: {
+                  distributor_id: distributorId,
+                },
+              },
+            },
+            status: {
+              in: [
+                BookingStatus.Pending,
+                BookingStatus.Upcoming,
+                BookingStatus.Active,
+                BookingStatus.Confirmed,
+                BookingStatus.Overdue,
+              ],
+            },
+          },
+          select: {
+            id: true,
+            start_date: true,
+            end_date: true,
+            status: true,
+            returned_at: true,
+          },
+        });
+
+        if (bookings.length === 0) {
+          console.log(`[BookingStatusService] No bookings found for distributor: ${distributorId}`);
+          return { updated: 0, totalChecked: 0 };
+        }
+
+        const updates: Array<{ bookingId: string; newStatus: BookingStatus }> = [];
+
+        bookings.forEach((booking) => {
+          const calculatedStatus = this.calculateBookingStatus(
+            booking.start_date,
+            booking.end_date,
+            now,
+            booking.returned_at
+          );
+
+          if (calculatedStatus !== booking.status) {
+            updates.push({
+              bookingId: booking.id,
+              newStatus: calculatedStatus,
+            });
+          }
+        });
+
+        if (updates.length === 0) {
+          console.log(`[BookingStatusService] No status updates needed for distributor: ${distributorId}`);
+          return { updated: 0, totalChecked: bookings.length };
+        }
+
+        console.log(`[BookingStatusService] Found ${updates.length} bookings needing status updates`);
+
+        const result = await this.updateBookingStatuses(updates);
+
+        return {
+          updated: result.updated,
+          totalChecked: bookings.length,
+        };
+      },
+      'BookingStatusService.syncDistributorBookingStatuses',
+      { distributorId }
+    );
   }
 }
 

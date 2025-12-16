@@ -1,5 +1,5 @@
 import type { public_users as PrismaUser } from '@prisma/client';
-import { Role, ContractType } from '@prisma/client';
+import { Role, ContractType, Prisma } from '@prisma/client';
 import { BaseService } from '../BaseService';
 
 type User = PrismaUser;
@@ -390,15 +390,50 @@ export class UserService extends BaseService {
         // User exists, use existing ID
         finalUserId = existingUserByEmail.id;
         console.log('Guest user already exists with email:', params.email, 'ID:', finalUserId);
+        
+        // Update phone and address if provided (from billing address)
+        if (phoneValue || addressJson) {
+          const updateData: {
+            phone?: string;
+            address?: Prisma.InputJsonValue;
+          } = {};
+          
+          if (phoneValue) {
+            updateData.phone = phoneValue;
+          }
+          
+          if (addressJson) {
+            updateData.address = addressJson as Prisma.InputJsonValue;
+          }
+          
+          await this.prisma.public_users.update({
+            where: { id: finalUserId },
+            data: updateData,
+          });
+          console.log('Updated existing guest user with phone/address from billing details');
+        }
       } else {
         // Create new guest user
+        // SECURITY NOTE: Supabase requires aud='authenticated' and role='authenticated' for ALL users
+        // in auth.users table (schema constraint). However, these guest users CANNOT authenticate because:
+        // 1. is_anonymous = true (proper Supabase flag for guest users)
+        // 2. encrypted_password = NULL (no password - cannot log in)
+        // 3. No session exists (cannot get Supabase session)
+        // 4. Application enforces: getCurrentUser() requires valid Supabase session
+        // 5. API endpoint rejects: /api/auth/me checks is_anonymous and rejects guest users
+        // 
+        // The "authenticated" values are misleading but required by Supabase schema.
+        // Security is enforced by: is_anonymous=true + no password + application session checks
         await this.prisma.$executeRawUnsafe(`
           -- Create minimal auth_users entry (to satisfy FK constraint)
+          -- WARNING: aud='authenticated' and role='authenticated' are REQUIRED by Supabase schema
+          -- but this user CANNOT authenticate (see security measures below)
           INSERT INTO auth.users (
             id, 
             email, 
             aud, 
             role, 
+            encrypted_password,
             email_confirmed_at, 
             created_at, 
             updated_at,
@@ -407,13 +442,14 @@ export class UserService extends BaseService {
           ) VALUES (
             '${userId}'::uuid,
             '${params.email.replace(/'/g, "''")}',
-            'authenticated',
-            'authenticated',
+            'authenticated', -- REQUIRED by Supabase schema (misleading but necessary)
+            'authenticated', -- REQUIRED by Supabase schema (misleading but necessary)
+            NULL, -- SECURITY: No password = cannot log in
             NOW(),
             NOW(),
             NOW(),
-            false,
-            '{"is_guest": true, "full_name": "${params.fullName.replace(/'/g, "''")}"}'::jsonb
+            true, -- SECURITY: Proper Supabase flag for guest/anonymous users
+            '{"is_guest": true, "full_name": "${params.fullName.replace(/'/g, "''")}", "cannot_authenticate": true}'::jsonb
           ) ON CONFLICT (id) DO NOTHING;
           
           -- Create public_users entry
@@ -478,16 +514,45 @@ export class UserService extends BaseService {
     };
   }): Promise<User> {
     try {
-      // Try to find existing user by email
+      // CRITICAL: First check if this email belongs to an existing authenticated user
+      // If a logged-in customer creates a booking, we should use their existing user ID, not create a guest user
       const existingUser = await this.prisma.public_users.findUnique({
-        where: { email: params.email },
+        where: { email: params.email.toLowerCase() },
       });
 
       if (existingUser) {
+        // Check if this is an authenticated user (has password, not anonymous) in auth.users
+        // This ensures we use the customer's real account, not create a guest user
+        try {
+          const authUser = await this.prisma.$queryRaw<Array<{ id: string; encrypted_password: string | null; is_anonymous: boolean }>>`
+            SELECT id, encrypted_password, is_anonymous
+            FROM auth.users
+            WHERE id = ${existingUser.id}::uuid
+            LIMIT 1
+          `;
+          
+          if (authUser.length > 0) {
+            const auth = authUser[0];
+            // If user has a password and is not anonymous, they're an authenticated customer
+            if (auth.encrypted_password && !auth.is_anonymous) {
+              console.log('✅ [findOrCreateGuestUser] Found existing authenticated user for email:', params.email, 'ID:', existingUser.id);
+              return existingUser;
+            }
+          }
+        } catch (authCheckError) {
+          // If we can't check auth.users, still return the existing user
+          // (might be a permission issue, but user exists in public_users)
+          console.log('ℹ️ [findOrCreateGuestUser] Could not check auth.users, using existing public_users record:', existingUser.id);
+          return existingUser;
+        }
+        
+        // User exists but might be a guest - return it anyway (will be updated with new info)
+        console.log('ℹ️ [findOrCreateGuestUser] Found existing user (may be guest) for email:', params.email, 'ID:', existingUser.id);
         return existingUser;
       }
 
-      // Create new guest user
+      // No existing user found - create new guest user
+      console.log('👤 [findOrCreateGuestUser] Creating new guest user for email:', params.email);
       return await this.createGuestUserFromStripeBilling(params);
     } catch (error) {
       this.handleError(error, 'UserService.findOrCreateGuestUser');

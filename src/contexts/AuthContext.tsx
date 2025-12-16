@@ -106,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('[AuthContext] Starting login request for:', email);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -114,9 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('[AuthContext] Login API response status:', response.status);
       const data = await response.json();
-      console.log('Login API response:', data);
-      console.log('Redirect path from API:', data.redirectPath);
+      console.log('[AuthContext] Login API response data:', data);
+      console.log('[AuthContext] Redirect path from API:', data.redirectPath);
 
       if (data.success) {
         console.log('Login successful, setting user:', data.user);
@@ -130,7 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, message: data.message };
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthContext] Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AuthContext] Error details:', { errorMessage, error });
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        return { success: false, message: 'Network error. Please check your connection and try again.' };
+      }
+      
       return { success: false, message: 'Login failed. Please try again.' };
     }
   };

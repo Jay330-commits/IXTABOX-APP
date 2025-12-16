@@ -43,7 +43,7 @@ const { clientSecret, paymentIntentId } = await response.json();
 
 // Then use the component
 <StripeBankPayment
-  amount={299.99}
+  amount={300}
   currency="sek"
   clientSecret={clientSecret}
   onSuccess={(paymentIntent) => console.log('Payment succeeded!', paymentIntent)}

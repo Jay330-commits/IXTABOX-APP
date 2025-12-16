@@ -48,8 +48,19 @@ export async function POST(
     }
 
     console.log('Processing payment success locally for:', paymentIntentId);
+    const authHeader = request.headers.get('authorization');
+    console.log('Request details:', {
+      hasRequest: !!request,
+      hasCookies: request ? request.cookies.getAll().length > 0 : false,
+      cookieCount: request ? request.cookies.getAll().length : 0,
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
+      customerEmail: customerEmail || 'none',
+    });
 
-    const result = await processPaymentSuccess(paymentIntentId, customerEmail);
+    // Pass request object so payment processing can read authentication cookies
+    // The request object contains cookies that identify the authenticated user
+    const result = await processPaymentSuccess(paymentIntentId, customerEmail, request);
 
     if (result.alreadyConfirmed) {
       return NextResponse.json({

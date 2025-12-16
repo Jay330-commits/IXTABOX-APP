@@ -565,7 +565,7 @@ export default function GuestHome() {
                   your journey
                 </span>
                 <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-                  From idea to on-site experience — IXTAbox keeps the momentum.
+                  From idea to on-site experience IXTAbox keeps the momentum.
                 </h2>
                 <p className="mt-3 text-gray-300/90">
                   Every deployment follows a tested playbook. Work with our launch team or plug into

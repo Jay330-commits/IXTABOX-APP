@@ -153,6 +153,14 @@ export async function POST(
       const timestamp = Date.now();
       const bucket = 'box_returns'; // Make sure this bucket exists in Supabase Storage
       
+      // Ensure folders exist before uploading (matching UI structure)
+      const { ensureFoldersExist } = await import('@/lib/supabase-storage');
+      await ensureFoldersExist(
+        bucket,
+        ['box_front_view', 'box_back_view', 'closed_stand_view'],
+        request
+      );
+      
       // Upload all photos in parallel to Supabase Storage
       // Each photo type has its own folder inside box_returns bucket
       // Pass request to extract access token for authenticated uploads (required for RLS policies)

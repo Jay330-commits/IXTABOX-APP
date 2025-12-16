@@ -177,6 +177,31 @@ export async function uploadToSupabaseStorage(
 }
 
 /**
+ * Get public URL for a file in Supabase Storage
+ * @param bucket - Storage bucket name
+ * @param path - File path within bucket (e.g., 'bookings/123/photo.jpg')
+ * @returns Public URL for the file
+ */
+export function getSupabaseStoragePublicUrl(bucket: string, path: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  
+  if (!supabaseUrl) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured');
+  }
+  
+  // If path is already a full URL, return it
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  
+  // Remove leading slash if present
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  
+  // Construct public URL
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
+}
+
+/**
  * Delete a file from Supabase Storage
  */
 export async function deleteFromSupabaseStorage(
@@ -194,3 +219,56 @@ export async function deleteFromSupabaseStorage(
   }
 }
 
+/**
+ * Ensure folders exist in a bucket by creating placeholder files if needed
+ * Supabase Storage creates folders automatically when files are uploaded,
+ * but this function ensures the folder structure exists before uploads
+ * @param bucket - Storage bucket name
+ * @param folders - Array of folder paths (e.g., ['box_front_view', 'box_back_view'])
+ * @param request - Optional NextRequest to extract access token from
+ */
+export async function ensureFoldersExist(
+  bucket: string,
+  folders: string[],
+  request?: NextRequest
+): Promise<void> {
+  const accessToken = extractAccessTokenFromRequest(request);
+  const supabase = getSupabaseStorageClient(accessToken);
+  
+  // Check if folders exist by listing files in each folder
+  // If folder doesn't exist, create a placeholder file to ensure folder structure
+  for (const folder of folders) {
+    try {
+      // List files in the folder to check if it exists
+      const { data: files, error: listError } = await supabase.storage
+        .from(bucket)
+        .list(folder, { limit: 1 });
+      
+      // If listing fails or folder is empty, create a placeholder to ensure folder exists
+      // Note: Supabase Storage creates folders automatically, but this ensures they're ready
+      if (listError || !files || files.length === 0) {
+        // Create a placeholder file to ensure folder structure exists
+        // This file will be overwritten or can be cleaned up later
+        const placeholderPath = `${folder}/.keep`;
+        const placeholderContent = new Blob([''], { type: 'text/plain' });
+        
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(placeholderPath, placeholderContent, {
+            contentType: 'text/plain',
+            upsert: true, // Overwrite if exists
+          });
+        
+        if (uploadError && !uploadError.message.includes('already exists')) {
+          // Log but don't fail - folder will be created when actual file is uploaded
+          console.log(`[ensureFoldersExist] Note: Could not create placeholder for ${folder}:`, uploadError.message);
+        } else {
+          console.log(`[ensureFoldersExist] Ensured folder exists: ${bucket}/${folder}`);
+        }
+      }
+    } catch (error) {
+      // Log but don't fail - folder will be created when actual file is uploaded
+      console.log(`[ensureFoldersExist] Note: Could not verify folder ${folder}:`, error instanceof Error ? error.message : String(error));
+    }
+  }
+}

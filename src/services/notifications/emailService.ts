@@ -98,6 +98,8 @@ export class EmailService {
     unlockCode: string;
     padlockCode: string;
     helpUrl?: string;
+    bookingsUrl?: string;
+    chargeId?: string;
   }): Promise<EmailResult> {
     const boxStand = [
       params.boxNumber && `Box ${params.boxNumber}`,
@@ -117,7 +119,9 @@ Get started with the following steps:
 
 2) Take photos before use (30 min) (recommended)
 
-Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
+Need help? ${params.helpUrl || 'https://ixtarent.com/help'}
+
+${params.bookingsUrl ? `View your bookings: ${params.bookingsUrl}` : ''}`;
 
     const html = `
 <!DOCTYPE html>
@@ -176,6 +180,13 @@ Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
         </div>
       </div>
 
+      ${params.bookingsUrl ? `
+      <div style="margin-top: 30px; padding: 20px; background-color: #f0f9ff; border-radius: 5px; text-align: center;">
+        <p style="margin: 0 0 10px 0;"><strong>View Your Bookings</strong></p>
+        <a href="${params.bookingsUrl}" style="display: inline-block; padding: 12px 24px; background-color: #06b6d4; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">View Bookings</a>
+        ${params.chargeId ? `<p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">Payment ID: ${params.chargeId}</p>` : ''}
+      </div>
+      ` : ''}
       <div class="help-link">
         <p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/help'}">${params.helpUrl || 'https://ixtarent.com/help'}</a></p>
       </div>

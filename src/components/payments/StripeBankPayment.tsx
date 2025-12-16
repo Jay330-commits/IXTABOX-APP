@@ -123,10 +123,10 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
   };
 
   return (
-    <form id="payment-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6 transition-all duration-300 hover:border-white/20">
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-sm font-bold">1</div>
+    <form id="payment-form" onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+      <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4 transition-all duration-300 hover:border-white/20">
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs font-bold">1</div>
           Payment Information
         </h3>
         <PaymentElement 
@@ -137,9 +137,9 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
         />
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 sm:p-6 transition-all duration-300 hover:border-white/20">
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-sm font-bold">2</div>
+      <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4 transition-all duration-300 hover:border-white/20">
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs font-bold">2</div>
           Billing Address
         </h3>
         <AddressElement 
@@ -153,18 +153,18 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       <button
         disabled={isLoading || !stripe || !elements || disabled}
         id="submit"
-        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition-all duration-300 shadow-[0_0_24px_rgba(34,211,238,0.45)] hover:shadow-[0_0_32px_rgba(34,211,238,0.6)] transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
+        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_28px_rgba(34,211,238,0.55)] transform hover:scale-[1.02] active:scale-[0.98] text-xs sm:text-sm"
         title={disabled ? 'Please fill in your email address before proceeding with payment' : ''}
       >
         <span id="button-text">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
-              <span className="animate-pulse">Processing payment...</span>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+              <span className="animate-pulse text-xs">Processing payment...</span>
             </div>
           ) : (
             <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               Pay {amount.toFixed(2)} {currency.toUpperCase()}
@@ -176,7 +176,7 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
       {message && (
         <div 
           id="payment-message" 
-          className={`p-4 rounded-lg animate-slideDown ${
+          className={`p-3 rounded-lg animate-slideDown ${
             message.includes('succeeded') 
               ? 'bg-green-500/20 border border-green-500/50 text-green-200' 
               : 'bg-red-500/20 border border-red-500/50 text-red-200'
@@ -184,15 +184,15 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
         >
           <div className="flex items-center gap-2">
             {message.includes('succeeded') ? (
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             ) : (
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
-            <span>{message}</span>
+            <span className="text-xs sm:text-sm">{message}</span>
           </div>
         </div>
       )}
@@ -294,10 +294,10 @@ export default function StripeBankPayment({
 
   return (
     <div className="w-full">
-      <div className="bg-gray-800/50 border border-white/10 rounded-xl p-4 sm:p-6 lg:p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Secure Payment</h2>
-          <p className="text-gray-300">
+      <div className="bg-gray-800/50 border border-white/10 rounded-lg p-3 sm:p-4 lg:p-5">
+        <div className="text-center mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">Secure Payment</h2>
+          <p className="text-xs sm:text-sm text-gray-300">
             Complete your payment securely with Stripe
           </p>
         </div>
@@ -313,17 +313,17 @@ export default function StripeBankPayment({
           />
         </Elements>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-400">
             Your payment information is encrypted and secure
           </p>
-          <div className="flex justify-center items-center mt-2 space-x-4">
+          <div className="flex justify-center items-center mt-1.5 space-x-3">
             <Image 
               src="https://js.stripe.com/v3/fingerprinted/img/stripe-logo.svg" 
               alt="Stripe" 
-              width={72}
-              height={24}
-              className="h-6 opacity-60"
+              width={60}
+              height={20}
+              className="h-5 opacity-60"
             />
             <span className="text-xs text-gray-500">Powered by Stripe</span>
           </div>

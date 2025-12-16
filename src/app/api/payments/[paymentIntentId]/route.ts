@@ -26,9 +26,25 @@ export async function GET(
     // Get payment intent from Stripe (this always exists)
     const paymentIntent = await paymentService.retrievePaymentIntent(paymentIntentId);
     
+    // Fetch location name from database if locationId is available
+    let locationName: string | null = null;
+    if (paymentIntent.metadata.locationId) {
+      try {
+        const location = await prisma.locations.findUnique({
+          where: { id: paymentIntent.metadata.locationId },
+          select: { name: true },
+        });
+        locationName = location?.name || null;
+      } catch (error) {
+        console.error('Error fetching location name:', error);
+        // Continue without location name if fetch fails
+      }
+    }
+
     // Extract booking details from Stripe metadata (always available)
     const bookingDetails = {
       locationId: paymentIntent.metadata.locationId,
+      locationName: locationName || paymentIntent.metadata.locationDisplayId || paymentIntent.metadata.locationId,
       boxId: paymentIntent.metadata.boxId,
       standId: paymentIntent.metadata.standId,
       modelId: paymentIntent.metadata.modelId,
@@ -40,14 +56,15 @@ export async function GET(
       compartment: paymentIntent.metadata.compartment || null,
     };
 
-    // Try to get payment record if payment has succeeded (charge exists)
-    const chargeId = paymentIntent.latest_charge;
+    // Only query database if payment has succeeded (to avoid unnecessary DB calls)
     let payment = null;
     let booking = bookingDetails;
 
-    if (chargeId) {
+    if (paymentIntent.status === 'succeeded' && paymentIntent.latest_charge) {
       // Payment has succeeded - try to find payment record in database
-      const actualChargeId = typeof chargeId === 'string' ? chargeId : (chargeId as Stripe.Charge).id;
+      const actualChargeId = typeof paymentIntent.latest_charge === 'string' 
+        ? paymentIntent.latest_charge 
+        : (paymentIntent.latest_charge as Stripe.Charge).id;
 
       payment = await prisma.payments.findUnique({
         where: {

@@ -1,88 +1,131 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-interface Stand {
+interface Location {
   id: string;
   name: string;
-  location: string;
-  status: 'active' | 'maintenance' | 'inactive';
+  address: string;
+  status: string;
   todayBookings: number;
   monthlyRevenue: number;
   occupancyRate: number;
   totalBookings: number;
   averageRating: number;
+  totalStands: number;
+  totalBoxes: number;
 }
 
-const mockStands: Stand[] = [
-  {
-    id: 'stand-001',
-    name: 'Downtown Location A',
-    location: 'Stockholm Central Station',
-    status: 'active',
-    todayBookings: 8,
-    monthlyRevenue: 5400,
-    occupancyRate: 92,
-    totalBookings: 142,
-    averageRating: 4.8,
-  },
-  {
-    id: 'stand-002',
-    name: 'Airport Terminal B',
-    location: 'Arlanda Airport, Terminal 5',
-    status: 'active',
-    todayBookings: 12,
-    monthlyRevenue: 6200,
-    occupancyRate: 95,
-    totalBookings: 198,
-    averageRating: 4.9,
-  },
-  {
-    id: 'stand-003',
-    name: 'Shopping Mall West',
-    location: 'Gallerian Shopping Center',
-    status: 'active',
-    todayBookings: 5,
-    monthlyRevenue: 4000,
-    occupancyRate: 78,
-    totalBookings: 87,
-    averageRating: 4.6,
-  },
-];
+interface LocationComparison {
+  locationId: string;
+  locationName: string;
+  occupancyRate: number;
+  monthlyRevenue: number;
+  totalBookings: number;
+  averageRating: number;
+  totalStands: number;
+}
+
+interface LocationsOverviewData {
+  totalLocations: number;
+  todayBookings: number;
+  monthlyRevenue: number;
+  averageOccupancy: number;
+  currency?: string;
+  locations: Location[];
+}
 
 interface StandsOverviewProps {
-  onSelectStand?: (standId: string) => void;
+  onSelectStand?: (locationId: string) => void;
 }
 
 export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
+  const [locationsData, setLocationsData] = useState<LocationsOverviewData | null>(null);
+  const [locationComparisons, setLocationComparisons] = useState<LocationComparison[]>([]);
+  const [currency, setCurrency] = useState<string>('SEK');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStandsData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const authToken = localStorage.getItem('auth-token');
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        const response = await fetch('/api/distributor/dashboard/stands', { headers });
+        
+        if (response.status === 401) {
+          setError('Unauthorized');
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch stands data');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setLocationsData(data.data);
+          if (data.data.currency) {
+            setCurrency(data.data.currency);
+          }
+        } else {
+          throw new Error(data.error || 'Failed to fetch locations data');
+        }
+
+        // Fetch location comparisons
+        const comparisonResponse = await fetch('/api/distributor/stands?type=comparison&metric=occupancy', { headers });
+        if (comparisonResponse.ok) {
+          const comparisonData = await comparisonResponse.json();
+          if (comparisonData.success) {
+            setLocationComparisons(comparisonData.data || []);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching locations data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load locations data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStandsData();
+  }, []);
+
+  const locations = locationsData?.locations || [];
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
+    const normalized = status?.toLowerCase() || '';
+    if (normalized === 'active' || normalized === 'available') {
         return 'bg-green-500/20 text-green-400 border-green-400/40';
-      case 'maintenance':
+    } else if (normalized === 'maintenance' || normalized === 'occupied') {
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-400/40';
-      case 'inactive':
-        return 'bg-gray-500/20 text-gray-400 border-gray-400/40';
-      default:
+    } else if (normalized === 'inactive') {
         return 'bg-gray-500/20 text-gray-400 border-gray-400/40';
     }
+    return 'bg-gray-500/20 text-gray-400 border-gray-400/40';
   };
 
-  const totalRevenue = mockStands.reduce((sum, stand) => sum + stand.monthlyRevenue, 0);
-  const averageOccupancy = Math.round(
-    mockStands.reduce((sum, stand) => sum + stand.occupancyRate, 0) / mockStands.length
-  );
-  const totalBookingsToday = mockStands.reduce((sum, stand) => sum + stand.todayBookings, 0);
+  const totalRevenue = locationsData?.monthlyRevenue || 0;
+  const averageOccupancy = locationsData?.averageOccupancy || 0;
+  const totalBookingsToday = locationsData?.todayBookings || 0;
 
   return (
     <div className="space-y-6">
       {/* Overview Summary */}
       <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-xl p-6">
-        <h2 className="text-xl font-bold mb-4">All Stands Overview</h2>
+        <h2 className="text-xl font-bold mb-4">All Locations Overview</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
-            <p className="text-sm text-gray-400 mb-1">Total Stands</p>
-            <p className="text-2xl font-bold text-cyan-300">{mockStands.length}</p>
+            <p className="text-sm text-gray-400 mb-1">Total Locations</p>
+            <p className="text-2xl font-bold text-cyan-300">{locationsData?.totalLocations || 0}</p>
           </div>
           <div>
             <p className="text-sm text-gray-400 mb-1">Today&apos;s Bookings</p>
@@ -90,7 +133,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
           </div>
           <div>
             <p className="text-sm text-gray-400 mb-1">Monthly Revenue</p>
-            <p className="text-2xl font-bold text-cyan-300">${totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-cyan-300">{currency} {totalRevenue.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-400 mb-1">Avg Occupancy</p>
@@ -99,39 +142,53 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
         </div>
       </div>
 
-      {/* Individual Stand Cards */}
+      {/* Individual Location Cards */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold">Your Stands</h2>
-            <p className="text-sm text-gray-400 mt-1">Monitor each stand&apos;s performance individually</p>
+            <h2 className="text-xl font-bold">Your Locations</h2>
+            <p className="text-sm text-gray-400 mt-1">Monitor each location&apos;s performance individually</p>
           </div>
           <button className="px-4 py-2 bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 rounded-md hover:bg-cyan-600/30 transition-colors text-sm font-medium">
-            + Add New Stand
+            + Add New Location
           </button>
         </div>
 
+        {loading ? (
+          <div className="py-8 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-cyan-500/20 border-t-cyan-500"></div>
+            <p className="mt-4 text-gray-400">Loading locations...</p>
+          </div>
+        ) : error ? (
+          <div className="py-8 text-center">
+            <p className="text-red-400">Error: {error}</p>
+          </div>
+        ) : locations.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-gray-400">No locations found</p>
+          </div>
+        ) : (
         <div className="flex lg:grid lg:grid-cols-3 overflow-x-auto lg:overflow-x-visible gap-3 lg:gap-6 pb-4">
-          {mockStands.map((stand) => (
+            {locations.map((location) => (
             <div
-              key={stand.id}
+              key={location.id}
               className="border border-white/10 rounded-lg p-3 lg:p-5 bg-white/5 hover:border-cyan-400/40 transition-all cursor-pointer group flex-shrink-0 w-72 lg:w-auto lg:flex-shrink"
-              onClick={() => onSelectStand && onSelectStand(stand.id)}
+              onClick={() => onSelectStand && onSelectStand(location.id)}
             >
-              {/* Stand Header */}
+              {/* Location Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm lg:text-lg text-cyan-300 group-hover:text-cyan-200 transition-colors">
-                    {stand.name}
+                    {location.name}
                   </h3>
-                  <p className="text-xs text-gray-400 mt-1">{stand.location}</p>
+                  <p className="text-xs text-gray-400 mt-1">{location.address || 'No address'}</p>
                 </div>
                 <span
                   className={`px-2 py-1 text-xs font-semibold rounded border ${getStatusColor(
-                    stand.status
+                    location.status
                   )}`}
                 >
-                  {stand.status.charAt(0).toUpperCase() + stand.status.slice(1)}
+                  {location.status.charAt(0).toUpperCase() + location.status.slice(1)}
                 </span>
               </div>
 
@@ -139,25 +196,25 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               <div className="space-y-2 lg:space-y-3 mb-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs lg:text-sm text-gray-400">Today&apos;s Bookings</span>
-                  <span className="text-sm lg:text-lg font-bold text-cyan-300">{stand.todayBookings}</span>
+                  <span className="text-sm lg:text-lg font-bold text-cyan-300">{location.todayBookings}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs lg:text-sm text-gray-400">Monthly Revenue</span>
                   <span className="text-sm lg:text-lg font-bold text-cyan-300">
-                    ${stand.monthlyRevenue.toLocaleString()}
+                    {currency} {location.monthlyRevenue.toLocaleString()}
                   </span>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs lg:text-sm text-gray-400">Occupancy Rate</span>
-                    <span className="text-xs lg:text-sm font-semibold text-cyan-300">{stand.occupancyRate}%</span>
+                    <span className="text-xs lg:text-sm font-semibold text-cyan-300">{location.occupancyRate}%</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-1.5 lg:h-2">
                     <div
                       className="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 lg:h-2 rounded-full transition-all"
-                      style={{ width: `${stand.occupancyRate}%` }}
+                      style={{ width: `${location.occupancyRate}%` }}
                     />
                   </div>
                 </div>
@@ -166,12 +223,16 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
               {/* Additional Stats */}
               <div className="pt-3 lg:pt-4 border-t border-white/10 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-400">Total:</span>
-                  <span className="font-semibold text-gray-200">{stand.totalBookings}</span>
+                  <span className="text-gray-400">Stands:</span>
+                  <span className="font-semibold text-gray-200">{location.totalStands}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400">Boxes:</span>
+                  <span className="font-semibold text-gray-200">{location.totalBoxes}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-400">⭐</span>
-                  <span className="font-semibold text-gray-200">{stand.averageRating}</span>
+                  <span className="font-semibold text-gray-200">{location.averageRating}</span>
                 </div>
               </div>
 
@@ -182,6 +243,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Performance Comparison */}
@@ -190,34 +252,49 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
         <div className="space-y-4">
           {/* Occupancy Rate Comparison */}
           <div>
-            <p className="text-sm text-gray-400 mb-3">Occupancy Rate by Stand</p>
+            <p className="text-sm text-gray-400 mb-3">Occupancy Rate by Location</p>
+            {loading ? (
+              <div className="py-4 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-cyan-500/20 border-t-cyan-500"></div>
+              </div>
+            ) : locationComparisons.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No location data available</p>
+            ) : (
             <div className="space-y-3">
-              {mockStands.map((stand) => (
-                <div key={stand.id}>
+                {locationComparisons.map((location) => (
+                  <div key={location.locationId}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-300">{stand.name}</span>
-                    <span className="text-sm font-semibold text-cyan-300">{stand.occupancyRate}%</span>
+                      <span className="text-sm text-gray-300">{location.locationName}</span>
+                      <span className="text-sm font-semibold text-cyan-300">{location.occupancyRate}%</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div
                       className="bg-cyan-600/60 h-2 rounded-full transition-all"
-                      style={{ width: `${stand.occupancyRate}%` }}
+                        style={{ width: `${location.occupancyRate}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           {/* Revenue Comparison */}
           <div className="pt-4 border-t border-white/10">
-            <p className="text-sm text-gray-400 mb-3">Monthly Revenue by Stand</p>
+            <p className="text-sm text-gray-400 mb-3">Monthly Revenue by Location</p>
+            {loading ? (
+              <div className="py-4 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-cyan-500/20 border-t-cyan-500"></div>
+              </div>
+            ) : locationComparisons.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No location data available</p>
+            ) : (
             <div className="flex items-end justify-between gap-2 h-40">
-              {mockStands.map((stand) => {
-                const maxRevenue = Math.max(...mockStands.map(s => s.monthlyRevenue));
-                const heightPercentage = (stand.monthlyRevenue / maxRevenue) * 100;
+                {locationComparisons.map((location) => {
+                  const maxRevenue = locationComparisons.length > 0 ? Math.max(...locationComparisons.map(l => l.monthlyRevenue)) : 1;
+                  const heightPercentage = (location.monthlyRevenue / maxRevenue) * 100;
                 return (
-                  <div key={stand.id} className="flex-1 flex flex-col items-center">
+                    <div key={location.locationId} className="flex-1 flex flex-col items-center">
                     <div className="w-full flex flex-col justify-end h-32 relative group">
                       <div
                         className="bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t hover:from-cyan-500 hover:to-cyan-300 transition-colors cursor-pointer"
@@ -225,16 +302,17 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
                       >
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                           <div className="bg-gray-950 border border-cyan-400/40 text-cyan-300 text-xs rounded py-1 px-2 whitespace-nowrap">
-                            ${stand.monthlyRevenue.toLocaleString()}
+                              {currency} {location.monthlyRevenue.toLocaleString()}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2 text-center">{stand.name.split(' ')[0]}</p>
+                      <p className="text-xs text-gray-400 mt-2 text-center">{location.locationName.split(' ')[0]}</p>
                   </div>
                 );
               })}
             </div>
+            )}
           </div>
         </div>
       </div>

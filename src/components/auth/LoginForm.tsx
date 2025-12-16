@@ -27,6 +27,7 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[LoginForm] Form submitted!', { email, hasPassword: !!password });
     setError("");
     setIsLoading(true);
     
@@ -34,39 +35,54 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
     
     if (onSubmit) {
       onSubmit(formData);
-    } else {
-      try {
-        const result = await login(email, password);
-        console.log('Login result:', result);
-        console.log('Redirect path from result:', result.redirectPath);
-        
-        if (result.success) {
-          // The API must provide redirectPath based on user role - no fallbacks
-          if (!result.redirectPath) {
-            console.error('ERROR: No redirectPath received from API');
-            setError('Login successful but routing failed. Please contact support.');
-            return;
-          }
-          
-          console.log('Navigating to exact path from API:', result.redirectPath);
-          // Small delay to ensure AuthContext state is updated before navigation
-          setTimeout(() => {
-            // At this point redirectPath is guaranteed (checked above)
-            router.replace(result.redirectPath as string);
-          }, 100);
-        } else {
-          setError(result.message || "Login failed");
-          // Show resend confirmation option if email not confirmed
-          if (result.message?.includes("confirmation")) {
-            setShowResendConfirmation(true);
-          }
-        }
-      } catch {
-        setError("An unexpected error occurred");
-      }
+      setIsLoading(false);
+      return;
     }
     
-    setIsLoading(false);
+    try {
+      console.log('Starting login for:', email);
+      console.log('Login function available:', typeof login);
+      
+      if (!login) {
+        console.error('Login function is not available!');
+        setError('Authentication system error. Please refresh the page.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const result = await login(email, password);
+      console.log('Login result:', result);
+      console.log('Redirect path from result:', result.redirectPath);
+      
+      if (result.success) {
+        // The API must provide redirectPath based on user role - no fallbacks
+        if (!result.redirectPath) {
+          console.error('ERROR: No redirectPath received from API');
+          setError('Login successful but routing failed. Please contact support.');
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log('Navigating to exact path from API:', result.redirectPath);
+        // Small delay to ensure AuthContext state is updated before navigation
+        setTimeout(() => {
+          // At this point redirectPath is guaranteed (checked above)
+          router.replace(result.redirectPath as string);
+        }, 100);
+        // Don't set loading to false here - let the navigation happen
+      } else {
+        setError(result.message || "Login failed");
+        setIsLoading(false);
+        // Show resend confirmation option if email not confirmed
+        if (result.message?.includes("confirmation")) {
+          setShowResendConfirmation(true);
+        }
+      }
+    } catch (error) {
+      console.error('Login form error:', error);
+      setError("An unexpected error occurred. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleResendConfirmation = async () => {

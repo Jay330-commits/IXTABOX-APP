@@ -3,6 +3,7 @@ import { BookingStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { NotificationService } from '../notifications/NotificationService';
 import { EmailService } from '../notifications/emailService';
+import { calculateBoxScore } from './BoxScoreUtils';
 
 export interface ReturnBoxPhotos {
   boxFrontView: string; // URL of photo: Box front view
@@ -103,8 +104,29 @@ export class ReturnBoxService extends BaseService {
 
     const returnedAt = new Date();
 
+    // Calculate box score based on rental duration (in hours)
+    // Uses returned_at since the box is being returned now
+    let boxScore: bigint;
+    let durationHours: number;
+    
     try {
-      // Update booking with return information and create box_returns record
+      boxScore = calculateBoxScore(
+        booking.start_date,
+        booking.end_date,
+        returnedAt
+      );
+      durationHours = Number(boxScore);
+      console.log(`[ReturnBoxService] Calculating box score: start_date=${booking.start_date.toISOString()}, returned_at=${returnedAt.toISOString()}, duration=${durationHours} hours`);
+    } catch (scoreError) {
+      console.error(`[ReturnBoxService] Failed to calculate box score:`, scoreError);
+      // Use a default score of 1 hour if calculation fails
+      boxScore = BigInt(1);
+      durationHours = 1;
+      console.warn(`[ReturnBoxService] Using default score of 1 hour due to calculation error`);
+    }
+
+    try {
+      // Update booking with return information, create box_returns record, and update box score
       // Changing status to Completed means the booking has stopped (box returned)
       await this.executeTransaction(async (tx) => {
         // Update booking status
@@ -126,6 +148,18 @@ export class ReturnBoxService extends BaseService {
             closed_stand_lock: params.photos.closedStandLock,
           },
         });
+
+        // Update box score based on rental duration (in hours)
+        // Score represents the number of hours the box was rented
+        // Lower scores mean shorter rental periods (better availability)
+        await tx.boxes.update({
+          where: { id: booking.box_id },
+          data: {
+            Score: boxScore,
+          },
+        });
+
+        console.log(`[ReturnBoxService] Updated box score: box_id=${booking.box_id}, score=${durationHours} hours`);
       }, 'ReturnBox');
 
       console.log(`[ReturnBoxService] Booking status updated to Completed: ${params.bookingId}`);

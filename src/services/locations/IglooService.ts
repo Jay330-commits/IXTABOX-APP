@@ -221,6 +221,7 @@ export class IglooService {
    * Generate and parse a booking PIN as a number
    * This is the main function to use for booking creation
    * Validates the PIN and returns it as a number
+   * Adjusts start date to at least 30 seconds from now if it's in the past
    */
   async generateAndParseBookingPin(
     startDate: Date,
@@ -232,13 +233,23 @@ export class IglooService {
       throw new Error(`Invalid date format: start=${startDate.toISOString()}, end=${endDate.toISOString()}`);
     }
 
-    // Validate date range
-    if (endDate <= startDate) {
+    // Adjust start date to at least 30 seconds from now if it's in the past
+    const now = new Date();
+    const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
+    let adjustedStartDate = startDate;
+    
+    if (startDate < thirtySecondsFromNow) {
+      adjustedStartDate = thirtySecondsFromNow;
+      console.log(`[IglooService] Start date adjusted from ${startDate.toISOString()} to ${adjustedStartDate.toISOString()} (30 seconds from now)`);
+    }
+
+    // Validate date range (use adjusted start date)
+    if (endDate <= adjustedStartDate) {
       throw new Error('endDate must be after startDate');
     }
 
-    // Generate PIN
-    const pinResult = await this.generateBookingPin(startDate, endDate, accessName);
+    // Generate PIN with adjusted start date
+    const pinResult = await this.generateBookingPin(adjustedStartDate, endDate, accessName);
     
     // Extract and parse using shared function
     const parsedPin = this.extractAndParsePin(pinResult);

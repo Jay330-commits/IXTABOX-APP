@@ -1,35 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { boxStatus, BoxModel } from '@prisma/client';
-import { BookingService } from '@/services/bookings/BookingService';
-import { LocationService } from '@/services/locations/LocationService';
+import { boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { prisma } from '@/lib/prisma/prisma';
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
-
-type BoxWithBookings = {
-  id: string;
-  model: BoxModel;
-  display_id: string;
-  compartment: number | null;
-  status: boxStatus | null;
-  bookings: Array<{
-    start_date: Date;
-    end_date: Date;
-  }>;
-};
-
-type ProcessedBox = {
-  id: string;
-  standId: string;
-  standName: string;
-  model: BoxModel;
-  displayId: string;
-  compartment: number | null;
-  status: boxStatus | null;
-  isAvailable: boolean;
-  nextAvailableDate: string | null;
-};
 
 type StandGroup = {
   standId: string;
@@ -40,89 +15,8 @@ type StandGroup = {
     displayId: string;
     compartment: number | null;
     isAvailable: boolean;
-    nextAvailableDate: string | null;
   }>;
 };
-
-// ============================================================================
-// Box Processing Functions
-// ============================================================================
-
-/**
- * Filter and process boxes from stands
- */
-function processBoxes(
-  stands: Array<{
-    id: string;
-    name: string;
-    boxes: BoxWithBookings[];
-  }>,
-  modelFilter: string | null,
-  requestedStartDate: string | null,
-  requestedEndDate: string | null,
-  bookingService: BookingService
-): ProcessedBox[] {
-  return stands.flatMap((stand) =>
-    stand.boxes
-      .filter((box) => {
-        // Filter by model if specified
-        if (modelFilter && box.model !== modelFilter) return false;
-        
-        // Only include active boxes
-        return box.status === boxStatus.Active;
-      })
-      .map((box) => {
-        const { isAvailable, nextAvailableDate } = bookingService.calculateAvailability(
-          box.bookings,
-          requestedStartDate,
-          requestedEndDate
-        );
-
-        return {
-          id: box.id,
-          standId: stand.id,
-          standName: stand.name,
-          model: box.model,
-          displayId: box.display_id,
-          compartment: box.compartment ?? null,
-          status: box.status,
-          isAvailable,
-          nextAvailableDate,
-        };
-      })
-  );
-}
-
-/**
- * Group processed boxes by stand
- */
-function groupBoxesByStand(boxes: ProcessedBox[]): StandGroup[] {
-  const grouped = boxes.reduce(
-    (acc, box) => {
-      if (!acc[box.standId]) {
-        acc[box.standId] = {
-          standId: box.standId,
-          standName: box.standName,
-          boxes: [],
-        };
-      }
-      
-      acc[box.standId].boxes.push({
-        id: box.id,
-        model: box.model,
-        displayId: box.displayId,
-        compartment: box.compartment,
-        isAvailable: box.isAvailable,
-        nextAvailableDate: box.nextAvailableDate,
-      });
-      
-      return acc;
-    },
-    {} as Record<string, StandGroup>
-  );
-
-  return Object.values(grouped);
-}
 
 // ============================================================================
 // API Route Handler
@@ -139,34 +33,169 @@ export async function GET(
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    const bookingService = new BookingService();
-    const locationService = new LocationService();
+    // If dates are provided, use SQL query to filter boxes that don't have overlapping bookings
+    if (startDate && endDate) {
+      const startDateTime = new Date(`${startDate}T00:00:00`);
+      const endDateTime = new Date(`${endDate}T23:59:59`);
 
-    // Fetch location with stands, boxes, and bookings using LocationService
-    const location = await locationService.getLocationWithBookings(id);
+      // Build model filter
+      const modelFilter = model ? { model: model as BoxModel } : {};
 
-    // Process all boxes with availability information
-    const processedBoxes = processBoxes(
-      location.stands,
-      model,
-      startDate,
-      endDate,
-      bookingService
+      // Query boxes - only return boxes without overlapping bookings
+      // A booking overlaps if: booking.start_date <= endDateTime AND booking.end_date >= startDateTime
+      const availableBoxes = await prisma.boxes.findMany({
+        where: {
+          stands: {
+            location_id: id,
+          },
+          status: boxStatus.Active,
+          ...modelFilter,
+          // Exclude boxes that have overlapping bookings
+          bookings: {
+            none: {
+              status: {
+                in: [BookingStatus.Upcoming, BookingStatus.Active],
+              },
+              AND: [
+                { start_date: { lte: endDateTime } },
+                { end_date: { gte: startDateTime } },
+              ],
+            },
+          },
+        },
+        include: {
+          stands: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            Score: 'asc', // Lower scores first (nulls last)
+          },
+          {
+            stands: {
+              name: 'asc',
+            },
+          },
+        ],
+      });
+
+      // Group boxes by stand, maintaining score order
+      const grouped = availableBoxes.reduce(
+        (acc, box) => {
+          const standId = box.stands.id;
+          if (!acc[standId]) {
+            acc[standId] = {
+              standId: box.stands.id,
+              standName: box.stands.name,
+              boxes: [],
+            };
+          }
+          acc[standId].boxes.push({
+            id: box.id,
+            model: box.model,
+            displayId: box.display_id,
+            compartment: box.compartment,
+            isAvailable: true,
+          });
+          return acc;
+        },
+        {} as Record<string, StandGroup>
+      );
+
+      // Sort boxes within each stand by score (lower scores first)
+      const boxesByStand = Object.values(grouped).map(stand => ({
+        ...stand,
+        boxes: stand.boxes.sort((a, b) => {
+          const boxA = availableBoxes.find(box => box.id === a.id);
+          const boxB = availableBoxes.find(box => box.id === b.id);
+          const scoreA = boxA?.Score ? Number(boxA.Score) : Number.MAX_SAFE_INTEGER; // Null scores go last
+          const scoreB = boxB?.Score ? Number(boxB.Score) : Number.MAX_SAFE_INTEGER;
+          return scoreA - scoreB;
+        }),
+      }));
+
+      return NextResponse.json({
+        locationId: id,
+        availableBoxes: boxesByStand,
+        totalAvailable: availableBoxes.length,
+        totalBoxes: availableBoxes.length,
+      });
+    }
+
+    // If no dates provided, return all active boxes (for initial load)
+    const allBoxes = await prisma.boxes.findMany({
+      where: {
+        stands: {
+          location_id: id,
+        },
+        status: boxStatus.Active,
+        ...(model ? { model: model as BoxModel } : {}),
+      },
+      include: {
+        stands: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          Score: 'asc', // Lower scores first (nulls last)
+        },
+        {
+          stands: {
+            name: 'asc',
+          },
+        },
+      ],
+    });
+
+    // Group boxes by stand, maintaining score order
+    const grouped = allBoxes.reduce(
+      (acc, box) => {
+        const standId = box.stands.id;
+        if (!acc[standId]) {
+          acc[standId] = {
+            standId: box.stands.id,
+            standName: box.stands.name,
+            boxes: [],
+          };
+        }
+        acc[standId].boxes.push({
+          id: box.id,
+          model: box.model,
+          displayId: box.display_id,
+          compartment: box.compartment,
+          isAvailable: true,
+        });
+        return acc;
+      },
+      {} as Record<string, StandGroup>
     );
 
-    // Group boxes by stand
-    const boxesByStand = groupBoxesByStand(processedBoxes);
+    // Sort boxes within each stand by score (lower scores first)
+    const boxesByStand = Object.values(grouped).map(stand => ({
+      ...stand,
+      boxes: stand.boxes.sort((a, b) => {
+        const boxA = allBoxes.find(box => box.id === a.id);
+        const boxB = allBoxes.find(box => box.id === b.id);
+        const scoreA = boxA?.Score ? Number(boxA.Score) : Number.MAX_SAFE_INTEGER; // Null scores go last
+        const scoreB = boxB?.Score ? Number(boxB.Score) : Number.MAX_SAFE_INTEGER;
+        return scoreA - scoreB;
+      }),
+    }));
 
-    // Build response
-    const responseData = {
+    return NextResponse.json({
       locationId: id,
-      locationName: location.name,
       availableBoxes: boxesByStand,
-      totalAvailable: processedBoxes.filter((b) => b.isAvailable).length,
-      totalBoxes: processedBoxes.length,
-    };
-
-    return NextResponse.json(responseData);
+      totalAvailable: allBoxes.length,
+      totalBoxes: allBoxes.length,
+    });
   } catch (error) {
     console.error('Failed to fetch available boxes', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

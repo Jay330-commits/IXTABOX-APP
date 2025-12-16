@@ -20,7 +20,7 @@ function getSupabaseClient() {
 }
 
 // Create server-side Supabase client that reads cookies from request
-function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
+async function createServerSupabaseClient(request?: NextRequest): Promise<SupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
@@ -37,26 +37,68 @@ function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
   
   const cookieStore = request.cookies;
   
-  // Supabase stores session in cookies - find the auth token cookie
-  // Cookie names vary, so we'll search for any cookie containing 'auth-token'
+  // Supabase stores session in cookies with specific naming patterns
+  // Format: sb-<project-ref>-auth-token (e.g., sb-abc123-auth-token)
+  // Also check for sb-<project-ref>-auth-token-code-verifier and other variants
   let accessToken: string | undefined;
+  let refreshToken: string | undefined;
   const allCookies = cookieStore.getAll();
   
+  // Extract project ref from Supabase URL to build expected cookie names
+  const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || '';
+  
+  // Build expected cookie names
+  const authTokenCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+  
+  console.log('[createServerSupabaseClient] Looking for Supabase cookies:', {
+    projectRef,
+    authTokenCookieName,
+    totalCookies: allCookies.length,
+    cookieNames: allCookies.map(c => c.name),
+  });
+  
+  // First, try to find the specific Supabase auth token cookie
+  if (authTokenCookieName) {
+    const authCookie = cookieStore.get(authTokenCookieName);
+    if (authCookie) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(authCookie.value));
+        if (parsed?.access_token) {
+          accessToken = parsed.access_token;
+          refreshToken = parsed.refresh_token;
+          console.log('[createServerSupabaseClient] Found Supabase cookie:', authTokenCookieName);
+        }
+      } catch {
+        // If not JSON, might be a direct token
+        if (authCookie.value.length > 50) {
+          accessToken = authCookie.value;
+          console.log('[createServerSupabaseClient] Found token in cookie (non-JSON)');
+        }
+      }
+    }
+  }
+  
+  // Fallback: search for any cookie containing 'auth-token' or 'supabase'
+  if (!accessToken) {
   for (const cookie of allCookies) {
     // Look for Supabase auth token cookies (various formats)
-    if (cookie.name.includes('auth-token') || cookie.name.includes('supabase')) {
+      if (cookie.name.includes('auth-token') || cookie.name.includes('supabase') || cookie.name.startsWith('sb-')) {
       try {
         // Try to parse as JSON first
         const parsed = JSON.parse(decodeURIComponent(cookie.value));
         if (parsed?.access_token) {
           accessToken = parsed.access_token;
+            refreshToken = parsed.refresh_token;
+            console.log('[createServerSupabaseClient] Found token in cookie:', cookie.name);
           break;
         }
       } catch {
         // If not JSON, check if it's a direct token
-        if (cookie.value.length > 50) {
+          if (cookie.value.length > 50 && !accessToken) {
           accessToken = cookie.value;
+            console.log('[createServerSupabaseClient] Found token in cookie (non-JSON):', cookie.name);
           break;
+          }
         }
       }
     }
@@ -74,12 +116,12 @@ function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
   // If we have an access token, set it on the client
   if (accessToken) {
     try {
-      // Set the session with the access token
-      // Note: We need both access_token and refresh_token for full session
+      // If we didn't get refresh token from the auth cookie, try to find it separately
+      if (!refreshToken) {
       // Try to find refresh token from cookies
-      let refreshToken = '';
       for (const cookie of allCookies) {
-        if (cookie.name.includes('refresh-token') || cookie.name.includes('auth-refresh')) {
+          if (cookie.name.includes('refresh-token') || cookie.name.includes('auth-refresh') || 
+              (projectRef && cookie.name === `sb-${projectRef}-auth-token-code-verifier`)) {
           try {
             const parsed = JSON.parse(decodeURIComponent(cookie.value));
             if (parsed?.refresh_token) {
@@ -93,21 +135,37 @@ function createServerSupabaseClient(request?: NextRequest): SupabaseClient {
           break;
         }
       }
+      }
+      
+      console.log('[createServerSupabaseClient] Setting session:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        tokenLength: accessToken?.length || 0,
+      });
       
       // Set session if we have access token
-      // Note: setSession is async but we can't await here in sync context
-      // The getUser() call will handle authentication
-      client.auth.setSession({
+      // Note: setSession is async, so we await it
+      if (refreshToken) {
+        await client.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
-      } as { access_token: string; refresh_token: string }).catch(() => {
-        // Ignore errors - getUser() will still work
-      });
+        } as { access_token: string; refresh_token: string });
+      } else {
+        // If no refresh token, try to set just the access token
+        // This might work for some Supabase configurations
+        await client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: '',
+        } as { access_token: string; refresh_token: string });
+      }
+      console.log('[createServerSupabaseClient] Session set successfully');
     } catch (e) {
       // If setting session fails, continue without it
       // The getUser() call will still work if cookies are properly set
-      console.log('Could not set session from cookies:', e);
+      console.error('[createServerSupabaseClient] Could not set session from cookies:', e);
     }
+  } else {
+    console.log('[createServerSupabaseClient] No access token found in cookies');
   }
   
   return client;
@@ -154,7 +212,9 @@ export async function registerWithSupabase(userData: {
   try {
     console.log('Attempting Supabase signUp for:', userData.email);
     
-    const { data, error } = await supabase.auth.signUp({
+    // Use server-side client for authentication
+    const authClient = createServerAuthClient();
+    const { data, error } = await authClient.auth.signUp({
       email: userData.email,
       password: userData.password,
       options: {
@@ -230,13 +290,33 @@ export async function registerWithSupabase(userData: {
   }
 }
 
+// Create a server-side Supabase client for authentication (no cookies needed)
+function createServerAuthClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+  
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 // Login user with Supabase Auth
 export async function loginWithSupabase(email: string, password: string): Promise<AuthResult> {
   try {
     console.log('Attempting login with email:', email);
     console.log('Supabase client created with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
     
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Use server-side client for authentication
+    const authClient = createServerAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({
       email,
       password
     });
@@ -293,34 +373,64 @@ export async function getCurrentUser(request?: NextRequest): Promise<SupabaseUse
   try {
     // If request is provided, try multiple authentication methods
     if (request) {
+      console.log('[getCurrentUser] Starting authentication check...');
+      
+      // Declare cookieError outside try block so it's accessible later
+      let cookieError: Error | null = null;
+      
       // Method 1: Try reading from Supabase cookies
-      const client = createServerSupabaseClient(request);
-      const { data: { user: cookieUser }, error: cookieError } = await client.auth.getUser();
+      try {
+        const client = await createServerSupabaseClient(request);
+        const { data: { user: cookieUser }, error: error } = await client.auth.getUser();
+        cookieError = error;
       
       if (!cookieError && cookieUser) {
+          console.log('[getCurrentUser] ✅ Found user from cookies:', cookieUser.email);
         return cookieUser as SupabaseUser;
+        }
+        
+        if (cookieError) {
+          console.log('[getCurrentUser] Cookie authentication failed:', cookieError.message);
+        }
+      } catch (cookieAuthError) {
+        console.log('[getCurrentUser] Cookie auth exception:', cookieAuthError instanceof Error ? cookieAuthError.message : String(cookieAuthError));
+        // Convert unknown error to Error type
+        cookieError = cookieAuthError instanceof Error ? cookieAuthError : new Error(String(cookieAuthError));
       }
       
       // Method 2: Try reading from Authorization header (for serverless/Vercel)
       const authHeader = request.headers.get('authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
+        console.log('[getCurrentUser] Found Authorization header, token length:', token.length);
         
         try {
           // Verify the token by calling Supabase API directly
           // Use the REST API endpoint to get user info
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          
+          if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('[getCurrentUser] Missing Supabase environment variables');
+            return null;
+          }
+          
+          console.log('[getCurrentUser] Validating token with Supabase API...');
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`,
+            `${supabaseUrl}/auth/v1/user`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`,
-                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                'apikey': supabaseAnonKey,
               },
             }
           );
           
+          console.log('[getCurrentUser] Supabase API response status:', response.status);
+          
           if (response.ok) {
             const userData = await response.json();
+            console.log('[getCurrentUser] Token validated successfully, user ID:', userData?.id);
             if (userData && userData.id) {
               // Map Supabase REST API response to SupabaseUser format
               return {
@@ -331,14 +441,20 @@ export async function getCurrentUser(request?: NextRequest): Promise<SupabaseUse
             }
           } else {
             const errorData = await response.json().catch(() => ({}));
-            console.log('[getCurrentUser] Token validation failed:', {
+            console.error('[getCurrentUser] Token validation failed:', {
               status: response.status,
+              statusText: response.statusText,
               error: errorData,
             });
           }
         } catch (tokenError) {
-          console.log('Token validation error:', tokenError instanceof Error ? tokenError.message : String(tokenError));
+          console.error('[getCurrentUser] Token validation exception:', {
+            error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+            stack: tokenError instanceof Error ? tokenError.stack : undefined,
+          });
         }
+      } else {
+        console.log('[getCurrentUser] No Authorization header found');
       }
       
       // If both methods failed, return null
@@ -378,7 +494,9 @@ export async function resendEmailConfirmation(email: string): Promise<AuthResult
   try {
     console.log('Resending email confirmation for:', email);
     
-    const { error } = await supabase.auth.resend({
+    // Use server-side client for authentication
+    const authClient = createServerAuthClient();
+    const { error } = await authClient.auth.resend({
       type: 'signup',
       email: email
     });

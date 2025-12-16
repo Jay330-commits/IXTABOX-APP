@@ -496,5 +496,252 @@ export class StandService extends BaseService {
       'StandService.getStandCapacityUtilization'
     );
   }
+
+  /**
+   * Get all stands by distributor ID
+   */
+  async getAllStandsByDistributor(distributorId: string) {
+    return await this.logOperation(
+      'GET_ALL_STANDS_BY_DISTRIBUTOR',
+      async () => {
+        const stands = await this.prisma.stands.findMany({
+          where: {
+            locations: {
+              distributor_id: distributorId,
+            },
+          },
+          include: {
+            locations: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                status: true,
+              },
+            },
+            boxes: {
+              select: {
+                id: true,
+                display_id: true,
+                model: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: {
+            name: 'asc',
+          },
+        });
+
+        return stands;
+      },
+      'StandService.getAllStandsByDistributor',
+      { distributorId }
+    );
+  }
+
+  /**
+   * Get stand performance metrics
+   */
+  async getStandPerformance(
+    standId: string,
+    period?: 'month' | 'quarter' | 'year'
+  ): Promise<{
+    totalBookings: number;
+    occupancyRate: number;
+    monthlyEarnings: number[];
+    months: string[];
+  }> {
+    return await this.logOperation(
+      'GET_STAND_PERFORMANCE',
+      async () => {
+        const now = new Date();
+        let startDate: Date;
+        const months: string[] = [];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        switch (period) {
+          case 'quarter':
+            const quarter = Math.floor(now.getMonth() / 3);
+            startDate = new Date(now.getFullYear(), quarter * 3, 1);
+            for (let i = 0; i < 3; i++) {
+              months.push(monthNames[quarter * 3 + i]);
+            }
+            break;
+          case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            months.push(...monthNames);
+            break;
+          default: // month
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            months.push(monthNames[now.getMonth()]);
+        }
+
+        const bookings = await this.prisma.bookings.findMany({
+          where: {
+            boxes: {
+              stand_id: standId,
+            },
+            start_date: {
+              gte: startDate,
+            },
+          },
+          include: {
+            payments: {
+              select: {
+                amount: true,
+              },
+            },
+          },
+        });
+
+        const totalBookings = bookings.length;
+
+        // Calculate occupancy rate (boxes in use / total boxes)
+        const stand = await this.prisma.stands.findUnique({
+          where: { id: standId },
+          include: {
+            boxes: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        const totalBoxes = stand?.boxes.length || 0;
+        const occupiedBoxes = stand?.boxes.filter(
+          (box) => box.status === boxStatus.Active
+        ).length || 0;
+        const occupancyRate = totalBoxes > 0 ? Math.round((occupiedBoxes / totalBoxes) * 100) : 0;
+
+        // Calculate monthly earnings
+        const monthlyEarnings: number[] = [];
+        if (period === 'year') {
+          for (let month = 0; month < 12; month++) {
+            const monthStart = new Date(now.getFullYear(), month, 1);
+            const monthEnd = new Date(now.getFullYear(), month + 1, 0);
+            const monthBookings = bookings.filter(
+              (booking) =>
+                new Date(booking.start_date) >= monthStart &&
+                new Date(booking.start_date) <= monthEnd
+            );
+            const earnings = monthBookings.reduce(
+              (sum, booking) => sum + (booking.payments?.amount ? Number(booking.payments.amount) : 0),
+              0
+            );
+            monthlyEarnings.push(earnings);
+          }
+        } else {
+          // For month/quarter, just return total
+          const earnings = bookings.reduce(
+            (sum, booking) => sum + (booking.payments?.amount ? Number(booking.payments.amount) : 0),
+            0
+          );
+          monthlyEarnings.push(earnings);
+        }
+
+        return {
+          totalBookings,
+          occupancyRate,
+          monthlyEarnings,
+          months,
+        };
+      },
+      'StandService.getStandPerformance',
+      { standId, period }
+    );
+  }
+
+  /**
+   * Get stand occupancy rate
+   */
+  async getStandOccupancyRate(standId: string): Promise<number> {
+    return await this.logOperation(
+      'GET_STAND_OCCUPANCY_RATE',
+      async () => {
+        const stand = await this.prisma.stands.findUnique({
+          where: { id: standId },
+          include: {
+            boxes: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        if (!stand) {
+          throw new Error(`Stand with id ${standId} not found`);
+        }
+
+        const totalBoxes = stand.boxes.length;
+        if (totalBoxes === 0) return 0;
+
+        const occupiedBoxes = stand.boxes.filter(
+          (box) => box.status === boxStatus.Active
+        ).length;
+
+        return Math.round((occupiedBoxes / totalBoxes) * 100);
+      },
+      'StandService.getStandOccupancyRate',
+      { standId }
+    );
+  }
+
+  /**
+   * Get stand revenue
+   */
+  async getStandRevenue(
+    standId: string,
+    period?: 'month' | 'quarter' | 'year'
+  ): Promise<number> {
+    return await this.logOperation(
+      'GET_STAND_REVENUE',
+      async () => {
+        const now = new Date();
+        let startDate: Date;
+
+        switch (period) {
+          case 'quarter':
+            const quarter = Math.floor(now.getMonth() / 3);
+            startDate = new Date(now.getFullYear(), quarter * 3, 1);
+            break;
+          case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
+          default: // month
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        const bookings = await this.prisma.bookings.findMany({
+          where: {
+            boxes: {
+              stand_id: standId,
+            },
+            start_date: {
+              gte: startDate,
+            },
+          },
+          include: {
+            payments: {
+              select: {
+                amount: true,
+              },
+            },
+          },
+        });
+
+        return bookings.reduce(
+          (sum, booking) => sum + (booking.payments?.amount ? Number(booking.payments.amount) : 0),
+          0
+        );
+      },
+      'StandService.getStandRevenue',
+      { standId, period }
+    );
+  }
 }
 

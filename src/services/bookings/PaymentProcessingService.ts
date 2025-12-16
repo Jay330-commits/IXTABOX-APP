@@ -1,7 +1,8 @@
 import 'server-only';
 import Stripe from 'stripe';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { UserService } from '../user/UserService';
 import { BookingService } from './BookingService';
 import { StripeService } from '../payments/StripeService';
@@ -165,12 +166,14 @@ export class PaymentProcessingService {
    * This is the main function used by both webhooks and local payment success
    * @param paymentIntentId - The Stripe payment intent ID
    * @param providedEmail - Optional email from frontend (from contact form) - takes priority over Stripe extraction
+   * @param request - Optional NextRequest object to read authentication cookies
    */
-  async processPaymentSuccess(paymentIntentId: string, providedEmail?: string | null) {
+  async processPaymentSuccess(paymentIntentId: string, providedEmail?: string | null, request?: NextRequest) {
     // SECURITY: Retrieve payment intent from Stripe FIRST to verify payment actually succeeded
     // Only create payment record after payment is confirmed - not before!
+    // Expand payment_method to get billing details (email, phone, address)
     const fullPaymentIntent = await this.retrievePaymentIntent(paymentIntentId, {
-      expand: ['customer', 'payment_method', 'latest_charge'], // Expand charge to get full details
+      expand: ['customer', 'payment_method', 'latest_charge'], // Expand charge to get full details, payment_method for billing details
     });
 
     // CRITICAL: Verify payment actually succeeded before proceeding
@@ -192,9 +195,14 @@ export class PaymentProcessingService {
     console.log('Stripe Charge ID (actual payment ID from Stripe):', chargeId);
 
     // Try to find existing payment record by charge ID (the actual payment ID)
-    let existingPayment = await this.findPaymentRecordByChargeId(chargeId).catch(() => {
-      console.log('Payment record not found - will create it now (payment confirmed, creating record)');
-      return null;
+    // Use findFirst instead of findUnique to avoid throwing errors
+    let existingPayment = await prisma.payments.findFirst({
+      where: {
+        charge_id: chargeId,
+      },
+      include: {
+        bookings: true,
+      },
     });
 
     // If payment record doesn't exist, create it now (payment is confirmed via Stripe)
@@ -203,11 +211,13 @@ export class PaymentProcessingService {
       const amountInCents = fullPaymentIntent.amount;
       const amountStr = (amountInCents / 100).toFixed(2);
 
+      try {
       existingPayment = await prisma.payments.create({
         data: {
           amount: amountStr, // Prisma will convert string to Decimal
           currency: fullPaymentIntent.currency.toUpperCase() || 'SEK',
           charge_id: chargeId, // Store ONLY the actual payment ID from Stripe (ch_xxx) - verified payment
+          status: PaymentStatus.Completed, // Payment has already succeeded in Stripe
         },
         include: {
           bookings: true,
@@ -215,6 +225,88 @@ export class PaymentProcessingService {
       });
 
       console.log('Created payment record:', existingPayment.id, 'with Stripe payment ID:', chargeId);
+      } catch (createError: unknown) {
+        // Handle race condition: if another request created the payment between our check and create
+        // Check for P2002 (unique constraint violation) and verify it's related to charge_id
+        const isPrismaError = (error: unknown): error is { code: string; meta?: Record<string, unknown>; message?: string } => {
+          return typeof error === 'object' && error !== null && 'code' in error;
+        };
+
+        const checkTargetIncludesChargeId = (target: unknown): boolean => {
+          if (Array.isArray(target)) {
+            return target.includes('charge_id');
+          }
+          if (typeof target === 'string') {
+            return target.includes('charge_id');
+          }
+          return false;
+        };
+
+        const checkMetaForChargeId = (meta: unknown): boolean => {
+          if (!meta || typeof meta !== 'object') return false;
+          const metaObj = meta as Record<string, unknown>;
+          
+          // Check meta.target
+          if (checkTargetIncludesChargeId(metaObj.target)) return true;
+          
+          // Check meta.constraint.fields
+          if (metaObj.constraint && typeof metaObj.constraint === 'object') {
+            const constraint = metaObj.constraint as Record<string, unknown>;
+            if (checkTargetIncludesChargeId(constraint.fields)) return true;
+          }
+          
+          // Check meta.cause.constraint.fields
+          if (metaObj.cause && typeof metaObj.cause === 'object') {
+            const cause = metaObj.cause as Record<string, unknown>;
+            if (cause.constraint && typeof cause.constraint === 'object') {
+              const constraint = cause.constraint as Record<string, unknown>;
+              if (checkTargetIncludesChargeId(constraint.fields)) return true;
+            }
+          }
+          
+          return false;
+        };
+
+        const isUniqueConstraintError = 
+          isPrismaError(createError) &&
+          createError.code === 'P2002' &&
+          (
+            checkMetaForChargeId(createError.meta) ||
+            (typeof createError.message === 'string' && createError.message.includes('charge_id'))
+          );
+        
+        if (isUniqueConstraintError) {
+          console.log('Payment was created by another request (race condition), fetching existing payment...');
+          // Payment was created by another concurrent request, fetch it now
+          existingPayment = await prisma.payments.findFirst({
+            where: {
+              charge_id: chargeId,
+            },
+            include: {
+              bookings: true,
+            },
+          });
+          
+          if (!existingPayment) {
+            throw new Error(`Failed to create or find payment record for charge ID: ${chargeId}`);
+          }
+          
+          console.log('Found payment record created by concurrent request:', existingPayment.id);
+        } else {
+          // Re-throw if it's a different error
+          const errorDetails = isPrismaError(createError)
+            ? {
+                code: createError.code,
+                message: createError.message,
+                meta: createError.meta,
+              }
+            : {
+                message: createError instanceof Error ? createError.message : String(createError),
+              };
+          console.error('Error creating payment (not a unique constraint error):', errorDetails);
+          throw createError;
+        }
+      }
     }
 
     // Type guard to ensure existingPayment is not null
@@ -229,13 +321,15 @@ export class PaymentProcessingService {
       bookingId: existingPayment.bookings?.id,
     });
 
-    // Extract billing details - use provided email if available (from contact form)
+    // Extract billing details - prioritize provided email (from contact form), but also extract from billing address
     const extractedDetails = this.extractBillingDetails(fullPaymentIntent);
     
-    // Use provided email from frontend if available, otherwise use extracted email
+    // Use provided email from frontend if available, otherwise use extracted email from billing address
+    // This ensures we get email from billing address if user didn't fill contact form
     const email = providedEmail || extractedDetails.email;
-    const name = extractedDetails.name;
-    const phone = extractedDetails.phone;
+    // Use extracted phone from billing address if available (billing address may have phone)
+    const phone = extractedDetails.phone || null;
+    const name = extractedDetails.name || 'Guest User';
     const address = extractedDetails.address;
     
     // CRITICAL: Log email extraction for debugging webhook issues
@@ -276,7 +370,8 @@ export class PaymentProcessingService {
         let userId: string | null = null;
         try {
           const { getCurrentUser } = await import('@/lib/supabase-auth');
-          const supabaseUser = await getCurrentUser();
+          // Pass request object to getCurrentUser so it can read session cookies
+          const supabaseUser = await getCurrentUser(request);
           if (supabaseUser?.email) {
             const authenticatedUser = await prisma.public_users.findUnique({
               where: { email: supabaseUser.email },
@@ -353,18 +448,83 @@ export class PaymentProcessingService {
     // First, try to get authenticated user (if customer is logged in)
     try {
       const { getCurrentUser } = await import('@/lib/supabase-auth');
-      const supabaseUser = await getCurrentUser();
+      // Pass request object to getCurrentUser so it can read session cookies
+      console.log('🔍 Attempting to get authenticated user...', {
+        hasRequest: !!request,
+        requestType: request ? typeof request : 'none',
+      });
+      const supabaseUser = await getCurrentUser(request);
+      console.log('🔍 getCurrentUser result:', {
+        hasUser: !!supabaseUser,
+        email: supabaseUser?.email || 'none',
+        id: supabaseUser?.id || 'none',
+      });
       if (supabaseUser?.email) {
         const authenticatedUser = await prisma.public_users.findUnique({
           where: { email: supabaseUser.email },
         });
+        console.log('🔍 Found public_users record:', {
+          hasUser: !!authenticatedUser,
+          userId: authenticatedUser?.id || 'none',
+          email: authenticatedUser?.email || 'none',
+        });
         if (authenticatedUser) {
           userId = authenticatedUser.id;
-          console.log('Using authenticated customer user:', authenticatedUser.id, authenticatedUser.email);
+          console.log('✅ Using authenticated customer user:', authenticatedUser.id, authenticatedUser.email);
+        } else {
+          console.warn('⚠️ Supabase user found but no public_users record exists for:', supabaseUser.email);
+        }
+      } else {
+        console.log('ℹ️ No Supabase user found from cookies, trying email lookup as fallback...');
+        // FALLBACK: If cookies don't work but we have an email, try to find the user by email
+        // This handles cases where the user is logged in but cookies aren't being read properly
+        if (email) {
+          const userByEmail = await prisma.public_users.findUnique({
+            where: { email: email.toLowerCase() },
+          });
+          if (userByEmail) {
+            // Check if this user is a guest user - guest users have role 'Guest'
+            // Guest users are created with role 'Guest' and cannot authenticate
+            const isGuestUser = userByEmail.role === 'Guest';
+            if (!isGuestUser) {
+              userId = userByEmail.id;
+              console.log('✅ Found customer user by email (fallback):', userByEmail.id, userByEmail.email);
+            } else {
+              console.log('ℹ️ User found by email but is a guest user, will create/find guest user instead');
+            }
+          }
         }
       }
     } catch (authError) {
-      console.log('No authenticated user or error checking auth:', authError instanceof Error ? authError.message : String(authError));
+      console.error('❌ Error getting authenticated user:', {
+        error: authError instanceof Error ? authError.message : String(authError),
+        stack: authError instanceof Error ? authError.stack : undefined,
+      });
+      console.error('❌ Error checking authentication:', authError instanceof Error ? authError.message : String(authError));
+      console.error('❌ Auth error stack:', authError instanceof Error ? authError.stack : undefined);
+      
+      // FALLBACK: If auth check fails but we have an email, try to find the user by email
+      if (!userId && email) {
+        console.log('🔄 Auth check failed, trying email lookup as fallback...');
+        try {
+          const userByEmail = await prisma.public_users.findUnique({
+            where: { email: email.toLowerCase() },
+          });
+          if (userByEmail) {
+            // Check if this user is a guest user - guest users have role 'Guest'
+            // Guest users are created with role 'Guest' and cannot authenticate
+            const isGuestUser = userByEmail.role === 'Guest';
+            if (!isGuestUser) {
+              userId = userByEmail.id;
+              console.log('✅ Found customer user by email (fallback after error):', userByEmail.id, userByEmail.email);
+            } else {
+              console.log('ℹ️ User found by email but is a guest user, will create/find guest user instead');
+            }
+          }
+        } catch (emailLookupError) {
+          console.error('❌ Error looking up user by email:', emailLookupError);
+        }
+      }
     }
 
     // If no authenticated user, get or create guest user from email
@@ -400,23 +560,39 @@ export class PaymentProcessingService {
       throw new Error('User ID is required to create booking');
     }
 
-    console.log('Customer user ID for payment:', userId);
+    console.log('📋 Customer user ID for payment:', userId);
+    console.log('📋 Payment details before update:', {
+      paymentId: existingPayment.id,
+      currentUserId: existingPayment.user_id || 'none',
+      newUserId: userId,
+    });
 
     // CRITICAL: Update payment with the correct user_id (the customer paying, not the distributor)
     // Always update to ensure payment is linked to the correct user
     // This is especially important for webhooks where payment might already exist without user_id
-    await prisma.payments.update({
+    const updatedPayment = await prisma.payments.update({
       where: { id: existingPayment.id },
       data: {
         user_id: userId, // Always set user_id when we have it
       },
     });
     
-    console.log('Updated payment with user_id:', {
+    console.log('✅ Updated payment with user_id:', {
       paymentId: existingPayment.id,
       userId: userId,
       previousUserId: existingPayment.user_id || 'none',
+      verifiedUserId: updatedPayment.user_id || 'none',
     });
+    
+    // Verify the update worked
+    if (updatedPayment.user_id !== userId) {
+      console.error('❌ CRITICAL: Payment user_id update failed!', {
+        expected: userId,
+        actual: updatedPayment.user_id,
+        paymentId: existingPayment.id,
+      });
+      throw new Error(`Failed to update payment user_id: expected ${userId}, got ${updatedPayment.user_id}`);
+    }
 
     // Create booking using BookingService
     const booking = await bookingService.createBooking(
@@ -503,6 +679,18 @@ export class PaymentProcessingService {
     const stand = box.stands;
     const location = stand.locations;
 
+    // Get payment charge_id for the booking link
+    const payment = await prisma.payments.findFirst({
+      where: {
+        bookings: {
+          id: bookingId,
+        },
+      },
+      select: {
+        charge_id: true,
+      },
+    });
+
     // Format dates (DD/MM/YYYY format)
     const formatDate = (date: Date): string => {
       const d = new Date(date);
@@ -520,6 +708,14 @@ export class PaymentProcessingService {
       return `${hours}:${minutes}`;
     };
 
+    // Generate bookings URL with email and charge_id
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
+      || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : null)
+      || 'http://localhost:3000';
+    const bookingsUrl = payment?.charge_id 
+      ? `${baseUrl}/guest/bookings?email=${encodeURIComponent(email)}&chargeId=${encodeURIComponent(payment.charge_id)}`
+      : `${baseUrl}/guest/bookings?email=${encodeURIComponent(email)}`;
+
     const emailService = new EmailService();
     const emailResult = await emailService.sendBookingConfirmation({
       to: email,
@@ -533,6 +729,8 @@ export class PaymentProcessingService {
       unlockCode: String(bookingWithDetails.lock_pin),
       padlockCode: String(bookingWithDetails.lock_pin), // Using same code for now, can be updated later
       helpUrl: 'https://ixtarent.com/help',
+      bookingsUrl: bookingsUrl,
+      chargeId: payment?.charge_id || undefined,
     });
 
     if (!emailResult.success) {
@@ -556,7 +754,7 @@ export function getStripe(): Stripe {
   return getPaymentProcessingService().getStripe();
 }
 
-export async function processPaymentSuccess(paymentIntentId: string, providedEmail?: string | null) {
-  return getPaymentProcessingService().processPaymentSuccess(paymentIntentId, providedEmail);
+export async function processPaymentSuccess(paymentIntentId: string, providedEmail?: string | null, request?: NextRequest) {
+  return getPaymentProcessingService().processPaymentSuccess(paymentIntentId, providedEmail, request);
 }
 

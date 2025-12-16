@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GuestHeader from '@/components/layouts/GuestHeader';
@@ -35,7 +35,7 @@ interface LockPin {
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, token } = useAuth();
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentState | null>(null);
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [lockPin, setLockPin] = useState<LockPin | null>(null);
@@ -43,6 +43,11 @@ function PaymentSuccessContent() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("dashboard");
+  
+  // Track if we've already processed this payment intent to prevent duplicate calls
+  const processedPaymentIntents = useRef<Set<string>>(new Set());
+  // Track if we're currently processing a payment intent
+  const processingPaymentIntents = useRef<Set<string>>(new Set());
   
   // Determine if user is a customer (wait for auth to load)
   const isCustomer = !authLoading && user && user.role === Role.CUSTOMER;
@@ -145,6 +150,20 @@ function PaymentSuccessContent() {
   };
 
   useEffect(() => {
+    // Wait for auth to finish loading before processing payment
+    // This prevents duplicate calls when token becomes available
+    if (authLoading) {
+      console.log('[Success Page] Waiting for auth to finish loading...');
+      return;
+    }
+    
+    // If user is authenticated, wait for token to be available before processing
+    // This ensures the first request includes the auth header
+    if (user && !token) {
+      console.log('[Success Page] User authenticated but token not available yet, waiting...');
+      return;
+    }
+    
     // Stripe redirects add payment_intent to URL, but we should also check for it
     // The payment_intent parameter comes from either:
     // 1. Stripe redirect (automatic): payment_intent=pi_xxx
@@ -226,24 +245,109 @@ function PaymentSuccessContent() {
         // Create booking if payment succeeded and booking doesn't exist yet
         let bookingWasCreated = false;
         if (data.paymentIntent.status === 'succeeded' && !data.bookingExists) {
-          console.log('Payment succeeded, creating booking for:', paymentIntentId);
-          console.log('Booking creation check:', {
-            status: data.paymentIntent.status,
-            bookingExists: data.bookingExists,
-            willCreate: true,
-          });
-          
-          try {
-            // Use the email passed to this function
-            console.log('[Success Page] Sending email to process-success:', emailToUse || 'NOT PROVIDED');
-            
-            const requestBody = emailToUse ? { customerEmail: emailToUse } : {};
-            const createBookingResponse = await fetch(`/api/payments/${paymentIntentId}/process-success`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestBody),
+          // CRITICAL: Prevent duplicate calls - check if already processed OR currently processing
+          if (processedPaymentIntents.current.has(paymentIntentId)) {
+            console.log('[Success Page] Payment intent already processed, skipping duplicate call:', paymentIntentId);
+            // Still fetch booking data in case it was created by the previous call
+            const updatedResponse = await fetch(`/api/payments/${paymentIntentId}`, {
               cache: 'no-store',
             });
+            if (updatedResponse.ok) {
+              const updatedData = await updatedResponse.json();
+              if (updatedData.bookingExists && updatedData.booking) {
+                console.log('Booking found from previous processing');
+                data.booking = updatedData.booking;
+                data.bookingExists = true;
+                bookingWasCreated = true;
+                const bookingDetails = {
+                  standId: updatedData.booking.standId,
+                  startDate: updatedData.booking.startDate,
+                  endDate: updatedData.booking.endDate,
+                  startTime: updatedData.booking.startTime || undefined,
+                  endTime: updatedData.booking.endTime || undefined,
+                };
+                setBookingDetails(bookingDetails);
+                const pinValue = updatedData.booking.lockPin || updatedData.booking.lock_pin;
+                if (pinValue) {
+                  setLockPin({
+                    pin: String(pinValue),
+                    pinCode: String(pinValue),
+                  });
+                }
+              }
+            }
+          } else if (processingPaymentIntents.current.has(paymentIntentId)) {
+            console.log('[Success Page] Payment intent is currently being processed, skipping duplicate call:', paymentIntentId);
+            // Wait a bit and check again
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const updatedResponse = await fetch(`/api/payments/${paymentIntentId}`, {
+              cache: 'no-store',
+            });
+            if (updatedResponse.ok) {
+              const updatedData = await updatedResponse.json();
+              if (updatedData.bookingExists && updatedData.booking) {
+                console.log('Booking found after waiting for processing to complete');
+                data.booking = updatedData.booking;
+                data.bookingExists = true;
+                bookingWasCreated = true;
+                const bookingDetails = {
+                  standId: updatedData.booking.standId,
+                  startDate: updatedData.booking.startDate,
+                  endDate: updatedData.booking.endDate,
+                  startTime: updatedData.booking.startTime || undefined,
+                  endTime: updatedData.booking.endTime || undefined,
+                };
+                setBookingDetails(bookingDetails);
+                const pinValue = updatedData.booking.lockPin || updatedData.booking.lock_pin;
+                if (pinValue) {
+                  setLockPin({
+                    pin: String(pinValue),
+                    pinCode: String(pinValue),
+                  });
+                }
+              }
+            }
+          } else {
+            // Mark this payment intent as being processed
+            processingPaymentIntents.current.add(paymentIntentId);
+            
+            console.log('Payment succeeded, creating booking for:', paymentIntentId);
+            console.log('Booking creation check:', {
+              status: data.paymentIntent.status,
+              bookingExists: data.bookingExists,
+              willCreate: true,
+            });
+            
+            try {
+              // Use the email passed to this function
+              console.log('[Success Page] Sending email to process-success:', emailToUse || 'NOT PROVIDED');
+              
+              const requestBody = emailToUse ? { customerEmail: emailToUse } : {};
+              const headers: HeadersInit = { 
+                'Content-Type': 'application/json',
+              };
+              
+              // CRITICAL: Send Authorization header with Bearer token if user is authenticated
+              // This allows the server to identify the authenticated customer
+              // Wait for token to be available if user is authenticated
+              if (user && !authLoading) {
+                // If user is authenticated, wait for token before making request
+                if (token) {
+                  headers['Authorization'] = `Bearer ${token}`;
+                  console.log('[Success Page] Sending Authorization header with token');
+                } else {
+                  console.log('[Success Page] User authenticated but token not available yet, waiting...');
+                  // Token might not be ready yet, but we'll still try (server can use cookies)
+                }
+              }
+              
+              const createBookingResponse = await fetch(`/api/payments/${paymentIntentId}/process-success`, {
+                method: 'POST',
+                headers,
+                credentials: 'include', // Also include cookies as fallback
+                body: JSON.stringify(requestBody),
+                cache: 'no-store',
+              });
             
             if (createBookingResponse.ok) {
               const bookingData = await createBookingResponse.json();
@@ -252,6 +356,10 @@ function PaymentSuccessContent() {
                 message: bookingData.message,
                 success: bookingData.success,
               });
+              
+              // Mark as processed (successfully or not)
+              processingPaymentIntents.current.delete(paymentIntentId);
+              processedPaymentIntents.current.add(paymentIntentId);
               
               // Clean up email from localStorage after successful booking creation
               if (paymentIntentId && emailToUse) {
@@ -314,6 +422,9 @@ function PaymentSuccessContent() {
                 statusText: createBookingResponse.statusText,
                 error: errorData,
               });
+              // Remove from processing set
+              processingPaymentIntents.current.delete(paymentIntentId);
+              // Don't mark as processed if it failed - allow retry or webhook
               // Continue - webhook may still create it
             }
           } catch (bookingError) {
@@ -322,7 +433,11 @@ function PaymentSuccessContent() {
               message: bookingError instanceof Error ? bookingError.message : String(bookingError),
               stack: bookingError instanceof Error ? bookingError.stack : undefined,
             });
+            // Remove from processing set
+            processingPaymentIntents.current.delete(paymentIntentId);
+            // Don't mark as processed if it failed - allow retry or webhook
             // Continue - webhook may still create it
+          }
           }
         }
 
@@ -429,7 +544,7 @@ function PaymentSuccessContent() {
     };
 
     fetchBookingData(finalEmail);
-  }, [searchParams]);
+  }, [searchParams, token, authLoading, user]);
 
   if (loading || authLoading) {
     return (

@@ -1,10 +1,11 @@
 import 'server-only';
-import { boxStatus } from '@prisma/client';
+import { boxStatus, BoxModel } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { IglooService } from '../locations/IglooService';
 import { BookingStatusService } from './BookingStatusService';
 import { BookingValidationService } from './BookingValidationService';
 import { BookingAvailabilityService } from './BookingAvailabilityService';
+import { calculateBoxScore } from './BoxScoreUtils';
 
 /**
  * BookingService
@@ -55,7 +56,7 @@ export class BookingService extends BaseService {
   calculateBookingPrice(
     days: number,
     modelId: string | null,
-    basePrice: number = 299.99
+    basePrice: number = 300
   ): { amount: number; amountStr: string; days: number; basePrice: number; multiplier: number } {
     return this.validationService.calculateBookingPrice(days, modelId, basePrice);
   }
@@ -86,10 +87,10 @@ export class BookingService extends BaseService {
   /**
    * Verify box exists and is available
    */
-  async verifyBox(boxId: string): Promise<{ exists: boolean; box?: { id: string; status: boxStatus | null } }> {
+  async verifyBox(boxId: string): Promise<{ exists: boolean; box?: { id: string; status: boxStatus | null; model: BoxModel } }> {
     const box = await this.prisma.boxes.findUnique({
       where: { id: boxId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, model: true },
     });
 
     if (!box) {
@@ -236,15 +237,49 @@ export class BookingService extends BaseService {
   ) {
     const { boxId, startDate, endDate, startTime, endTime } = bookingData;
 
+    console.log('📝 createBooking called with:', {
+      paymentId,
+      userId: userId || 'null',
+      boxId: bookingData.boxId,
+    });
+
     return await this.prisma.$transaction(async (tx) => {
       // Update payment with user_id and completed_at (payment is already verified since it exists in DB)
-      await tx.payments.update({
+      // Note: user_id should already be set by PaymentProcessingService, but we ensure it's set here too
+      const paymentBefore = await tx.payments.findUnique({
+        where: { id: paymentId },
+        select: { user_id: true },
+      });
+      
+      console.log('📝 Payment before update in createBooking:', {
+        paymentId,
+        currentUserId: paymentBefore?.user_id || 'none',
+        newUserId: userId || 'null',
+      });
+      
+      const updatedPayment = await tx.payments.update({
         where: { id: paymentId },
         data: {
-          user_id: userId,
+          user_id: userId, // Ensure user_id is set (should already be set, but ensure it)
           completed_at: new Date(),
         },
       });
+      
+      console.log('✅ Payment updated in createBooking transaction:', {
+        paymentId,
+        userId: updatedPayment.user_id || 'none',
+        verified: updatedPayment.user_id === userId,
+      });
+      
+      // Verify user_id was set correctly
+      if (userId && updatedPayment.user_id !== userId) {
+        console.error('❌ CRITICAL: Payment user_id mismatch in createBooking!', {
+          expected: userId,
+          actual: updatedPayment.user_id,
+          paymentId,
+        });
+        throw new Error(`Payment user_id mismatch: expected ${userId}, got ${updatedPayment.user_id}`);
+      }
 
       // Parse dates
       const start = new Date(`${startDate}T${startTime}`);
@@ -288,6 +323,27 @@ export class BookingService extends BaseService {
         throw new Error(`Failed to generate mandatory lock PIN: ${pinError instanceof Error ? pinError.message : String(pinError)}`);
       }
 
+      // Calculate box score based on rental duration (in hours)
+      // Uses end_date since box hasn't been returned yet
+      let boxScore: bigint;
+      let durationHours: number;
+      
+      try {
+        boxScore = calculateBoxScore(start, end);
+        durationHours = Number(boxScore);
+        console.log('Calculating box score for new booking:', {
+          startDate: start.toISOString(),
+          endDate: end.toISOString(),
+          durationHours,
+        });
+      } catch (scoreError) {
+        console.error('Failed to calculate box score for new booking:', scoreError);
+        // Use a default score of 1 hour if calculation fails
+        boxScore = BigInt(1);
+        durationHours = 1;
+        console.warn('Using default score of 1 hour due to calculation error');
+      }
+
       // Create booking with PIN
       try {
         const booking = await tx.bookings.create({
@@ -301,6 +357,16 @@ export class BookingService extends BaseService {
           },
         });
 
+        // Update box score based on rental duration
+        // Score represents the number of hours the box will be rented
+        // Lower scores mean shorter rental periods (better availability)
+        await tx.boxes.update({
+          where: { id: boxId },
+          data: {
+            Score: boxScore,
+          },
+        });
+
         console.log('Booking created after payment succeeded:', {
           bookingId: booking.id,
           boxId,
@@ -309,6 +375,7 @@ export class BookingService extends BaseService {
           endDate: end.toISOString(),
           status: bookingStatus,
           lockPin: lockPin,
+          boxScore: durationHours,
         });
 
         return booking;

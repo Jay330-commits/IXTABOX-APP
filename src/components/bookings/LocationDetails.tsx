@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import {
-  blockedRanges,
-  modelBlockedRanges,
-  earliestAvailableStart,
-  isRangeBlocked,
-  isDateBlocked,
-  daysBetween,
-  type DateRange,
-} from '@/utils/bookingRanges';
 import { logger } from '@/utils/logger';
 
 // Helper functions for date handling
@@ -98,9 +89,6 @@ type AvailableBox = {
     displayId: string;
     compartment: number | null;
     isAvailable: boolean;
-    nextAvailableDate: string | null;
-    blockedRanges?: DateRange[];
-    earliestAvailableStart?: Date | null;
   }>;
 };
 
@@ -112,8 +100,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   initialEndDate,
   initialModelId,
 }) => {
-  const [activeTab, setActiveTab] = useState<'model' | 'dates' | 'box'>(() => {
-    return initialModelId ? 'dates' : 'model';
+  const [activeTab, setActiveTab] = useState<'dates' | 'model' | 'box'>(() => {
+    return initialStartDate && initialEndDate ? 'model' : 'dates';
   });
   
   const [selectedModel, setSelectedModel] = useState<string>(initialModelId || '');
@@ -127,11 +115,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   const [loadingBoxes, setLoadingBoxes] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
-  const [boxBlockedRanges, setBoxBlockedRanges] = useState<Map<string, DateRange[]>>(new Map());
-  const [modelBlockedRangesState, setModelBlockedRangesState] = useState<DateRange[]>([]);
-  const [modelBlockedRangesMap, setModelBlockedRangesMap] = useState<Map<'classic' | 'pro', DateRange[]>>(new Map());
-  const [loadingBlockedRanges, setLoadingBlockedRanges] = useState(false);
-  const [allBoxes, setAllBoxes] = useState<AvailableBox[]>([]);
   const [pricing, setPricing] = useState<{
     basePrice: number;
     classic: { pricePerDay: number; multiplier: number };
@@ -143,41 +126,17 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   useEffect(() => {
     const newStartDate = extractDatePart(initialStartDate);
     const newEndDate = extractDatePart(initialEndDate);
-    const now = new Date();
-    const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000);
     
     if (newStartDate && isValidDateString(newStartDate)) {
       const time = extractTimePart(initialStartDate) || getDefaultStartTime();
-      const initialDateTime = new Date(`${newStartDate}T${time}`);
-      
-      // Only set if the initial datetime is at least 1 minute from now
-      if (initialDateTime >= oneMinuteFromNow) {
       setStartDate(newStartDate);
         setStartTime(time);
-      } else {
-        // Set to minimum allowed datetime if initial value is too early
-        const minDateTime = getMinDateTimeFromNow();
-        const [minDate, minTime] = minDateTime.split('T');
-        setStartDate(minDate);
-        setStartTime(minTime || getDefaultStartTime());
-      }
     }
     
     if (newEndDate && isValidDateString(newEndDate)) {
       const time = extractTimePart(initialEndDate) || getDefaultEndTime();
-      const initialDateTime = new Date(`${newEndDate}T${time}`);
-      
-      // Only set if the initial datetime is at least 1 minute from now
-      if (initialDateTime >= oneMinuteFromNow) {
       setEndDate(newEndDate);
         setEndTime(time);
-      } else {
-        // Set to minimum allowed datetime if initial value is too early
-        const minDateTime = getMinDateTimeFromNow();
-        const [minDate, minTime] = minDateTime.split('T');
-        setEndDate(minDate);
-        setEndTime(minTime || getDefaultEndTime());
-      }
     }
     
     if (initialModelId) {
@@ -191,9 +150,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     selectedBoxRef.current = selectedBox;
   }, [selectedBox]);
 
-  // Automatically switch to dates tab when model is first selected (only when model changes, not when tab is clicked)
+  // Track previous selected model to detect changes
   const previousSelectedModelRef = React.useRef<string | null>(null);
   
+  // Auto-switch when model is selected
   useEffect(() => {
     // Only auto-switch if model just changed from empty to selected (not if user clicks back to model tab)
     if (selectedModel && !previousSelectedModelRef.current) {
@@ -201,7 +161,12 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       const timer = setTimeout(() => {
         setActiveTab((currentTab) => {
           // Only switch if we're currently on the model tab
-          return currentTab === 'model' ? 'dates' : currentTab;
+          if (currentTab === 'model') {
+            // If dates are already selected, go directly to box tab
+            // Otherwise go to dates tab
+            return (startDate && endDate) ? 'box' : 'dates';
+          }
+          return currentTab;
         });
       }, 0);
       previousSelectedModelRef.current = selectedModel;
@@ -209,7 +174,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     } else if (!selectedModel) {
       previousSelectedModelRef.current = null;
     }
-  }, [selectedModel]);
+  }, [selectedModel, startDate, endDate]);
 
   // Fetch pricing data for the location
   useEffect(() => {
@@ -223,18 +188,18 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         } else {
           // Fallback to defaults if API fails
           setPricing({
-            basePrice: 299.99,
-            classic: { pricePerDay: 299.99, multiplier: 1.0 },
-            pro: { pricePerDay: 449.99, multiplier: 1.5 },
+            basePrice: 300,
+            classic: { pricePerDay: 300, multiplier: 1.0 },
+            pro: { pricePerDay: 300, multiplier: 1.0 },
           });
         }
       } catch (error) {
         console.error('Failed to fetch pricing:', error);
         // Fallback to defaults on error
         setPricing({
-          basePrice: 299.99,
-          classic: { pricePerDay: 299.99, multiplier: 1.0 },
-          pro: { pricePerDay: 449.99, multiplier: 1.5 },
+          basePrice: 300,
+          classic: { pricePerDay: 300, multiplier: 1.0 },
+          pro: { pricePerDay: 300, multiplier: 1.0 },
         });
       } finally {
         setLoadingPricing(false);
@@ -244,203 +209,66 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     fetchPricing();
   }, [location.id]);
 
-  // Fetch model-level blocked ranges for BOTH models when location marker is clicked (component mounts)
-  // This provides early availability information for all models
-  useEffect(() => {
-    const fetchAllModelBlockedRanges = async () => {
-      try {
-        // Fetch blocked ranges for both models in parallel
-        const [classicRanges, proRanges] = await Promise.all([
-          modelBlockedRanges(location.id, 'classic'),
-          modelBlockedRanges(location.id, 'pro'),
-        ]);
-
-        // Store both in a map for easy access
-        const rangesMap = new Map<'classic' | 'pro', DateRange[]>();
-        rangesMap.set('classic', classicRanges);
-        rangesMap.set('pro', proRanges);
-        setModelBlockedRangesMap(rangesMap);
-
-        // Set the current model's ranges if a model is already selected
-        if (selectedModel) {
-          setModelBlockedRangesState(rangesMap.get(selectedModel as 'classic' | 'pro') || []);
-        }
-
-        // Model-level blocked ranges loaded
-      } catch (error) {
-        logger.error('[Booking Form] Error fetching model blocked ranges', {
-          locationId: location.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-        setModelBlockedRangesMap(new Map());
-        setModelBlockedRangesState([]);
-      }
-    };
-
-    fetchAllModelBlockedRanges();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.id]); // Only fetch when location changes (when marker is clicked)
-
-  // Update modelBlockedRangesState when selectedModel changes
-  useEffect(() => {
-    if (selectedModel && modelBlockedRangesMap.size > 0) {
-      const ranges = modelBlockedRangesMap.get(selectedModel as 'classic' | 'pro') || [];
-      setModelBlockedRangesState(ranges);
-    } else {
-      setModelBlockedRangesState([]);
-    }
-  }, [selectedModel, modelBlockedRangesMap]);
-
-  // Automatically switch to box tab when dates are selected and boxes are loaded
+  // Automatically switch to box tab when boxes are loaded and we're on dates tab
   useEffect(() => {
     if (selectedModel && startDate && endDate && availableBoxes.length > 0 && activeTab === 'dates' && !selectedBox) {
+      const timer = setTimeout(() => {
       setActiveTab('box');
+      }, 300); // Small delay to ensure boxes are rendered
+      return () => clearTimeout(timer);
     }
   }, [selectedModel, startDate, endDate, availableBoxes.length, activeTab, selectedBox]);
 
-  // Fetch all boxes (without blocked ranges initially) - ranges will be fetched lazily
-  useEffect(() => {
-    const fetchAllBoxes = async () => {
-      setLoadingBlockedRanges(true);
-      try {
-        // Fetch all boxes for the location (without date filters)
-        const response = await fetch(`/api/locations/${location.id}/boxes`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch boxes');
-        }
-        
-        const data = await response.json();
-        const rawBoxes = data.availableBoxes || [];
-        
-        // Store boxes without fetching individual blocked ranges
-        // We'll use model-level blocked ranges initially (already fetched)
-        // Individual box ranges will be fetched only when needed (lazy loading)
-        setAllBoxes(rawBoxes);
-        
-        // Boxes loaded (ranges will be lazy-loaded)
-      } catch (error) {
-        logger.error('[Booking Form] Error fetching boxes', {
-          locationId: location.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      } finally {
-        setLoadingBlockedRanges(false);
-      }
-    };
+  // Fetch available boxes when dates and model are selected
 
-    fetchAllBoxes();
-  }, [location.id]);
-
-  // Debounce timer ref for date/time processing
+  // Debounce timer ref for API calls
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoized function to process boxes with debouncing
-  const processAvailableBoxes = useCallback(async () => {
-    if (!selectedModel || !startDate || !endDate || !allBoxes.length) {
+  // Fetch available boxes when dates and model are selected
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Only fetch if we have required data
+    if (!startDate || !endDate || !selectedModel) {
       setAvailableBoxes([]);
       setSelectedBox(null);
       return;
     }
 
+    // Debounce the API call to avoid excessive requests
+    debounceTimerRef.current = setTimeout(async () => {
       setLoadingBoxes(true);
       setBoxError(null);
     
       try {
-      // Always check individual box blocked ranges for accurate availability
-      const start = new Date(`${startDate}T${startTime}`);
-      const end = new Date(`${endDate}T${endTime}`);
-      const bookingLength = daysBetween(start, end);
-      
-        // Filter allBoxes by selected model
-      const filteredByModel = allBoxes
-        .map((stand: AvailableBox) => ({
-          ...stand,
-          boxes: stand.boxes.filter(box => {
-            const boxModel = box.model === 'Classic' ? 'classic' : 'pro';
-            return boxModel === selectedModel;
-          }),
-        }))
-        .filter((stand: AvailableBox) => stand.boxes.length > 0);
+        // Simple API call with dates and model - server handles filtering
+        const modelParam = selectedModel === 'classic' ? 'Classic' : 'Pro';
+        const response = await fetch(
+          `/api/locations/${location.id}/boxes?startDate=${startDate}&endDate=${endDate}&model=${modelParam}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch available boxes');
+        }
+
+        const data = await response.json();
+        const boxesByStand = data.availableBoxes || [];
         
-      // Always check individual box ranges for accurate availability
-      // Model-level ranges are merged from all boxes, so we need individual box checks
-      const boxesWithAvailability = await Promise.all(
-        filteredByModel.map(async (stand: AvailableBox) => {
-          const boxesWithData = await Promise.all(
-            stand.boxes.map(async (box) => {
-              // Always fetch individual box blocked ranges for accurate availability checking
-              let boxRanges: DateRange[] = [];
-              
-              // Use cached ranges if available, otherwise fetch
-              if (boxBlockedRanges.has(box.id)) {
-                boxRanges = boxBlockedRanges.get(box.id) || [];
-              } else {
-                // Fetch individual box ranges for accurate availability
-                boxRanges = await blockedRanges(box.id);
-                // Cache the result
-                setBoxBlockedRanges(prev => {
-                  const newMap = new Map(prev);
-                  newMap.set(box.id, boxRanges);
-                  return newMap;
-                });
-              }
-              
-              // Check availability using individual box ranges (this is the accurate check)
-              const isAvailableForDates = !isRangeBlocked(start, end, boxRanges);
-              
-              // Calculate earliest available start date using box-specific ranges
-              const earliestStart = earliestAvailableStart(boxRanges, new Date(), bookingLength);
-            
-              return {
-                ...box,
-                isAvailable: isAvailableForDates,
-                blockedRanges: boxRanges,
-                earliestAvailableStart: earliestStart,
-              };
-            })
-          );
-          return {
-            ...stand,
-            boxes: boxesWithData,
-          };
-        })
-      );
-        
-      // Filter boxes - only show boxes that are actually available for the selected dates
-      // This prevents showing unavailable boxes as available
-      const filteredBoxes = boxesWithAvailability
-        .map((stand: AvailableBox) => ({
-          ...stand,
-          boxes: stand.boxes.filter((box) => {
-            // Only show boxes that are actually available for the selected date range
-            return box.isAvailable === true;
-          }),
-        }))
-        .filter((stand: AvailableBox) => stand.boxes.length > 0);
-        
-      // Sort boxes (available first, then by earliest start)
-        const sortedBoxes = filteredBoxes.map((stand: AvailableBox) => ({
-          ...stand,
-          boxes: stand.boxes.sort((a, b) => {
-            if (a.isAvailable && !b.isAvailable) return -1;
-            if (!a.isAvailable && b.isAvailable) return 1;
-          if (a.isAvailable && b.isAvailable) return 0;
-            if (a.earliestAvailableStart && b.earliestAvailableStart) {
-              return a.earliestAvailableStart.getTime() - b.earliestAvailableStart.getTime();
-            }
-            if (a.earliestAvailableStart) return -1;
-            if (b.earliestAvailableStart) return 1;
-            return 0;
-          }),
-        }));
-        
-        setAvailableBoxes(sortedBoxes);
+        setAvailableBoxes(boxesByStand);
         
         // Auto-select first available box if none selected
-        if (sortedBoxes.length > 0 && !selectedBoxRef.current) {
-          const firstStand = sortedBoxes[0];
+        // Validate that the box model matches the selected model
+        if (boxesByStand.length > 0 && !selectedBoxRef.current) {
+          const firstStand = boxesByStand[0];
           if (firstStand.boxes.length > 0) {
             const firstBox = firstStand.boxes[0];
+            const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro';
+            
+            // Only auto-select if the box model matches the selected model
+            if (firstBox.model === expectedModel) {
             setSelectedBox({
               boxId: firstBox.id,
               standId: firstStand.standId,
@@ -448,10 +276,11 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               model: firstBox.model,
               compartment: firstBox.compartment ?? null,
             });
+            }
           }
         }
       } catch (error) {
-        logger.error('[Booking Form] Error processing available boxes', {
+        logger.error('[Booking Form] Error fetching available boxes', {
           locationId: location.id,
           model: selectedModel,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -461,33 +290,14 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       } finally {
         setLoadingBoxes(false);
       }
-  }, [selectedModel, startDate, endDate, startTime, endTime, allBoxes, location.id, boxBlockedRanges]);
-
-  // Debounced effect for processing boxes (300ms delay on mobile-friendly)
-  useEffect(() => {
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Only process if we have required data
-    if (!selectedModel || !startDate || !endDate || allBoxes.length === 0) {
-      setAvailableBoxes([]);
-      setSelectedBox(null);
-      return;
-    }
-
-    // Debounce the processing to avoid excessive calculations on rapid date/time changes
-    debounceTimerRef.current = setTimeout(() => {
-      processAvailableBoxes();
-    }, 300); // 300ms debounce - good balance for mobile
+    }, 300); // 300ms debounce
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
     }
     };
-  }, [selectedModel, startDate, endDate, startTime, endTime, allBoxes.length, processAvailableBoxes]);
+  }, [startDate, endDate, selectedModel, location.id]);
 
   const isTimeOrderValid = React.useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return true;
@@ -495,11 +305,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       const start = new Date(`${startDate}T${startTime}`);
       const end = new Date(`${endDate}T${endTime}`);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) return true;
-      
-      // Check that start is at least 1 minute from now
-      const now = new Date();
-      const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000);
-      if (start < oneMinuteFromNow) return false;
       
       // Check that end is after start
       return end > start;
@@ -509,25 +314,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [startDate, endDate, startTime, endTime]);
 
 
-  // Check if selected date range is blocked (use model-level ranges if available, otherwise box-specific)
-  const isSelectedRangeBlocked = useMemo(() => {
-    if (!startDate || !endDate || !startTime || !endTime) return false;
-    try {
-      const start = new Date(`${startDate}T${startTime}`);
-      const end = new Date(`${endDate}T${endTime}`);
-      
-      // Use model-level ranges if available, otherwise use box-specific ranges
-      const rangesToCheck = selectedModel && modelBlockedRangesState.length > 0
-        ? modelBlockedRangesState
-        : selectedBox
-        ? boxBlockedRanges.get(selectedBox.boxId) || []
-        : [];
-      
-      return isRangeBlocked(start, end, rangesToCheck);
-    } catch {
-      return false;
-    }
-  }, [selectedBox, selectedModel, startDate, endDate, startTime, endTime, boxBlockedRanges, modelBlockedRangesState]);
 
 
   const formatDateTimeForDisplay = (dateStr: string, timeStr: string): string => {
@@ -627,43 +413,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     return null;
   };
 
-  /**
-   * Get earliest available date from merged blocked ranges for a model
-   * If some boxes are available now, returns today
-   * If all boxes are booked, finds when the FIRST box becomes available (earliest end date)
-   */
-  const getEarliestAvailableDateFromRanges = React.useCallback((modelId: string): Date | null => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Check if model has available boxes (not all booked)
-    const hasAvailableBoxes = modelId === 'classic' 
-      ? location.availableBoxes.classic > 0
-      : location.availableBoxes.pro > 0;
-    
-    if (hasAvailableBoxes) {
-      // Some boxes are available now, so model is available now
-      return today;
-    }
-    
-    // All boxes are booked - find the earliest date when ANY box becomes available
-    const ranges = modelBlockedRangesMap.get(modelId as 'classic' | 'pro');
-    if (!ranges || ranges.length === 0) {
-      // This shouldn't happen if all boxes are booked, but return today as fallback
-      return today;
-    }
-
-    // Sort ranges by END date to find the earliest end date (when first box becomes available)
-    const sortedRanges = [...ranges].sort((a, b) => a.end.getTime() - b.end.getTime());
-    
-    // The earliest available date is the day after the earliest booking ends
-    const earliestEnd = sortedRanges[0].end;
-    const earliestAvailable = new Date(earliestEnd);
-    earliestAvailable.setDate(earliestAvailable.getDate() + 1);
-    earliestAvailable.setHours(0, 0, 0, 0);
-    
-    return earliestAvailable >= today ? earliestAvailable : today;
-  }, [modelBlockedRangesMap, location.availableBoxes]);
 
   /**
    * Check if a model is available (has boxes available)
@@ -679,37 +428,13 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   };
 
   /**
-   * Get minimum datetime that's at least 1 minute from now
+   * Get minimum datetime (current time)
    */
   const getMinDateTimeFromNow = (): string => {
     const now = new Date();
-    const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000); // Add 1 minute
-    return oneMinuteFromNow.toISOString().slice(0, 16);
+    return now.toISOString().slice(0, 16);
   };
 
-  /**
-   * Get minimum date for date picker based on model and booking status
-   * Ensures the date is always after today and at least 1 minute from now
-   */
-  const getMinDateForModel = (modelId: string): string => {
-    const minFromNow = getMinDateTimeFromNow();
-    const minFromNowDate = new Date(minFromNow);
-    
-    if (!modelId) {
-      return minFromNow;
-    }
-    
-    const nextAvailable = getModelNextAvailableDate(modelId);
-    if (nextAvailable) {
-      // Add 1 day after the booking ends
-      const nextAvailableDate = new Date(new Date(nextAvailable).getTime() + 24 * 60 * 60 * 1000);
-      // Ensure it's at least 1 minute from now
-      const minDate = nextAvailableDate > minFromNowDate ? nextAvailableDate : minFromNowDate;
-      return minDate.toISOString().slice(0, 16);
-    }
-    
-    return minFromNow;
-  };
 
   /**
    * Format date for display
@@ -737,11 +462,11 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     }).format(price);
   };
 
-  // Get pricing from API or use defaults
+  // Get pricing from API or use defaults - all models are 300 per day
   const pricePerDay = 
     selectedModel === 'pro' || selectedModel === 'Pro'
-      ? (pricing?.pro.pricePerDay ?? 449.99)
-      : (pricing?.classic.pricePerDay ?? 299.99);
+      ? (pricing?.pro.pricePerDay ?? 300)
+      : (pricing?.classic.pricePerDay ?? 300);
   
   const days = startDate && endDate 
     ? Math.max(1, Math.ceil((new Date(`${endDate}T${endTime}`).getTime() - new Date(`${startDate}T${startTime}`).getTime()) / (1000 * 60 * 60 * 24)))
@@ -802,18 +527,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         {/* Tabs */}
         <div className={`flex border-b flex-shrink-0 ${isBooked ? 'border-red-200' : 'border-gray-200'}`}>
           <button
-            onClick={() => setActiveTab('model')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'model'
-                ? isBooked
-                  ? 'text-red-600 border-b-2 border-red-600 bg-red-50'
-                  : 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}
-          >
-            Select Model
-          </button>
-          <button
             onClick={() => setActiveTab('dates')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'dates'
@@ -824,6 +537,21 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             }`}
           >
             Select Dates
+          </button>
+          <button
+            onClick={() => setActiveTab('model')}
+            disabled={!startDate || !endDate}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'model'
+                ? isBooked
+                  ? 'text-red-600 border-b-2 border-red-600 bg-red-50'
+                  : 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50'
+                : (!startDate || !endDate)
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            Select Model
           </button>
           <button
             onClick={() => setActiveTab('box')}
@@ -844,6 +572,62 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 
         {/* Tab Content */}
         <div className={`flex-1 overflow-hidden min-h-0 ${isBooked ? 'bg-red-50/30' : 'bg-white'}`} style={{ flex: '1 1 0%', minHeight: 0, maxHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+          {activeTab === 'dates' && (
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={startDate && startTime ? `${startDate}T${startTime}` : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value) {
+                        const [date, time] = value.split('T');
+                        setStartDate(date || '');
+                        setStartTime(time || getDefaultStartTime());
+                      } else {
+                        setStartDate('');
+                        setStartTime('');
+                      }
+                    }}
+                    min={getMinDateTimeFromNow()}
+                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm text-gray-900 bg-white ${isBooked ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-emerald-500 focus:border-emerald-500'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={endDate && endTime ? `${endDate}T${endTime}` : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value) {
+                        const [date, time] = value.split('T');
+                        const selectedDateTime = new Date(`${date}T${time || getDefaultEndTime()}`);
+                        const startDateTime = startDate && startTime ? new Date(`${startDate}T${startTime}`) : null;
+                        
+                        // Ensure end is after start
+                        if (startDateTime && selectedDateTime <= startDateTime) {
+                          alert('End date and time must be after start date and time.');
+                          return;
+                        }
+                        
+                        setEndDate(date || '');
+                        setEndTime(time || getDefaultEndTime());
+                      } else {
+                        setEndDate('');
+                        setEndTime('');
+                      }
+                    }}
+                    min={startDate && startTime ? `${startDate}T${startTime}` : getMinDateTimeFromNow()}
+                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm text-gray-900 bg-white ${isBooked ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-emerald-500 focus:border-emerald-500'}`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'model' && (
             <div className="p-4 flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
               <div className="grid grid-cols-2 gap-3">
@@ -855,8 +639,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                   const imageWidth = is175cm ? 60 : 75;
                   const modelBooked = isModelFullyBooked(model.id);
                   const modelAvailable = isModelAvailable(model.id);
-                  // Get earliest available date from merged blocked ranges
-                  const earliestAvailableDate = getEarliestAvailableDateFromRanges(model.id);
+                  const nextAvailableDate = getModelNextAvailableDate(model.id);
                   
                   return (
                     <label
@@ -903,26 +686,16 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                           {model.name}
                         </span>
                         <span className="text-xs font-medium text-gray-600 text-center">{model.dimension}</span>
-                        {/* Show earliest available date from merged ranges - single display */}
-                        {earliestAvailableDate && (
-                          <span className={`text-xs text-center font-medium leading-tight break-words px-1 ${modelBooked ? (isBooked ? 'text-red-600' : 'text-amber-600') : (isBooked ? 'text-gray-600' : 'text-emerald-600')}`}>
-                            {(() => {
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              const isAvailableNow = earliestAvailableDate.getTime() <= today.getTime();
-                              
-                              if (isAvailableNow && modelAvailable) {
-                                return 'Available now';
-                              } else if (modelBooked) {
-                                // All boxes booked - show when first box becomes available
-                                return `Available from: ${formatDateForDisplay(earliestAvailableDate.toISOString())}`;
-                              } else {
-                                // Some boxes available, but showing earliest date
-                                return `Earliest: ${formatDateForDisplay(earliestAvailableDate.toISOString())}`;
-                              }
-                            })()}
+                        {/* Show availability status */}
+                        {modelBooked && nextAvailableDate ? (
+                          <span className={`text-xs text-center font-medium leading-tight break-words px-1 ${isBooked ? 'text-red-600' : 'text-amber-600'}`}>
+                            Available from: {formatDateForDisplay(nextAvailableDate)}
                           </span>
-                        )}
+                        ) : modelAvailable ? (
+                          <span className={`text-xs text-center font-medium leading-tight break-words px-1 ${isBooked ? 'text-gray-600' : 'text-emerald-600'}`}>
+                            Available now
+                          </span>
+                        ) : null}
                       </div>
                       {selectedModel === model.id && (
                         <div className="absolute top-2 right-2">
@@ -938,140 +711,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             </div>
           )}
 
-          {activeTab === 'dates' && (
-            <div className="p-4 space-y-4 flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-              {selectedModel && isModelFullyBooked(selectedModel) && getModelNextAvailableDate(selectedModel) && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm font-medium text-red-900 mb-1">
-                    This model is currently fully booked
-                  </p>
-                  <p className="text-xs text-red-700">
-                    Next available: {formatDateForDisplay(getModelNextAvailableDate(selectedModel))}
-                  </p>
-                  <p className="text-xs text-red-700 mt-1">
-                    Please select dates after this date to book.
-                  </p>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    value={startDate && startTime ? `${startDate}T${startTime}` : ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value) {
-                        const [date, time] = value.split('T');
-                        const selectedDateTime = new Date(`${date}T${time || getDefaultStartTime()}`);
-                        const now = new Date();
-                        const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000);
-                        
-                        // Ensure selected datetime is at least 1 minute from now
-                        if (selectedDateTime < oneMinuteFromNow) {
-                          alert('Please select a date and time at least 1 minute from now.');
-                          return;
-                        }
-                        
-                        // Check if selected date is blocked (use model-level ranges if available, otherwise box-specific)
-                        const rangesToCheck = selectedModel && modelBlockedRangesState.length > 0
-                          ? modelBlockedRangesState
-                          : selectedBox
-                          ? boxBlockedRanges.get(selectedBox.boxId) || []
-                          : [];
-                        
-                        if (rangesToCheck.length > 0 && isDateBlocked(selectedDateTime, rangesToCheck)) {
-                          // Only log warnings, not every date change (performance optimization)
-                          alert('This date is blocked by an existing booking. Please choose a different date.');
-                          return;
-                        }
-                        
-                        setStartDate(date || '');
-                        setStartTime(time || getDefaultStartTime());
-                      } else {
-                        setStartDate('');
-                        setStartTime('');
-                      }
-                    }}
-                    min={selectedModel ? getMinDateForModel(selectedModel) : getMinDateTimeFromNow()}
-                    disabled={!selectedModel}
-                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm text-gray-900 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed ${isBooked ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-emerald-500 focus:border-emerald-500'}`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    value={endDate && endTime ? `${endDate}T${endTime}` : ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value) {
-                        const [date, time] = value.split('T');
-                        const selectedDateTime = new Date(`${date}T${time || getDefaultEndTime()}`);
-                        const now = new Date();
-                        const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000);
-                        
-                        // Ensure selected datetime is at least 1 minute from now
-                        if (selectedDateTime < oneMinuteFromNow) {
-                          alert('Please select a date and time at least 1 minute from now.');
-                          return;
-                        }
-                        
-                        // Check if selected date is blocked (use model-level ranges if available, otherwise box-specific)
-                        const rangesToCheck = selectedModel && modelBlockedRangesState.length > 0
-                          ? modelBlockedRangesState
-                          : selectedBox
-                          ? boxBlockedRanges.get(selectedBox.boxId) || []
-                          : [];
-                        
-                        if (rangesToCheck.length > 0 && isDateBlocked(selectedDateTime, rangesToCheck)) {
-                          // Only log warnings, not every date change (performance optimization)
-                          alert('This date is blocked by an existing booking. Please choose a different date.');
-                          return;
-                        }
-                        
-                        setEndDate(date || '');
-                        setEndTime(time || getDefaultEndTime());
-                      } else {
-                        setEndDate('');
-                        setEndTime('');
-                      }
-                    }}
-                    min={startDate && startTime ? `${startDate}T${startTime}` : getMinDateTimeFromNow()}
-                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm text-gray-900 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed ${isBooked ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-emerald-500 focus:border-emerald-500'}`}
-                  />
-                </div>
-              </div>
-              {selectedBox && isSelectedRangeBlocked && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm font-medium text-red-900">
-                    Selected date range overlaps with existing bookings
-                  </p>
-                  <p className="text-xs text-red-700 mt-1">
-                    Please choose different dates to complete your booking.
-                  </p>
-                </div>
-              )}
-
-              {!isTimeOrderValid && (
-                <p className="text-sm text-red-600">
-                  {startDate && startTime && new Date(`${startDate}T${startTime}`) < new Date(new Date().getTime() + 60 * 1000)
-                    ? 'Start date and time must be at least 1 minute from now.'
-                    : 'End time must be after start time.'}
-                </p>
-              )}
-
-              {startDate && endDate && startTime && endTime && (
-                <div className={`p-3 rounded-lg ${isBooked ? 'bg-red-50' : 'bg-emerald-50'}`}>
-                  <p className={`text-sm font-medium ${isBooked ? 'text-red-900' : 'text-emerald-900'}`}>
-                    {formatDateTimeForDisplay(startDate, startTime)} – {formatDateTimeForDisplay(endDate, endTime)}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === 'box' && (
             <div className={`p-4 space-y-4 flex-1 overflow-y-auto min-h-0 ${isBooked ? 'bg-red-50/30' : ''}`} style={{ maxHeight: '100%' }}>
               {!selectedModel || !startDate || !endDate ? (
@@ -1081,7 +720,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               ) : (
                 <>
                   <h3 className="text-sm font-semibold text-gray-900 mb-2 flex-shrink-0">Available Boxes</h3>
-                  {(loadingBoxes || loadingBlockedRanges) ? (
+                  {loadingBoxes ? (
                     <div className="text-sm text-gray-600">Checking availability...</div>
                   ) : boxError ? (
                     <div className="text-sm text-red-600">{boxError}</div>
@@ -1108,6 +747,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {stand.boxes.map((box) => {
                               const isBooked = !box.isAvailable;
+                              const modelId = box.model.toLowerCase();
+                              const nextAvailableDate = getModelNextAvailableDate(modelId);
                               const formatDate = (dateStr: string | null): string => {
                                 if (!dateStr) return '';
                                 try {
@@ -1145,7 +786,13 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                                   checked={selectedBox?.boxId === box.id}
                                   onChange={() => {
                                         if (!isBooked) {
-                                          // Removed logging for performance optimization
+                                          // Validate that the box model matches the selected model
+                                          const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro';
+                                          if (box.model !== expectedModel) {
+                                            alert(`This box is ${box.model} but you selected ${selectedModel === 'classic' ? 'Classic' : 'Pro'}. Please select a box that matches your selected model.`);
+                                            return;
+                                          }
+                                          
                                           setSelectedBox({
                                             boxId: box.id,
                                             standId: stand.standId,
@@ -1162,9 +809,9 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                                   Box {box.displayId}
                                 </span>
                                   </div>
-                                  {isBooked && box.nextAvailableDate && (
+                                  {isBooked && nextAvailableDate && (
                                     <span className="text-xs text-amber-600 font-medium">
-                                      Available: {formatDate(box.nextAvailableDate)}
+                                      Available: {formatDate(nextAvailableDate)}
                                     </span>
                                   )}
                               </label>
@@ -1198,33 +845,28 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                 const end = new Date(`${endDate}T${endTime}`);
                 
                 // Use model-level ranges if available, otherwise use box-specific ranges
-                const rangesToCheck = selectedModel && modelBlockedRangesState.length > 0
-                  ? modelBlockedRangesState
-                  : selectedBox
-                  ? boxBlockedRanges.get(selectedBox.boxId) || []
-                  : [];
-                
-                if (rangesToCheck.length > 0 && isRangeBlocked(start, end, rangesToCheck)) {
-                  logger.warn('[Booking Form] Booking attempt with blocked date range', {
-                    boxId: selectedBox?.boxId || null,
-                    model: selectedModel,
-                    startDate: `${startDate}T${startTime}`,
-                    endDate: `${endDate}T${endTime}`,
-                    blockedRangesCount: rangesToCheck.length,
-                    usingModelRanges: modelBlockedRangesState.length > 0,
-                  });
-                  alert('The selected date range overlaps with existing bookings. Please choose different dates.');
-                  return;
-                }
+                // Availability is already checked by the API when fetching boxes
+                // No need to check again here
               }
               
               if (onBook && selectedBox && !isBooking) {
+                // Validate that the selected box's model matches the selected model
+                const selectedBoxModel = selectedBox.model; // This is 'Classic' or 'Pro' from database
+                const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro'; // Convert frontend model to database format
+                
+                if (selectedBoxModel !== expectedModel) {
+                  alert(`Model mismatch: Selected box is ${selectedBoxModel} but you selected ${selectedModel}. Please select a box that matches your selected model.`);
+                  setIsBooking(false);
+                  return;
+              }
+              
                 setIsBooking(true);
                 logger.info('[Booking Form] Booking submitted', {
                   locationId: location.id,
                   boxId: selectedBox.boxId,
                   standId: selectedBox.standId,
                   model: selectedModel,
+                  boxModel: selectedBoxModel,
                   startDate: `${startDate}T${startTime}`,
                   endDate: `${endDate}T${endTime}`,
                   compartment: selectedBox.compartment,
@@ -1263,7 +905,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               !selectedModel ||
               !selectedBox ||
               loadingBoxes ||
-              isSelectedRangeBlocked ||
               isBooking
             }
             className={`w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white transition-colors
@@ -1307,8 +948,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               ? 'Checking availability...'
               : !isTimeOrderValid
               ? 'End time must be after start time'
-              : isSelectedRangeBlocked
-              ? 'Selected dates are blocked'
               : 'Book Now'}
           </button>
         </div>
