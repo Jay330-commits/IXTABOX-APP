@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
-import { RentalStatisticsService } from '@/services/distributors/RentalStatisticsService';
+import { RentalStatisticsService } from '@/services/distributors/statistics/RentalStatisticsService';
 
 export async function GET(request: NextRequest) {
   // Check authentication FIRST - exit immediately if not authenticated

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
-import { BoxInventoryService } from '@/services/distributors/BoxInventoryService';
+import { BoxInventoryService } from '@/services/distributors/inventory/BoxInventoryService';
 import { boxStatus } from '@prisma/client';
 
 export async function GET(

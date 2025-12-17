@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { PromotionService } from '@/services/distributors/PromotionService';
+import { PromotionService } from '@/services/distributors/marketing/PromotionService';
 import { DiscountType } from '@prisma/client';
 
 export async function GET(request: NextRequest) {

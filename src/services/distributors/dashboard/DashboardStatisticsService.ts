@@ -1,6 +1,6 @@
 import 'server-only';
-import { BookingStatus, boxStatus, PaymentStatus, ContractStatus, Prisma } from '@prisma/client';
-import { BaseService } from '../BaseService';
+import { BookingStatus, boxStatus, PaymentStatus, ContractStatus, Prisma, status } from '@prisma/client';
+import { BaseService } from '../../BaseService';
 import { getSupabaseStoragePublicUrl } from '@/lib/supabase-storage';
 
 export interface DashboardStats {
@@ -33,6 +33,7 @@ export interface BoxInventoryItem {
 
 export interface BookingInventoryItem {
   bookingId: string;
+  bookingDisplayId: string | null;
   boxId: string;
   boxType: string;
   location: string;
@@ -317,37 +318,50 @@ export class DashboardStatisticsService extends BaseService {
         }
 
         // Build where clause for bookings
+        // IMPORTANT: Do NOT filter by status unless explicitly provided
+        // Return ALL bookings regardless of status (active, completed, upcoming, cancelled, confirmed, etc.)
         const whereClause: Prisma.bookingsWhereInput = {
           box_id: {
             in: boxIdList,
           },
+          // Explicitly do NOT filter by status - return all statuses
         };
 
+        // Only filter by status if explicitly provided in filters
         if (filters?.bookingStatus) {
           whereClause.status = filters.bookingStatus;
+          console.log(`[DashboardStatisticsService] Filtering bookings by status: ${filters.bookingStatus}`);
+        } else {
+          console.log('[DashboardStatisticsService] No status filter provided - returning ALL bookings regardless of status');
         }
 
         // Default to current month (from start of month to today) if no date filters provided
         // Unless showAllTime is explicitly set to true
+        // IMPORTANT: Filter by created_at (when booking was created/revenue was entered)
+        // NOT by start_date or end_date - this ensures all bookings created in the period are shown
+        // regardless of their status (active, completed, upcoming, cancelled, etc.)
         const now = new Date();
         if (filters?.showAllTime) {
           // Show all bookings - no date filter
+          console.log('[DashboardStatisticsService] showAllTime=true - returning ALL bookings regardless of date');
         } else if (!filters?.dateFrom && !filters?.dateTo) {
-          // Default to current month
+          // Default to current month - filter by created_at (when revenue was entered)
           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          whereClause.start_date = {
+          whereClause.created_at = {
             gte: startOfMonth,
             lte: now,
           };
+          console.log('[DashboardStatisticsService] Default date filter: current month (filtering by created_at)');
         } else {
-          // Use provided date filters
-          whereClause.start_date = {};
+          // Use provided date filters - filter by created_at
+          whereClause.created_at = {};
           if (filters.dateFrom) {
-            whereClause.start_date.gte = filters.dateFrom;
+            whereClause.created_at.gte = filters.dateFrom;
           }
           if (filters.dateTo) {
-            whereClause.start_date.lte = filters.dateTo;
+            whereClause.created_at.lte = filters.dateTo;
           }
+          console.log('[DashboardStatisticsService] Custom date filter applied (filtering by created_at)');
         }
 
         const bookings = await this.prisma.bookings.findMany({
@@ -380,6 +394,14 @@ export class DashboardStatisticsService extends BaseService {
           },
         });
 
+        // Log booking statuses to verify all statuses are being returned
+        const statusCounts: Record<string, number> = {};
+        bookings.forEach(b => {
+          const status = b.status?.toString() || 'null';
+          statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+        console.log(`[DashboardStatisticsService] Found ${bookings.length} bookings with status counts:`, statusCounts);
+
         const mappedBookings = bookings.map((booking): BookingInventoryItem | null => {
           const startDate = new Date(booking.start_date);
           const endDate = new Date(booking.end_date);
@@ -408,6 +430,7 @@ export class DashboardStatisticsService extends BaseService {
 
           return {
             bookingId: booking.id,
+            bookingDisplayId: booking.display_id,
             boxId: booking.boxes.display_id,
             boxType: booking.boxes.model || 'Unknown',
             location: booking.boxes.stands.locations.name,
@@ -606,6 +629,205 @@ export class DashboardStatisticsService extends BaseService {
       },
       'DashboardStatisticsService.getBoxStatusCounts',
       { distributorId }
+    );
+  }
+
+  /**
+   * Get location status counts for summary
+   * Counts locations by their actual status field (not box status)
+   */
+  async getLocationStatusCounts(distributorId: string): Promise<{
+    active: number;
+    scheduled: number;
+    available: number;
+    maintenance: number;
+  }> {
+    return await this.logOperation(
+      'GET_LOCATION_STATUS_COUNTS',
+      async () => {
+        const locations = await this.prisma.locations.findMany({
+          where: {
+            distributor_id: distributorId,
+          },
+          select: {
+            id: true,
+            status: true,
+            stands: {
+              include: {
+                boxes: {
+                  include: {
+                    bookings: {
+                      where: {
+                        status: BookingStatus.Upcoming,
+                      },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        let active = 0;
+        let scheduled = 0;
+        let available = 0;
+        let maintenance = 0;
+
+        locations.forEach((location) => {
+          // Location status enum: Available, Occupied, Maintenance, Inactive
+          const locationStatus = location.status;
+          
+          // Check if location has boxes with upcoming bookings
+          const hasUpcomingBookings = location.stands.some(stand =>
+            stand.boxes.some(box => box.bookings.length > 0)
+          );
+          
+          if (locationStatus === status.Occupied) {
+            active++;
+          } else if (locationStatus === status.Available) {
+            // If available location has upcoming bookings, count as scheduled
+            if (hasUpcomingBookings) {
+              scheduled++;
+            } else {
+              available++;
+            }
+          } else if (locationStatus === status.Maintenance) {
+            maintenance++;
+          } else if (locationStatus === status.Inactive) {
+            // Inactive locations are not counted in active/available/scheduled
+            // They could be counted separately if needed
+          } else {
+            // Default to available if status is null/undefined
+            if (hasUpcomingBookings) {
+              scheduled++;
+            } else {
+              available++;
+            }
+          }
+        });
+
+        return { active, scheduled, available, maintenance };
+      },
+      'DashboardStatisticsService.getLocationStatusCounts',
+      { distributorId }
+    );
+  }
+
+  /**
+   * Get booking status counts for summary
+   * Counts bookings by their actual BookingStatus enum values
+   */
+  async getBookingStatusCounts(
+    distributorId: string,
+    filters?: {
+      dateFrom?: Date;
+      dateTo?: Date;
+      showAllTime?: boolean;
+    }
+  ): Promise<{
+    active: number;
+    upcoming: number;
+    cancelled: number;
+    overdue: number;
+  }> {
+    return await this.logOperation(
+      'GET_BOOKING_STATUS_COUNTS',
+      async () => {
+        // Get all box IDs for this distributor
+        const boxIds = await this.prisma.boxes.findMany({
+          where: {
+            stands: {
+              locations: {
+                distributor_id: distributorId,
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        const boxIdList = boxIds.map(b => b.id);
+
+        if (boxIdList.length === 0) {
+          return { active: 0, upcoming: 0, cancelled: 0, overdue: 0 };
+        }
+
+        // Build where clause for bookings
+        const whereClause: Prisma.bookingsWhereInput = {
+          box_id: {
+            in: boxIdList,
+          },
+        };
+
+        // Apply date filters if not showing all time
+        // IMPORTANT: Filter by created_at (when booking was created/revenue was entered)
+        // NOT by start_date - this matches the getBookingInventory method
+        // This ensures status counts match the bookings shown in the table
+        const now = new Date();
+        if (filters?.showAllTime) {
+          // Show all bookings - no date filter
+          console.log('[DashboardStatisticsService.getBookingStatusCounts] showAllTime=true - counting ALL bookings');
+        } else if (!filters?.dateFrom && !filters?.dateTo) {
+          // Default to current month - filter by created_at
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          whereClause.created_at = {
+            gte: startOfMonth,
+            lte: now,
+          };
+          console.log('[DashboardStatisticsService.getBookingStatusCounts] Default date filter: current month (filtering by created_at)');
+        } else {
+          // Use provided date filters - filter by created_at
+          whereClause.created_at = {};
+          if (filters.dateFrom) {
+            whereClause.created_at.gte = filters.dateFrom;
+          }
+          if (filters.dateTo) {
+            whereClause.created_at.lte = filters.dateTo;
+          }
+          console.log('[DashboardStatisticsService.getBookingStatusCounts] Custom date filter applied (filtering by created_at)');
+        }
+
+        // Get all bookings matching the filters
+        const bookings = await this.prisma.bookings.findMany({
+          where: whereClause,
+          select: {
+            status: true,
+            end_date: true,
+          },
+        });
+
+        let active = 0;
+        let upcoming = 0;
+        let cancelled = 0;
+        let overdue = 0;
+
+        bookings.forEach((booking) => {
+          const status = booking.status || BookingStatus.Pending;
+          const endDate = new Date(booking.end_date);
+          const isOverdue = endDate < now;
+          
+          if (status === BookingStatus.Overdue) {
+            overdue++;
+          } else if (status === BookingStatus.Active) {
+            // Check if booking is overdue (end_date has passed but status is still Active)
+            if (isOverdue) {
+              overdue++;
+            } else {
+              active++;
+            }
+          } else if (status === BookingStatus.Upcoming) {
+            upcoming++;
+          } else if (status === BookingStatus.Cancelled) {
+            cancelled++;
+          }
+        });
+
+        return { active, upcoming, cancelled, overdue };
+      },
+      'DashboardStatisticsService.getBookingStatusCounts',
+      { distributorId, filters }
     );
   }
 
@@ -974,6 +1196,86 @@ export class DashboardStatisticsService extends BaseService {
       },
       'DashboardStatisticsService.getBoxRevenueSummary',
       { distributorId, period }
+    );
+  }
+
+  /**
+   * Calculate total revenue from completed payments for booking inventory
+   * Filters by payment completion date and status (more accurate than booking start date)
+   */
+  async getBookingInventoryRevenue(
+    distributorId: string,
+    options?: {
+      dateFrom?: Date;
+      dateTo?: Date;
+      showAllTime?: boolean;
+    }
+  ): Promise<{
+    totalRevenue: number;
+    currency: string;
+  }> {
+    return await this.logOperation(
+      'GET_BOOKING_INVENTORY_REVENUE',
+      async () => {
+        // Get all box IDs for this distributor's locations
+        const distributorBoxes = await this.prisma.boxes.findMany({
+          where: {
+            stands: {
+              locations: {
+                distributor_id: distributorId,
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+        const boxIds = distributorBoxes.map((box) => box.id);
+
+        // Build where clause for payments
+        const paymentWhere: Prisma.paymentsWhereInput = {
+          bookings: {
+            box_id: {
+              in: boxIds,
+            },
+          },
+          status: PaymentStatus.Completed, // Only completed payments
+        };
+
+        // Apply date filters if not showing all time
+        if (!options?.showAllTime) {
+          if (options?.dateFrom || options?.dateTo) {
+            paymentWhere.completed_at = {};
+            if (options.dateFrom) {
+              paymentWhere.completed_at.gte = options.dateFrom;
+            }
+            if (options.dateTo) {
+              paymentWhere.completed_at.lte = options.dateTo;
+            }
+          }
+        }
+
+        const payments = await this.prisma.payments.findMany({
+          where: paymentWhere,
+          select: {
+            amount: true,
+            currency: true,
+          },
+        });
+
+        const totalRevenue = payments.reduce(
+          (sum, payment) => sum + Number(payment.amount),
+          0
+        );
+
+        // Get currency from payments (default to SEK if not found)
+        const currencyPayment = payments.find(p => p.currency);
+        const currency = currencyPayment?.currency || 'SEK';
+
+        return { totalRevenue, currency };
+      },
+      'DashboardStatisticsService.getBookingInventoryRevenue',
+      { distributorId, options }
     );
   }
 }

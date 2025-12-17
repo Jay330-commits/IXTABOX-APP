@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { ContractService } from '@/services/distributors/ContractService';
+import { ContractService } from '@/services/distributors/contracts/ContractService';
 
 export async function GET(request: NextRequest) {
   // Check authentication FIRST - exit immediately if not authenticated

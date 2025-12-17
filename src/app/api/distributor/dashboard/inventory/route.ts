@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { DashboardStatisticsService } from '@/services/distributors/DashboardStatisticsService';
+import { DashboardStatisticsService } from '@/services/distributors/dashboard/DashboardStatisticsService';
 import { BookingStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
@@ -37,9 +37,14 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined;
     const showAllTime = searchParams.get('showAllTime') === 'true';
 
+    // IMPORTANT: Only filter by bookingStatus if explicitly provided in query params
+    // When no bookingStatus is provided, return ALL bookings regardless of status
+    console.log('[Inventory API] Booking status filter:', bookingStatus || 'NONE (returning all statuses)');
+
     const service = new DashboardStatisticsService();
     
     const inventory = await service.getBookingInventory(user.distributors.id, {
+      // Only pass bookingStatus if it was explicitly provided - otherwise undefined means return all
       bookingStatus: bookingStatus ? (BookingStatus[bookingStatus as keyof typeof BookingStatus]) : undefined,
       paymentStatus,
       locationId,
@@ -48,10 +53,22 @@ export async function GET(request: NextRequest) {
       showAllTime,
     });
 
-    const statusCounts = await service.getBoxStatusCounts(user.distributors.id);
+    // Use booking status counts based on actual booking statuses
+    const statusCounts = await service.getBookingStatusCounts(user.distributors.id, {
+      dateFrom,
+      dateTo,
+      showAllTime,
+    });
 
-    // Get currency from first booking (default to SEK)
-    const currency = inventory.length > 0 ? inventory[0].currency : 'SEK';
+    // Calculate revenue summary using payment completion dates
+    const revenueSummary = await service.getBookingInventoryRevenue(
+      user.distributors.id,
+      {
+        dateFrom,
+        dateTo,
+        showAllTime,
+      }
+    );
 
     return NextResponse.json({
       success: true,
@@ -65,7 +82,8 @@ export async function GET(request: NextRequest) {
           boxReturnDate: item.boxReturnDate ? item.boxReturnDate.toISOString() : null,
         })),
         statusCounts,
-        currency,
+        revenueSummary,
+        currency: revenueSummary.currency,
       },
     });
   } catch (error) {

@@ -16,16 +16,6 @@ interface Location {
   totalBoxes: number;
 }
 
-interface LocationComparison {
-  locationId: string;
-  locationName: string;
-  occupancyRate: number;
-  monthlyRevenue: number;
-  totalBookings: number;
-  averageRating: number;
-  totalStands: number;
-}
-
 interface LocationsOverviewData {
   totalLocations: number;
   todayBookings: number;
@@ -41,7 +31,6 @@ interface StandsOverviewProps {
 
 export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
   const [locationsData, setLocationsData] = useState<LocationsOverviewData | null>(null);
-  const [locationComparisons, setLocationComparisons] = useState<LocationComparison[]>([]);
   const [currency, setCurrency] = useState<string>('SEK');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,15 +68,6 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
           }
         } else {
           throw new Error(data.error || 'Failed to fetch locations data');
-        }
-
-        // Fetch location comparisons
-        const comparisonResponse = await fetch('/api/distributor/stands?type=comparison&metric=occupancy', { headers });
-        if (comparisonResponse.ok) {
-          const comparisonData = await comparisonResponse.json();
-          if (comparisonData.success) {
-            setLocationComparisons(comparisonData.data || []);
-          }
         }
       } catch (err) {
         console.error('Error fetching locations data:', err);
@@ -246,76 +226,6 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
         )}
       </div>
 
-      {/* Performance Comparison */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-        <h2 className="text-xl font-bold mb-4">Performance Comparison</h2>
-        <div className="space-y-4">
-          {/* Occupancy Rate Comparison */}
-          <div>
-            <p className="text-sm text-gray-400 mb-3">Occupancy Rate by Location</p>
-            {loading ? (
-              <div className="py-4 text-center">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-cyan-500/20 border-t-cyan-500"></div>
-              </div>
-            ) : locationComparisons.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No location data available</p>
-            ) : (
-            <div className="space-y-3">
-                {locationComparisons.map((location) => (
-                  <div key={location.locationId}>
-                  <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-300">{location.locationName}</span>
-                      <span className="text-sm font-semibold text-cyan-300">{location.occupancyRate}%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-cyan-600/60 h-2 rounded-full transition-all"
-                        style={{ width: `${location.occupancyRate}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            )}
-          </div>
-
-          {/* Revenue Comparison */}
-          <div className="pt-4 border-t border-white/10">
-            <p className="text-sm text-gray-400 mb-3">Monthly Revenue by Location</p>
-            {loading ? (
-              <div className="py-4 text-center">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-cyan-500/20 border-t-cyan-500"></div>
-              </div>
-            ) : locationComparisons.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No location data available</p>
-            ) : (
-            <div className="flex items-end justify-between gap-2 h-40">
-                {locationComparisons.map((location) => {
-                  const maxRevenue = locationComparisons.length > 0 ? Math.max(...locationComparisons.map(l => l.monthlyRevenue)) : 1;
-                  const heightPercentage = (location.monthlyRevenue / maxRevenue) * 100;
-                return (
-                    <div key={location.locationId} className="flex-1 flex flex-col items-center">
-                    <div className="w-full flex flex-col justify-end h-32 relative group">
-                      <div
-                        className="bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t hover:from-cyan-500 hover:to-cyan-300 transition-colors cursor-pointer"
-                        style={{ height: `${heightPercentage}%` }}
-                      >
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                          <div className="bg-gray-950 border border-cyan-400/40 text-cyan-300 text-xs rounded py-1 px-2 whitespace-nowrap">
-                              {currency} {location.monthlyRevenue.toLocaleString()}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-2 text-center">{location.locationName.split(' ')[0]}</p>
-                  </div>
-                );
-              })}
-            </div>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

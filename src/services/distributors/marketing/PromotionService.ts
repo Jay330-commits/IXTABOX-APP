@@ -1,6 +1,6 @@
 import 'server-only';
 import { DiscountType, Prisma } from '@prisma/client';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../BaseService';
 
 export interface PromotionData {
   id: string;

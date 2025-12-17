@@ -1,6 +1,6 @@
 import 'server-only';
 import { ContractStatus, ContractType } from '@prisma/client';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../BaseService';
 
 export interface ContractDetails {
   id: string;

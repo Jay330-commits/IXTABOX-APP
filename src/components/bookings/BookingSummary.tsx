@@ -3,6 +3,7 @@ import React from 'react';
 interface BookingSummaryProps {
   booking: {
     id: string;
+    bookingDisplayId?: string | null;
     standId: string;
     boxDisplayId?: string;
     standDisplayId?: string;
@@ -35,7 +36,9 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
         <div className="mt-2 bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Booking ID</span>
-            <span className="text-sm font-medium text-gray-900">{booking.id}</span>
+            <span className="text-sm font-medium text-gray-900">
+              {booking.bookingDisplayId || booking.id.slice(0, 8)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Stand ID</span>

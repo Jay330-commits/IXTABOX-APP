@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { BoxInventoryService } from '@/services/distributors/BoxInventoryService';
+import { BoxInventoryService } from '@/services/distributors/inventory/BoxInventoryService';
 
 export async function GET(request: NextRequest) {
   // Check authentication FIRST - exit immediately if not authenticated

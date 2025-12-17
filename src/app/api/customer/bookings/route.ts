@@ -50,13 +50,15 @@ export async function GET(request: NextRequest) {
 
     console.log('[Bookings API] Found payments for user:', userPayments.length, userPayments.map(p => p.id));
 
-    // Fetch bookings that are linked to payments with this user_id
-    // Try alternative query approach if the nested query doesn't work
+    // Fetch ALL bookings that are linked to payments with this user_id
+    // IMPORTANT: Do NOT filter by status - return all bookings regardless of status
+    // (active, completed, upcoming, cancelled, confirmed, etc.)
     const bookings = await prisma.bookings.findMany({
       where: {
         payment_id: {
           in: userPayments.map(p => p.id),
         },
+        // Explicitly do NOT filter by status - return all statuses
       },
       include: {
         boxes: {
@@ -88,6 +90,14 @@ export async function GET(request: NextRequest) {
     });
 
     console.log('[Bookings API] Found bookings:', bookings.length);
+    
+    // Log all booking statuses from DB to verify we're getting all statuses
+    const statusCounts: Record<string, number> = {};
+    bookings.forEach(b => {
+      const status = b.status?.toString() || 'null';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    console.log('[Bookings API] Booking status counts from DB:', statusCounts);
 
     // Calculate current status for each booking based on dates
     const statusService = new BookingStatusService();
@@ -170,6 +180,7 @@ export async function GET(request: NextRequest) {
 
       const formattedBooking = {
         id: booking.id,
+        bookingDisplayId: booking.display_id,
         location: booking.boxes.stands.locations.name || 'Unknown Location',
         locationAddress: booking.boxes.stands.locations.address || null,
         date: booking.start_date.toISOString().split('T')[0],
@@ -182,6 +193,7 @@ export async function GET(request: NextRequest) {
         standId: booking.boxes.stand_id,
         standDisplayId: booking.boxes.stands.display_id,
         locationId: booking.boxes.stands.location_id,
+        locationDisplayId: booking.boxes.stands.locations.display_id,
         lockPin: booking.lock_pin || null,
         paymentId: booking.payment_id,
         paymentStatus: booking.payments?.status || null,
@@ -216,11 +228,17 @@ export async function GET(request: NextRequest) {
     });
 
     // Debug: Log all booking statuses before returning
+    const finalStatusCounts: Record<string, number> = {};
+    formattedBookings.forEach(b => {
+      finalStatusCounts[b.status] = (finalStatusCounts[b.status] || 0) + 1;
+    });
     console.log('[Bookings API] Final booking statuses being returned:', formattedBookings.map(b => ({
       id: b.id.slice(0, 8),
       status: b.status,
       statusType: typeof b.status
     })));
+    console.log('[Bookings API] Final status counts:', finalStatusCounts);
+    console.log('[Bookings API] Total bookings being returned:', formattedBookings.length);
 
     // Sync status updates to database if any bookings need status changes
     if (statusUpdates.length > 0) {

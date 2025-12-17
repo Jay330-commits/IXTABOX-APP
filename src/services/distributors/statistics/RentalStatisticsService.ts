@@ -1,6 +1,6 @@
 import 'server-only';
 import { boxStatus, BookingStatus } from '@prisma/client';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../BaseService';
 
 export interface StandStatistics {
   standId: string;

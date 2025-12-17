@@ -1,11 +1,11 @@
 export { DistributorService } from './DistributorService';
-export { DashboardStatisticsService } from './DashboardStatisticsService';
-export { BoxInventoryService } from './BoxInventoryService';
-export { ContractService } from './ContractService';
+export { DashboardStatisticsService } from './dashboard/DashboardStatisticsService';
+export { BoxInventoryService } from './inventory/BoxInventoryService';
+export { ContractService } from './contracts/ContractService';
 export { DistributorFinancialService } from './DistributorFinancialService';
-export { RentalStatisticsService } from './RentalStatisticsService';
-export { PerformanceComparisonService } from './PerformanceComparisonService';
-export { PromotionService } from './PromotionService';
+export { RentalStatisticsService } from './statistics/RentalStatisticsService';
+export { PerformanceComparisonService } from './statistics/PerformanceComparisonService';
+export { PromotionService } from './marketing/PromotionService';
 export { DistributorBookingService } from './DistributorBookingService';
 export { DistributorNotificationService } from './DistributorNotificationService';
 export { ExportService } from './ExportService';
