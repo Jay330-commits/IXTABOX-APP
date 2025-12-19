@@ -201,7 +201,7 @@ export default function GeneratePinPage() {
             <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-6 mb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">Your Lock PIN</p>
+                  <p className="text-xs text-gray-400 mb-2">Your lock PIN for SmartLock on Stand</p>
                   <p className="text-4xl font-bold text-cyan-400 font-mono tracking-wider">
                     {(pinResult.pin || pinResult.pinCode || pinResult.code || pinResult.unlockCode || 'N/A') as string}
                   </p>

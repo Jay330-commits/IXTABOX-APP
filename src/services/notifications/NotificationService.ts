@@ -196,7 +196,7 @@ export class NotificationService extends BaseService {
         message = `Your booking at ${location.name} (Box ${box.display_id}, Stand ${stand.display_id}) has been confirmed. ` +
           `Start: ${formatDate(bookingWithDetails.start_date)} at ${formatTime(bookingWithDetails.start_date)}. ` +
           `End: ${formatDate(bookingWithDetails.end_date)} at ${formatTime(bookingWithDetails.end_date)}. ` +
-          `Your lock PIN is ${bookingWithDetails.lock_pin}.`;
+          `Your lock PIN for SmartLock on Stand is ${bookingWithDetails.lock_pin}.`;
         break;
       case BookingStatus.Active:
         title = 'Booking Active';

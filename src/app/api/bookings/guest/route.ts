@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, boxmodel } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const formattedBookings = bookings.map((booking) => {
       const days = Math.max(1, Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)));
       const totalAmount = parseFloat(booking.payments?.amount.toString() || '0');
-      const modelMultiplier = booking.boxes.model === 'Pro' ? 1.5 : 1.0;
+      const modelMultiplier = booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0;
       // Base price per day (before model multiplier)
       const basePricePerDay = totalAmount / days / modelMultiplier;
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         status: (booking.status || BookingStatus.Upcoming).toLowerCase() as 'active' | 'upcoming' | 'completed' | 'cancelled' | 'confirmed',
         amount: totalAmount,
         pricePerDay: basePricePerDay, // Base price per day (before model multiplier)
-        model: booking.boxes.model === 'Pro' ? 'Pro' : 'Classic',
+        model: booking.boxes.model === boxmodel.Pro_190 ? 'Pro 190' : 'Pro 175',
         lockPin: booking.lock_pin ? String(booking.lock_pin) : null,
         paymentId: booking.payments?.id || null,
         chargeId: booking.payments?.charge_id || null,

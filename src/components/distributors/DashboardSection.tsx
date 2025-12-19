@@ -628,8 +628,7 @@ export default function DashboardSection({
                                                 <img
                                                   src={booking.boxFrontView}
                                                   alt="Box Front View"
-                                                  className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
-                                                />
+                                                  className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"/>
                                               </a>
                                             </div>
                                           )}

@@ -9,6 +9,7 @@ import CustomerHeader from '@/components/layouts/CustomerHeader';
 import Footer from '@/components/layouts/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@/types/auth';
+import BookingDetailsSummary from '@/components/bookings/BookingDetailsSummary';
 
 function PaymentContent() {
   const searchParams = useSearchParams();
@@ -40,12 +41,15 @@ function PaymentContent() {
     boxId?: string;
     standId?: string;
     modelId?: string;
+    modelName?: string;
     startDate?: string;
     endDate?: string;
     startTime?: string;
     endTime?: string;
     locationDisplayId?: string;
     compartment?: string | null;
+    pricePerDay?: number;
+    modelMultiplier?: number;
   } | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('sek');
@@ -419,53 +423,70 @@ function PaymentContent() {
             {/* Payment Summary & Notifications */}
             <div className="lg:col-span-1 order-2 lg:order-1">
               <div className="lg:sticky lg:top-6 space-y-3 sm:space-y-4">
-              <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Booking Summary</h3>
-                <div className="space-y-2 text-xs sm:text-sm">
-                  {bookingDetails?.locationName && (
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Location:</span>
-                      <span className="text-white text-right font-medium">{bookingDetails.locationName}</span>
-                    </div>
-                  )}
-                  {bookingDetails?.modelId && (
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Model:</span>
-                      <span className="text-white text-right font-medium capitalize">{bookingDetails.modelId}</span>
-                    </div>
-                  )}
-                  {bookingDetails?.compartment && (
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-gray-400 flex-shrink-0">Compartment:</span>
-                      <span className="text-white text-right font-medium">C{bookingDetails.compartment}</span>
-                    </div>
-                  )}
-                  {(bookingDetails?.startDate || bookingDetails?.endDate) && (
-                    <div className="space-y-2">
+              {bookingDetails && bookingDetails.pricePerDay && (
+                <BookingDetailsSummary
+                  locationName={bookingDetails.locationName}
+                  standId={bookingDetails.standId}
+                  modelId={bookingDetails.modelId}
+                  modelName={bookingDetails.modelName}
+                  startDate={bookingDetails.startDate}
+                  endDate={bookingDetails.endDate}
+                  startTime={bookingDetails.startTime}
+                  endTime={bookingDetails.endTime}
+                  pricePerDay={bookingDetails.pricePerDay}
+                  modelMultiplier={bookingDetails.modelMultiplier || 1}
+                  currency={currency}
+                />
+              )}
+              {(!bookingDetails || !bookingDetails.pricePerDay) && (
+                <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Booking Summary</h3>
+                  <div className="space-y-2 text-xs sm:text-sm">
+                    {bookingDetails?.locationName && (
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-gray-400 flex-shrink-0">Start:</span>
-                        <span className="text-white text-right font-medium">
-                          {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
-                          {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
-                        </span>
+                        <span className="text-gray-400 flex-shrink-0">Location:</span>
+                        <span className="text-white text-right font-medium">{bookingDetails.locationName}</span>
                       </div>
+                    )}
+                    {bookingDetails?.modelId && (
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-gray-400 flex-shrink-0">End:</span>
-                        <span className="text-white text-right font-medium">
-                          {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
-                          {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
-                        </span>
+                        <span className="text-gray-400 flex-shrink-0">Model:</span>
+                        <span className="text-white text-right font-medium capitalize">{bookingDetails.modelId}</span>
                       </div>
-                    </div>
-                  )}
-                  <div className="border-t border-white/10 pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white font-semibold text-sm">Total:</span>
-                      <span className="text-cyan-400 text-base sm:text-lg font-bold">{amount.toFixed(2)} {currency.toUpperCase()}</span>
+                    )}
+                    {bookingDetails?.compartment && (
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-gray-400 flex-shrink-0">Compartment:</span>
+                        <span className="text-white text-right font-medium">C{bookingDetails.compartment}</span>
+                      </div>
+                    )}
+                    {(bookingDetails?.startDate || bookingDetails?.endDate) && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 flex-shrink-0">Start:</span>
+                          <span className="text-white text-right font-medium">
+                            {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
+                            {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 flex-shrink-0">End:</span>
+                          <span className="text-white text-right font-medium">
+                            {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
+                            {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="border-t border-white/10 pt-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-semibold text-sm">Total:</span>
+                        <span className="text-cyan-400 text-base sm:text-lg font-bold">{amount.toFixed(2)} {currency.toUpperCase()}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Contact & Notification Preferences */}
               <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4">

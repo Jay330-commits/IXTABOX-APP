@@ -1,4 +1,5 @@
 import React from 'react';
+import PriceBreakdown from './PriceBreakdown';
 
 interface BookingSummaryProps {
   booking: {
@@ -114,37 +115,37 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
 
       <div>
         <h3 className="text-sm font-medium text-gray-500">Payment</h3>
-        <div className="mt-2 bg-gray-50 rounded-lg p-4 space-y-3">
+        <div className="mt-2 space-y-3">
           {booking.paymentId && (
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Payment ID</span>
-              <span className="text-sm font-medium text-gray-900 font-mono text-xs">{booking.paymentId.slice(0, 8)}...</span>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Payment ID</span>
+                <span className="text-sm font-medium text-gray-900 font-mono text-xs">{booking.paymentId.slice(0, 8)}...</span>
+              </div>
             </div>
           )}
           {booking.paymentStatus && (
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Payment Status</span>
-              <span className={`text-sm font-medium ${
-                booking.paymentStatus === 'Completed' ? 'text-green-600' :
-                booking.paymentStatus === 'Pending' ? 'text-yellow-600' :
-                'text-gray-600'
-              }`}>
-                {booking.paymentStatus}
-              </span>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Payment Status</span>
+                <span className={`text-sm font-medium ${
+                  booking.paymentStatus === 'Completed' ? 'text-green-600' :
+                  booking.paymentStatus === 'Pending' ? 'text-yellow-600' :
+                  'text-gray-600'
+                }`}>
+                  {booking.paymentStatus}
+                </span>
+              </div>
             </div>
           )}
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Base Price/Day</span>
-            <span className="text-sm font-medium text-gray-900">${booking.pricePerDay.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Days</span>
-            <span className="text-sm font-medium text-gray-900">{days}</span>
-          </div>
-          <div className="border-t border-gray-200 pt-3 flex justify-between">
-            <span className="text-sm font-medium text-gray-900">Total</span>
-            <span className="text-sm font-medium text-emerald-600">${totalPrice.toFixed(2)}</span>
-          </div>
+          <PriceBreakdown
+            pricePerDay={booking.pricePerDay}
+            days={days}
+            modelMultiplier={booking.model.priceMultiplier}
+            modelName={booking.model.name}
+            currency="USD"
+            showModelDetails={booking.model.priceMultiplier !== 1}
+          />
         </div>
       </div>
       

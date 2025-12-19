@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, boxmodel } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
         endDate: booking.end_date.toISOString(),
         status: (booking.status || BookingStatus.Upcoming).toLowerCase(),
         model: {
-          name: booking.boxes.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic',
-          description: booking.boxes.model === 'Pro' ? 'Premium model with advanced features' : 'Standard model with essential features',
-          priceMultiplier: booking.boxes.model === 'Pro' ? 1.5 : 1.0,
+          name: booking.boxes.model === boxmodel.Pro_190 ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175',
+          description: booking.boxes.model === boxmodel.Pro_190 ? 'Premium model with advanced features' : 'Standard model with essential features',
+          priceMultiplier: booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0,
         },
         pricePerDay: parseFloat(booking.payments?.amount.toString() || '0') / Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)),
         locationName: booking.boxes.stands.locations.name,
@@ -114,9 +114,9 @@ export async function POST(request: NextRequest) {
       endDate: booking.end_date.toISOString(),
       status: (booking.status || BookingStatus.Upcoming).toLowerCase(),
       model: {
-        name: booking.boxes.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic',
-        description: booking.boxes.model === 'Pro' ? 'Premium model with advanced features' : 'Standard model with essential features',
-        priceMultiplier: booking.boxes.model === 'Pro' ? 1.5 : 1.0,
+        name: booking.boxes.model === boxmodel.Pro_190 ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175',
+        description: booking.boxes.model === boxmodel.Pro_190 ? 'Premium model with advanced features' : 'Standard model with essential features',
+        priceMultiplier: booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0,
       },
       pricePerDay: parseFloat(payment.amount.toString()) / Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)),
       locationName: booking.boxes.stands.locations.name,

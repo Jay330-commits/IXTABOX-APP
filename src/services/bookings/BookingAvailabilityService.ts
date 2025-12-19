@@ -1,5 +1,5 @@
 import 'server-only';
-import { BookingStatus, BoxModel, boxStatus } from '@prisma/client';
+import { BookingStatus, boxmodel, boxStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { mergeRanges, normalizeDate, type Range } from '@/utils/dates';
 
@@ -142,7 +142,7 @@ export class BookingAvailabilityService extends BaseService {
    */
   async calculateModelAvailability(
     locationId: string,
-    model: BoxModel
+    model: boxmodel
   ): Promise<{
     isFullyBooked: boolean;
     nextAvailableDate: Date | null;
@@ -244,7 +244,7 @@ export class BookingAvailabilityService extends BaseService {
   /**
    * Get merged blocked ranges for all boxes of a specific model at a location
    */
-  async getModelBlockedRanges(locationId: string, model: BoxModel): Promise<{
+  async getModelBlockedRanges(locationId: string, model: boxmodel): Promise<{
     ranges: Range[];
     totalBookings: number;
     mergedRangesCount: number;
@@ -326,7 +326,7 @@ export class BookingAvailabilityService extends BaseService {
   /**
    * Get earliest available date for a model at a location
    */
-  async getEarliestAvailableDateForModel(locationId: string, model: BoxModel): Promise<Date | null> {
+  async getEarliestAvailableDateForModel(locationId: string, model: boxmodel): Promise<Date | null> {
     const availability = await this.calculateModelAvailability(locationId, model);
     return availability.nextAvailableDate;
   }

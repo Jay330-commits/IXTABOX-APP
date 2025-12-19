@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import PriceBreakdown from './PriceBreakdown';
 
 // Helper functions for date handling
 const isValidDateString = (dateStr: string | undefined): boolean => {
@@ -419,6 +420,33 @@ const StandDetails: React.FC<StandDetailsProps> = ({
                 <p className="text-sm text-gray-500">
                   Next available from: {new Date(stand.nextAvailableDate).toLocaleDateString()}
                 </p>
+              )}
+              
+              {/* Price Breakdown - Show when dates and model are selected */}
+              {startDate && endDate && startTime && endTime && isTimeOrderValid && (
+                <div className="mt-4">
+                  {(() => {
+                    const start = new Date(`${startDate}T${startTime}`);
+                    const end = new Date(`${endDate}T${endTime}`);
+                    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    const selectedModelData = selectedModel 
+                      ? stand.availableModels?.find(m => m.id === selectedModel)
+                      : null;
+                    const modelMultiplier = selectedModelData?.priceMultiplier || 1;
+                    const modelName = selectedModelData?.name;
+                    
+                    return (
+                      <PriceBreakdown
+                        pricePerDay={stand.pricePerDay}
+                        days={days}
+                        modelMultiplier={modelMultiplier}
+                        modelName={modelName}
+                        currency="SEK"
+                        showModelDetails={!!selectedModelData && modelMultiplier !== 1}
+                      />
+                    );
+                  })()}
+                </div>
               )}
             </div>
           )}

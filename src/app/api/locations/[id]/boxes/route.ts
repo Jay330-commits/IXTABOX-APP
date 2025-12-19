@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { boxStatus, BoxModel, BookingStatus } from '@prisma/client';
+import { boxStatus, boxmodel, BookingStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma/prisma';
 
 // ============================================================================
@@ -11,7 +11,7 @@ type StandGroup = {
   standName: string;
   boxes: Array<{
     id: string;
-    model: BoxModel;
+    model: boxmodel;
     displayId: string;
     compartment: number | null;
     isAvailable: boolean;
@@ -29,7 +29,7 @@ export async function GET(
   try {
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
-    const model = searchParams.get('model'); // 'Classic' or 'Pro'
+    const model = searchParams.get('model'); // 'Pro 175' or 'Pro 190'
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -39,7 +39,7 @@ export async function GET(
       const endDateTime = new Date(`${endDate}T23:59:59`);
 
       // Build model filter
-      const modelFilter = model ? { model: model as BoxModel } : {};
+      const modelFilter = model ? { model: model as boxmodel } : {};
 
       // Query boxes - only return boxes without overlapping bookings
       // A booking overlaps if: booking.start_date <= endDateTime AND booking.end_date >= startDateTime
@@ -133,7 +133,7 @@ export async function GET(
           location_id: id,
         },
         status: boxStatus.Active,
-        ...(model ? { model: model as BoxModel } : {}),
+        ...(model ? { model: model as boxmodel } : {}),
       },
       include: {
         stands: {

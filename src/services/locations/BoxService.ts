@@ -1,10 +1,10 @@
 import 'server-only';
-import { BoxModel, boxStatus, BookingStatus, Prisma } from '@prisma/client';
+import { boxmodel, boxStatus, BookingStatus, Prisma } from '@prisma/client';
 import { BaseService } from '../BaseService';
 
 export interface CreateBoxData {
   standId: string;
-  model: BoxModel;
+  model: boxmodel;
   compartment?: number | null;
   status?: boxStatus;
   displayId?: string;
@@ -12,7 +12,7 @@ export interface CreateBoxData {
 
 export interface UpdateBoxData {
   standId?: string;
-  model?: BoxModel;
+  model?: boxmodel;
   compartment?: number | null;
   status?: boxStatus;
   displayId?: string;
@@ -41,7 +41,7 @@ export class BoxService extends BaseService {
         }
 
         // Validate model
-        if (!Object.values(BoxModel).includes(data.model)) {
+        if (!Object.values(boxmodel).includes(data.model)) {
           throw new Error(`Invalid box model: ${data.model}`);
         }
 
@@ -108,7 +108,7 @@ export class BoxService extends BaseService {
         }
 
         // Validate model if being updated
-        if (data.model && !Object.values(BoxModel).includes(data.model)) {
+        if (data.model && !Object.values(boxmodel).includes(data.model)) {
           throw new Error(`Invalid box model: ${data.model}`);
         }
 
@@ -500,7 +500,7 @@ export class BoxService extends BaseService {
     const errors: string[] = [];
 
     if ('model' in data && data.model) {
-      if (!Object.values(BoxModel).includes(data.model)) {
+      if (!Object.values(boxmodel).includes(data.model)) {
         errors.push(`Invalid box model: ${data.model}`);
       }
     }

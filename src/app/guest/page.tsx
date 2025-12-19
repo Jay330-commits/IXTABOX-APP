@@ -9,6 +9,7 @@ import FadeInSection from "@/components/animations/FadeInSection";
 import AnimatedCounter from "@/components/animations/AnimatedCounter";
 // import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
 import { useEffect, useRef, useState } from "react";
+import { scrollToMap } from "@/utils/scrollToMap";
 
 const STAT_METRICS = [
   {
@@ -279,33 +280,7 @@ export default function GuestHome() {
   };
 
   const handleBookBoxClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    // Scroll to center the map container (not the section with title)
-    setTimeout(() => {
-      const mapSection = document.getElementById('map');
-      if (mapSection) {
-        // Find the map container div - it's the div with class "w-full relative" inside the section
-        const mapContainer = mapSection.querySelector('.w-full.relative') as HTMLElement;
-        if (mapContainer) {
-          const headerHeight = 80; // Approximate header height
-          const viewportHeight = window.innerHeight;
-          const containerTop = mapContainer.getBoundingClientRect().top + window.pageYOffset;
-          const containerHeight = mapContainer.offsetHeight;
-          
-          // Calculate position to center the map container in viewport
-          // Center = container top + (container height / 2) - (viewport height / 2)
-          const centerPosition = containerTop + (containerHeight / 2) - (viewportHeight / 2);
-          
-          // Ensure we don't scroll above the header
-          const finalPosition = Math.max(headerHeight, centerPosition);
-
-          window.scrollTo({
-            top: finalPosition,
-            behavior: 'smooth'
-          });
-        }
-      }
-    }, 100);
+    scrollToMap(e);
   };
 
   // const handleFilterChange = (filter: BookingFilter) => {
@@ -363,7 +338,7 @@ export default function GuestHome() {
           </div>
           <FadeInSection className="relative z-20 mx-auto max-w-5xl px-6 py-24 text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200">
-              Swedish engineered
+              Swedish craftmanship
             </span>
             <h1 className="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
               Rear Cargo Box,
@@ -375,9 +350,8 @@ export default function GuestHome() {
 
             <p className="mx-auto mt-6 max-w-3xl text-lg text-gray-200/90">
               IXTAbox is now available for rent. Get extra storage without the hassle of a roof box.
-              It mounts to your towbar in minutes, sits at a comfortable height, and keeps your gear
-              within easy reach. Perfect for trips, sports, camping, or everyday overflow simple setup,
-              secure build, ready for any journey.
+              It mounts to your towbar in minutes, mounted at a comfortable height, and keeps your gear
+              within easy reach. Perfect for trips, sports, camping, or everyday activities.
             </p>
 
 
@@ -393,7 +367,7 @@ export default function GuestHome() {
                 onClick={handleBookBoxClick}
                 className="inline-flex items-center justify-center rounded-full border border-cyan-500/60 bg-cyan-500/10 px-8 py-3 text-base font-semibold text-cyan-200 transition-all hover:-translate-y-[1px] hover:bg-cyan-500/20 hover:text-white"
               >
-                Book a box!!
+                Book a box
               </a>
             </div>
           </FadeInSection>

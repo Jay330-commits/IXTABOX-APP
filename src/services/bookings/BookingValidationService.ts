@@ -72,7 +72,7 @@ export class BookingValidationService extends BaseService {
     modelId: string | null,
     basePrice: number = 300
   ): { amount: number; amountStr: string; days: number; basePrice: number; multiplier: number } {
-    const multiplier = modelId === 'pro' || modelId === 'Pro' ? 1.5 : 1.0;
+    const multiplier = modelId === 'pro' || modelId === 'Pro' || modelId === 'pro_190' || modelId === 'Pro 190' ? 1.5 : 1.0;
     const amount = basePrice * multiplier * days;
     const amountStr = amount.toFixed(2);
 

@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
         chargeId: booking.payments?.charge_id || null,
         createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
         returnedAt: booking.returned_at ? booking.returned_at.toISOString() : null,
-        model: booking.boxes.model || 'Classic',
+        model: booking.boxes.model || 'Pro 175',
       };
       
       // Log the formatted booking status - especially for cancelled bookings

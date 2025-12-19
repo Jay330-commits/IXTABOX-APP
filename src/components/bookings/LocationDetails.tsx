@@ -85,7 +85,7 @@ type AvailableBox = {
   standName: string;
   boxes: Array<{
     id: string;
-    model: 'Classic' | 'Pro';
+    model: 'Pro 175' | 'Pro 190';
     displayId: string;
     compartment: number | null;
     isAvailable: boolean;
@@ -245,7 +245,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     
       try {
         // Simple API call with dates and model - server handles filtering
-        const modelParam = selectedModel === 'classic' ? 'Classic' : 'Pro';
+        const modelParam = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
         const response = await fetch(
           `/api/locations/${location.id}/boxes?startDate=${startDate}&endDate=${endDate}&model=${modelParam}`
         );
@@ -265,7 +265,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
           const firstStand = boxesByStand[0];
           if (firstStand.boxes.length > 0) {
             const firstBox = firstStand.boxes[0];
-            const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro';
+            const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
             
             // Only auto-select if the box model matches the selected model
             if (firstBox.model === expectedModel) {
@@ -390,10 +390,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
    */
   const isModelFullyBooked = (modelId: string): boolean => {
     if (!location.modelAvailability) return false;
-    if (modelId === 'classic') {
+    if (modelId === 'classic' || modelId === 'pro_175') {
       return location.modelAvailability.classic.isFullyBooked;
     }
-    if (modelId === 'pro') {
+    if (modelId === 'pro' || modelId === 'pro_190') {
       return location.modelAvailability.pro.isFullyBooked;
     }
     return false;
@@ -404,10 +404,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
    */
   const getModelNextAvailableDate = (modelId: string): string | null => {
     if (!location.modelAvailability) return null;
-    if (modelId === 'classic') {
+    if (modelId === 'classic' || modelId === 'pro_175') {
       return location.modelAvailability.classic.nextAvailableDate;
     }
-    if (modelId === 'pro') {
+    if (modelId === 'pro' || modelId === 'pro_190') {
       return location.modelAvailability.pro.nextAvailableDate;
     }
     return null;
@@ -418,10 +418,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
    * Check if a model is available (has boxes available)
    */
   const isModelAvailable = (modelId: string): boolean => {
-    if (modelId === 'classic') {
+    if (modelId === 'classic' || modelId === 'pro_175') {
       return location.availableBoxes.classic > 0;
     }
-    if (modelId === 'pro') {
+    if (modelId === 'pro' || modelId === 'pro_190') {
       return location.availableBoxes.pro > 0;
     }
     return false;
@@ -464,7 +464,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 
   // Get pricing from API or use defaults - all models are 300 per day
   const pricePerDay = 
-    selectedModel === 'pro' || selectedModel === 'Pro'
+    selectedModel === 'pro' || selectedModel === 'Pro' || selectedModel === 'pro_190' || selectedModel === 'Pro 190'
       ? (pricing?.pro.pricePerDay ?? 300)
       : (pricing?.classic.pricePerDay ?? 300);
   
@@ -510,11 +510,11 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
           </div>
           <div className={`mt-2 flex gap-4 text-sm ${isBooked ? 'text-red-800' : 'text-gray-600'}`}>
             <div>
-              <span>Classic: </span>
+              <span>Pro 175: </span>
               <span className={`font-semibold ${isBooked ? 'text-red-900' : 'text-gray-900'}`}>{location.availableBoxes.classic}</span>
             </div>
             <div>
-              <span>Pro: </span>
+              <span>Pro 190: </span>
               <span className={`font-semibold ${isBooked ? 'text-red-900' : 'text-gray-900'}`}>{location.availableBoxes.pro}</span>
             </div>
             <div>
@@ -632,8 +632,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             <div className="p-4 flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { id: 'classic', name: 'IXTAbox Classic 175', dimension: '175 cm' },
-                  { id: 'pro', name: 'IXTAbox Pro 190', dimension: '190 cm' },
+                  { id: 'pro_175', name: 'IXTAbox Pro 175', dimension: '175 cm' },
+                  { id: 'pro_190', name: 'IXTAbox Pro 190', dimension: '190 cm' },
                 ].map((model) => {
                   const is175cm = model.name.includes('175');
                   const imageWidth = is175cm ? 60 : 75;
@@ -787,9 +787,9 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                                   onChange={() => {
                                         if (!isBooked) {
                                           // Validate that the box model matches the selected model
-                                          const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro';
+                                          const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
                                           if (box.model !== expectedModel) {
-                                            alert(`This box is ${box.model} but you selected ${selectedModel === 'classic' ? 'Classic' : 'Pro'}. Please select a box that matches your selected model.`);
+                                            alert(`This box is ${box.model} but you selected ${selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190'}. Please select a box that matches your selected model.`);
                                             return;
                                           }
                                           
@@ -851,8 +851,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               
               if (onBook && selectedBox && !isBooking) {
                 // Validate that the selected box's model matches the selected model
-                const selectedBoxModel = selectedBox.model; // This is 'Classic' or 'Pro' from database
-                const expectedModel = selectedModel === 'classic' ? 'Classic' : 'Pro'; // Convert frontend model to database format
+                const selectedBoxModel = selectedBox.model; // This is 'Pro 175' or 'Pro 190' from database
+                const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190'; // Convert frontend model to database format
                 
                 if (selectedBoxModel !== expectedModel) {
                   alert(`Model mismatch: Selected box is ${selectedBoxModel} but you selected ${selectedModel}. Please select a box that matches your selected model.`);

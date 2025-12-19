@@ -479,13 +479,13 @@ export default function BookingsPageClient() {
                     
                     // Calculate model info
                     const modelName = typeof booking.model === 'string' 
-                      ? (booking.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic')
+                      ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175')
                       : booking.model.name;
                     const modelDescription = typeof booking.model === 'string'
-                      ? (booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box')
+                      ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box')
                       : (booking.model.description || 'Storage box');
                     const modelMultiplier = typeof booking.model === 'string'
-                      ? (booking.model === 'Pro' ? 1.5 : 1.0)
+                      ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 1.5 : 1.0)
                       : (booking.model.priceMultiplier || 1.0);
                     const basePricePerDay = booking.pricePerDay;
                     const totalPrice = booking.amount || (days * basePricePerDay * modelMultiplier);

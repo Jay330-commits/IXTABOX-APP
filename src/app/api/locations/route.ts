@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { status, boxStatus, BoxModel } from '@prisma/client';
+import { status, boxStatus, boxmodel } from '@prisma/client';
 import { LocationService } from '@/services/locations/LocationService';
 
 type ApiLocation = {
@@ -79,9 +79,9 @@ export async function GET() {
               totalBoxes++;
               const hasActiveBooking = box.bookings.length > 0;
               
-              if (box.model === BoxModel.Classic) {
+              if (box.model === boxmodel.Pro_175) {
                 classicTotal++;
-              } else if (box.model === BoxModel.Pro) {
+              } else if (box.model === boxmodel.Pro_190) {
                 proTotal++;
               }
               
@@ -91,16 +91,16 @@ export async function GET() {
                 box.bookings.forEach((booking) => {
                   const endDate = new Date(booking.end_date);
                   allBookingEndDates.push(endDate);
-                  if (box.model === BoxModel.Classic) {
+                  if (box.model === boxmodel.Pro_175) {
                     classicBookingEndDates.push(endDate);
-                  } else if (box.model === BoxModel.Pro) {
+                  } else if (box.model === boxmodel.Pro_190) {
                     proBookingEndDates.push(endDate);
                   }
                 });
               } else {
-                if (box.model === BoxModel.Classic) {
+                if (box.model === boxmodel.Pro_175) {
                   classicCount++;
-                } else if (box.model === BoxModel.Pro) {
+                } else if (box.model === boxmodel.Pro_190) {
                   proCount++;
                 }
               }

@@ -68,9 +68,9 @@ export default function BookingsSection({
             const endDate = booking.endDate ? new Date(booking.endDate) : new Date(booking.date);
             const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
             
-            const modelName = booking.model === 'Pro' ? 'IXTAbox Pro' : 'IXTAbox Classic';
-            const modelDescription = booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box';
-            const modelMultiplier = booking.model === 'Pro' ? 1.5 : 1.0;
+            const modelName = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175';
+            const modelDescription = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box';
+            const modelMultiplier = booking.model === 'Pro 190' || booking.model === 'Pro' ? 1.5 : 1.0;
             const pricePerDay = booking.amount / days / modelMultiplier;
             const totalPrice = days * pricePerDay * modelMultiplier;
 

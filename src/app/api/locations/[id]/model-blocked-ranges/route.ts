@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BoxModel } from '@prisma/client';
+import { boxmodel } from '@prisma/client';
 import { BookingService } from '@/services/bookings/BookingService';
 
 /**
@@ -7,7 +7,7 @@ import { BookingService } from '@/services/bookings/BookingService';
  * Fetches merged blocked ranges for all boxes of a specific model at a location
  * 
  * Query params:
- * - model: 'Classic' or 'Pro'
+ * - model: 'Pro 175' or 'Pro 190'
  */
 export async function GET(
   request: NextRequest,
@@ -25,16 +25,16 @@ export async function GET(
       );
     }
 
-    // Map string to BoxModel enum
-    const model = modelParam === 'classic' || modelParam === 'Classic' 
-      ? BoxModel.Classic 
-      : modelParam === 'pro' || modelParam === 'Pro'
-      ? BoxModel.Pro
+    // Map string to boxmodel enum
+    const model = modelParam === 'classic' || modelParam === 'Classic' || modelParam === 'pro_175' || modelParam === 'Pro 175'
+      ? boxmodel.Pro_175 
+      : modelParam === 'pro' || modelParam === 'Pro' || modelParam === 'pro_190' || modelParam === 'Pro 190'
+      ? boxmodel.Pro_190
       : null;
 
     if (!model) {
       return NextResponse.json(
-        { error: 'Invalid model. Must be "classic" or "pro"' },
+        { error: 'Invalid model. Must be "Pro 175" or "Pro 190"' },
         { status: 400 }
       );
     }

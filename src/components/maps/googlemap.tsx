@@ -19,6 +19,7 @@ import {
 } from "@react-google-maps/api";
 import LocationDetails from "../bookings/LocationDetails";
 import LoadingSpinner from "../loading/LoadingSpinner";
+import { scrollToMap } from "@/utils/scrollToMap";
 
 export type MapProps = {
   locations: {
@@ -145,19 +146,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     const originalOverflow = document.body.style.overflow;
     if (fullscreen && interactionEnabled) {
       document.body.style.overflow = "hidden";
-      // Scroll to show the map section when going fullscreen
-      // This ensures buttons are accessible even if user scrolled down before opening map
-      setTimeout(() => {
-        const mapElement = document.getElementById('map');
-        if (mapElement) {
-          // Scroll to the map section to ensure it's in view
-          mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          // Then scroll a bit more to account for header
-          setTimeout(() => {
-            window.scrollTo({ top: Math.max(0, window.scrollY - 80), behavior: 'smooth' });
-          }, 300);
-        }
-      }, 50);
+      // Don't scroll - let the "Book IXTAbox" button handle scrolling
     } else {
       document.body.style.overflow = originalOverflow || "";
     }
@@ -388,6 +377,8 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const handleBookLocation = useCallback(
     async (locationId: string, boxId: string, standId: string, modelId?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, locationDisplayId?: string, compartment?: number | null) => {
       try {
+        scrollToMap();
+        
         // Create secure payment session server-side
         // Booking details are stored securely, only payment intent ID is returned
         const response = await fetch('/api/payments/create-session', {
@@ -625,13 +616,17 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         {locations.map((location) => {
           const icon = location.isFullyBooked ? markerIcons.fullyBooked : markerIcons.available;
           return (
-          <Marker
+            <Marker
             key={location.id}
             position={{ lat: location.lat, lng: location.lng }}
               icon={icon}
             onClick={(e) => {
               e.domEvent.stopPropagation();
-              setSelectedLocation(location);
+              scrollToMap();
+              // Open location details after a short delay to allow scroll to complete
+              setTimeout(() => {
+                setSelectedLocation(location);
+              }, 150);
             }}
             title={location.name}
           />

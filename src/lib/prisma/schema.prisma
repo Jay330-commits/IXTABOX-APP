@@ -416,7 +416,7 @@ model bookings {
   start_date    DateTime        @db.Timestamp(6)
   end_date      DateTime        @db.Timestamp(6)
   lock_pin      Int
-  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  created_at    DateTime        @default(now()) @db.Timestamp(6)
   status        BookingStatus?  @default(Pending)
   returned_at   DateTime?       @db.Timestamp(6)
   display_id    String?         @unique
@@ -431,7 +431,7 @@ model bookings {
 model boxes {
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stand_id    String     @db.Uuid
-  model       BoxModel
+  model       boxmodel
   display_id  String     @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
   compartment Int?
   status      boxStatus? @default(Active)
@@ -529,6 +529,8 @@ model locations {
   updated_at     DateTime?    @default(now()) @db.Timestamp(6)
   display_id     String       @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
   status         status?      @default(Available)
+  image          String?
+  Region         String?
   distributors   distributors @relation(fields: [distributor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reviews        reviews[]
   stands         stands[]
@@ -537,11 +539,12 @@ model locations {
 }
 
 model locks {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   device_id String
-  box_id    String @db.Uuid
+  box_id    String  @db.Uuid
   company   String
-  boxes     boxes  @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  image     String?
+  boxes     boxes   @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -641,6 +644,7 @@ model stands {
   capacity    Int?      @default(1)
   features    Json?
   display_id  String    @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
+  image       String?
   boxes       boxes[]
   locations   locations @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -847,6 +851,13 @@ enum status {
   Occupied
   Maintenance
   Inactive
+
+  @@schema("public")
+}
+
+enum boxmodel {
+  Pro_175 @map("Pro 175")
+  Pro_190 @map("Pro 190")
 
   @@schema("public")
 }

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Validate that the box model matches the selected model
     if (modelId && boxVerification.box.model) {
-      const expectedModel = modelId.toLowerCase() === 'classic' ? 'Classic' : modelId.toLowerCase() === 'pro' ? 'Pro' : modelId;
+      const expectedModel = modelId.toLowerCase() === 'classic' || modelId.toLowerCase() === 'pro_175' ? 'Pro 175' : modelId.toLowerCase() === 'pro' || modelId.toLowerCase() === 'pro_190' ? 'Pro 190' : modelId;
       const boxModel = boxVerification.box.model;
       
       if (boxModel !== expectedModel) {

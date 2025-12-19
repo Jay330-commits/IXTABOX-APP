@@ -1,5 +1,5 @@
 import 'server-only';
-import { boxStatus, BoxModel } from '@prisma/client';
+import { boxStatus, boxmodel } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { IglooService } from '../locations/IglooService';
 import { BookingStatusService } from './BookingStatusService';
@@ -87,7 +87,7 @@ export class BookingService extends BaseService {
   /**
    * Verify box exists and is available
    */
-  async verifyBox(boxId: string): Promise<{ exists: boolean; box?: { id: string; status: boxStatus | null; model: BoxModel } }> {
+  async verifyBox(boxId: string): Promise<{ exists: boolean; box?: { id: string; status: boxStatus | null; model: boxmodel } }> {
     const box = await this.prisma.boxes.findUnique({
       where: { id: boxId },
       select: { id: true, status: true, model: true },
@@ -160,7 +160,7 @@ export class BookingService extends BaseService {
    */
   async calculateModelAvailability(
     locationId: string,
-    model: import('@prisma/client').BoxModel
+    model: import('@prisma/client').boxmodel
   ): Promise<{
     isFullyBooked: boolean;
     nextAvailableDate: Date | null;
@@ -182,7 +182,7 @@ export class BookingService extends BaseService {
    */
   async getModelBlockedRanges(
     locationId: string,
-    model: import('@prisma/client').BoxModel
+    model: import('@prisma/client').boxmodel
   ): Promise<{
     ranges: import('@/utils/dates').Range[];
     totalBookings: number;
@@ -211,7 +211,7 @@ export class BookingService extends BaseService {
    */
   async getEarliestAvailableDateForModel(
     locationId: string,
-    model: import('@prisma/client').BoxModel
+    model: import('@prisma/client').boxmodel
   ): Promise<Date | null> {
     return this.availabilityService.getEarliestAvailableDateForModel(locationId, model);
   }
