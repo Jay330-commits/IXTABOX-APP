@@ -70,9 +70,8 @@ export default function BookingsSection({
             
             const modelName = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175';
             const modelDescription = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box';
-            const modelMultiplier = booking.model === 'Pro 190' || booking.model === 'Pro' ? 1.5 : 1.0;
-            const pricePerDay = booking.amount / days / modelMultiplier;
-            const totalPrice = days * pricePerDay * modelMultiplier;
+            const pricePerDay = booking.pricePerDay || (booking.amount / days);
+            const totalPrice = booking.amount || (days * pricePerDay);
 
             return (
               <div 
@@ -210,11 +209,21 @@ export default function BookingsSection({
                           <span className="text-sm text-gray-400">Booking ID</span>
                           <div className="flex items-center gap-2 max-w-[60%]">
                             <span className="text-sm font-medium text-gray-200 font-mono break-all">
-                              {booking.bookingDisplayId || booking.id.slice(0, 8)}
+                              {booking.bookingDisplayId ? (
+                                booking.bookingDisplayId
+                              ) : (
+                                <span className="text-red-400" title="Error: Booking display ID is missing">
+                                  ERROR
+                                </span>
+                              )}
                             </span>
                             <button
                               onClick={() => {
-                                navigator.clipboard.writeText(booking.bookingDisplayId || booking.id);
+                                if (booking.bookingDisplayId) {
+                                  navigator.clipboard.writeText(booking.bookingDisplayId);
+                                } else {
+                                  console.error('Cannot copy: booking display ID is missing');
+                                }
                               }}
                               className="p-1 hover:bg-white/10 rounded transition-colors"
                               title="Copy Booking ID"
@@ -413,6 +422,95 @@ export default function BookingsSection({
                                 minute: '2-digit'
                               })}
                             </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Return Photos */}
+                    {(booking.boxFrontView || booking.boxBackView || booking.closedStandLock) && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-400 mb-3">Return Photos</h3>
+                        <div className="bg-white/5 rounded-lg p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {booking.boxFrontView && (
+                              <div>
+                                <p className="text-gray-400 text-xs mb-2">Box Front View</p>
+                                <a
+                                  href={booking.boxFrontView}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <img
+                                    src={booking.boxFrontView}
+                                    alt="Box Front View"
+                                    className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                    onError={(e) => {
+                                      console.error('[BookingsSection] Failed to load boxFrontView image:', booking.boxFrontView);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                      }
+                                    }}
+                                  />
+                                </a>
+                              </div>
+                            )}
+                            {booking.boxBackView && (
+                              <div>
+                                <p className="text-gray-400 text-xs mb-2">Box Back View</p>
+                                <a
+                                  href={booking.boxBackView}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <img
+                                    src={booking.boxBackView}
+                                    alt="Box Back View"
+                                    className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                    onError={(e) => {
+                                      console.error('[BookingsSection] Failed to load boxBackView image:', booking.boxBackView);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                      }
+                                    }}
+                                  />
+                                </a>
+                              </div>
+                            )}
+                            {booking.closedStandLock && (
+                              <div>
+                                <p className="text-gray-400 text-xs mb-2">Closed Stand Lock</p>
+                                <a
+                                  href={booking.closedStandLock}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <img
+                                    src={booking.closedStandLock}
+                                    alt="Closed Stand Lock"
+                                    className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                    onError={(e) => {
+                                      console.error('[BookingsSection] Failed to load closedStandLock image:', booking.closedStandLock);
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                      }
+                                    }}
+                                  />
+                                </a>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

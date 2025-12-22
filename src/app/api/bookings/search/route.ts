@@ -83,6 +83,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Get price and deposit from box
+      const boxPrice = booking.boxes.price 
+        ? (typeof booking.boxes.price === 'string' ? parseFloat(booking.boxes.price) : Number(booking.boxes.price))
+        : 300; // Default fallback
+      const boxDeposit = booking.boxes.deposit 
+        ? (typeof booking.boxes.deposit === 'string' ? parseFloat(booking.boxes.deposit) : Number(booking.boxes.deposit))
+        : 0;
+
       const formattedBooking = {
         id: booking.id,
         standId: booking.boxes.stand_id,
@@ -93,9 +101,9 @@ export async function POST(request: NextRequest) {
         model: {
           name: booking.boxes.model === boxmodel.Pro_190 ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175',
           description: booking.boxes.model === boxmodel.Pro_190 ? 'Premium model with advanced features' : 'Standard model with essential features',
-          priceMultiplier: booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0,
         },
-        pricePerDay: parseFloat(booking.payments?.amount.toString() || '0') / Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)),
+        pricePerDay: boxPrice,
+        deposit: boxDeposit,
         locationName: booking.boxes.stands.locations.name,
         boxDisplayId: booking.boxes.display_id,
         standDisplayId: booking.boxes.stands.display_id,
@@ -106,6 +114,15 @@ export async function POST(request: NextRequest) {
 
     // Format booking from payment
     const booking = payment.bookings;
+    
+    // Get price and deposit from box
+    const boxPrice = booking.boxes.price 
+      ? (typeof booking.boxes.price === 'string' ? parseFloat(booking.boxes.price) : Number(booking.boxes.price))
+      : 300; // Default fallback
+    const boxDeposit = booking.boxes.deposit 
+      ? (typeof booking.boxes.deposit === 'string' ? parseFloat(booking.boxes.deposit) : Number(booking.boxes.deposit))
+      : 0;
+
     const formattedBooking = {
       id: booking.id,
       standId: booking.boxes.stand_id,
@@ -116,9 +133,9 @@ export async function POST(request: NextRequest) {
       model: {
         name: booking.boxes.model === boxmodel.Pro_190 ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175',
         description: booking.boxes.model === boxmodel.Pro_190 ? 'Premium model with advanced features' : 'Standard model with essential features',
-        priceMultiplier: booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0,
       },
-      pricePerDay: parseFloat(payment.amount.toString()) / Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)),
+      pricePerDay: boxPrice,
+      deposit: boxDeposit,
       locationName: booking.boxes.stands.locations.name,
       boxDisplayId: booking.boxes.display_id,
       standDisplayId: booking.boxes.stands.display_id,

@@ -84,7 +84,6 @@ interface StandDetailsProps {
     availableModels?: {
       id: string;
       name: string;
-      priceMultiplier: number;
     }[];
     nextAvailableDate?: string; // For booked stands
   };
@@ -432,17 +431,16 @@ const StandDetails: React.FC<StandDetailsProps> = ({
                     const selectedModelData = selectedModel 
                       ? stand.availableModels?.find(m => m.id === selectedModel)
                       : null;
-                    const modelMultiplier = selectedModelData?.priceMultiplier || 1;
                     const modelName = selectedModelData?.name;
                     
                     return (
                       <PriceBreakdown
                         pricePerDay={stand.pricePerDay}
                         days={days}
-                        modelMultiplier={modelMultiplier}
+                        deposit={0}
                         modelName={modelName}
                         currency="SEK"
-                        showModelDetails={!!selectedModelData && modelMultiplier !== 1}
+                        showDeposit={false}
                       />
                     );
                   })()}
@@ -459,12 +457,9 @@ const StandDetails: React.FC<StandDetailsProps> = ({
               if (onBook) {
                 onBook(stand.id, selectedModel, startDate, endDate);
               }
-              // Calculate total price based on days and model multiplier
+              // Calculate total price based on days
               const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-              const modelMultiplier = selectedModel 
-                ? stand.availableModels?.find(m => m.id === selectedModel)?.priceMultiplier || 1 
-                : 1;
-              const totalPrice = stand.pricePerDay * days * modelMultiplier;
+              const totalPrice = stand.pricePerDay * days;
               
               // Redirect to payment page with stand details
               window.location.href = `/payment?amount=${totalPrice}&currency=sek&standId=${stand.id}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}${selectedModel ? `&modelId=${selectedModel}` : ''}`;

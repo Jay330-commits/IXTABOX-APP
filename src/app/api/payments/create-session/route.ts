@@ -96,20 +96,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate that the box model matches the selected model
+    // Normalize both models to a consistent format for case-insensitive comparison
     if (modelId && boxVerification.box.model) {
-      const expectedModel = modelId.toLowerCase() === 'classic' || modelId.toLowerCase() === 'pro_175' ? 'Pro 175' : modelId.toLowerCase() === 'pro' || modelId.toLowerCase() === 'pro_190' ? 'Pro 190' : modelId;
       const boxModel = boxVerification.box.model;
+      // Normalize box model: replace underscores with spaces and normalize case
+      const boxModelNormalized = String(boxModel).replace(/_/g, ' ').trim();
+      // Normalize modelId: replace underscores/spaces and normalize case
+      const modelIdNormalized = String(modelId).replace(/_/g, ' ').trim();
       
-      if (boxModel !== expectedModel) {
+      // Compare normalized models (case-insensitive)
+      const boxModelLower = boxModelNormalized.toLowerCase();
+      const modelIdLower = modelIdNormalized.toLowerCase();
+      
+      if (boxModelLower !== modelIdLower) {
         console.error('Model mismatch:', {
           boxId,
           boxModel,
-          selectedModel: modelId,
-          expectedModel,
+          boxModelNormalized,
+          modelId,
+          modelIdNormalized,
+          boxModelLower,
+          modelIdLower,
         });
         return NextResponse.json(
           { 
-            error: `Model mismatch: Selected box is ${boxModel} but you selected ${modelId}. Please select a box that matches your selected model.` 
+            error: `Model mismatch: Selected box is ${boxModelNormalized} but you selected ${modelIdNormalized}. Please select a box that matches your selected model.` 
           },
           { status: 400 }
         );

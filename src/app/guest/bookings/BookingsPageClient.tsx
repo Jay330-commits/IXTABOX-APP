@@ -22,14 +22,17 @@ type Booking = {
   model: string | {
     name: string;
     description?: string;
-    priceMultiplier?: number;
   };
+  deposit?: number;
   lockPin?: string | null;
   paymentId?: string;
   chargeId?: string | null;
   paymentStatus?: string | null;
   createdAt?: string;
   returnedAt?: string | null;
+  boxFrontView?: string | null;
+  boxBackView?: string | null;
+  closedStandLock?: string | null;
 };
 
 type UserDetails = {
@@ -484,11 +487,10 @@ export default function BookingsPageClient() {
                     const modelDescription = typeof booking.model === 'string'
                       ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box')
                       : (booking.model.description || 'Storage box');
-                    const modelMultiplier = typeof booking.model === 'string'
-                      ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 1.5 : 1.0)
-                      : (booking.model.priceMultiplier || 1.0);
                     const basePricePerDay = booking.pricePerDay;
-                    const totalPrice = booking.amount || (days * basePricePerDay * modelMultiplier);
+                    const deposit = booking.deposit || 0;
+                    const subtotal = days * basePricePerDay;
+                    const totalPrice = booking.amount || (subtotal + deposit);
 
                     return (
                       <div 
@@ -767,6 +769,98 @@ export default function BookingsPageClient() {
                                       })}
                                     </span>
                                   </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Return Photos - Show for completed bookings with return photos */}
+                            {(booking.boxFrontView || booking.boxBackView || booking.closedStandLock) && (
+                              <div>
+                                <h3 className="text-sm font-medium text-gray-400 mb-3">Return Photos</h3>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {booking.boxFrontView && (
+                                      <div>
+                                        <p className="text-gray-400 text-xs mb-2">Box Front View</p>
+                                        <a
+                                          href={booking.boxFrontView}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block"
+                                        >
+                                          <img
+                                            src={booking.boxFrontView}
+                                            alt="Box Front View"
+                                            className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                            onError={(e) => {
+                                              console.error('[Guest Bookings] Failed to load boxFrontView image:', booking.boxFrontView);
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              const parent = target.parentElement;
+                                              if (parent) {
+                                                parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                              }
+                                            }}
+                                          />
+                                        </a>
+                                      </div>
+                                    )}
+                                    {booking.boxBackView && (
+                                      <div>
+                                        <p className="text-gray-400 text-xs mb-2">Box Back View</p>
+                                        <a
+                                          href={booking.boxBackView}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block"
+                                        >
+                                          <img
+                                            src={booking.boxBackView}
+                                            alt="Box Back View"
+                                            className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                            onError={(e) => {
+                                              console.error('[Guest Bookings] Failed to load boxBackView image:', booking.boxBackView);
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              const parent = target.parentElement;
+                                              if (parent) {
+                                                parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                              }
+                                            }}
+                                          />
+                                        </a>
+                                      </div>
+                                    )}
+                                    {booking.closedStandLock && (
+                                      <div>
+                                        <p className="text-gray-400 text-xs mb-2">Closed Stand Lock</p>
+                                        <a
+                                          href={booking.closedStandLock}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block"
+                                        >
+                                          <img
+                                            src={booking.closedStandLock}
+                                            alt="Closed Stand Lock"
+                                            className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                            onError={(e) => {
+                                              console.error('[Guest Bookings] Failed to load closedStandLock image:', booking.closedStandLock);
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              const parent = target.parentElement;
+                                              if (parent) {
+                                                parent.innerHTML = `<div class="w-full h-32 flex items-center justify-center bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">Image failed to load<br/>Click to view URL</div>`;
+                                              }
+                                            }}
+                                          />
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-3">
+                                    Photos taken when the box was successfully returned. Click any image to view full size.
+                                  </p>
                                 </div>
                               </div>
                             )}

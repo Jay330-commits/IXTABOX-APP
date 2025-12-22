@@ -155,7 +155,7 @@ export class ReturnBoxService extends BaseService {
         await tx.boxes.update({
           where: { id: booking.box_id },
           data: {
-            Score: boxScore,
+            score: boxScore,
           },
         });
 

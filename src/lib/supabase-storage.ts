@@ -2,6 +2,9 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 
+// Track if warning has been shown to avoid spam
+let warningShown = false;
+
 /**
  * Extract access token from request cookies or headers
  */
@@ -43,7 +46,7 @@ function extractAccessTokenFromRequest(request?: NextRequest): string | undefine
  * If accessToken is provided, it will be used to authenticate the user (required for RLS policies)
  * Note: If using anon key, ensure RLS policies allow uploads for authenticated users
  */
-function getSupabaseStorageClient(accessToken?: string) {
+export function getSupabaseStorageClient(accessToken?: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -61,8 +64,10 @@ function getSupabaseStorageClient(accessToken?: string) {
   }
   
   // Log which key is being used (for debugging, without exposing the actual key)
-  if (!usingServiceRole && !accessToken) {
+  // Only show warning once per process to avoid spam
+  if (!usingServiceRole && !accessToken && !warningShown) {
     console.warn('⚠️  Using NEXT_PUBLIC_SUPABASE_ANON_KEY for storage operations without access token. For server-side uploads, SUPABASE_SERVICE_ROLE_KEY is recommended to bypass RLS, or pass accessToken for authenticated requests.');
+    warningShown = true;
   }
   
   const client = createClient(supabaseUrl, key, {
@@ -199,6 +204,52 @@ export function getSupabaseStoragePublicUrl(bucket: string, path: string): strin
   
   // Construct public URL
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
+}
+
+/**
+ * Get signed URL for a file in Supabase Storage (for private buckets)
+ * Signed URLs are temporary and expire after the specified time
+ * @param bucket - Storage bucket name
+ * @param path - File path within bucket (e.g., 'bookings/123/photo.jpg')
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+ * @param accessToken - Optional access token for authenticated requests
+ * @returns Signed URL that expires after the specified time
+ */
+export async function getSupabaseStorageSignedUrl(
+  bucket: string,
+  path: string,
+  expiresIn: number = 3600,
+  accessToken?: string
+): Promise<string> {
+  const supabase = getSupabaseStorageClient(accessToken);
+  
+  // If path is already a full URL, extract the path from it
+  let cleanPath = path;
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    // Extract path from full URL
+    const url = new URL(path);
+    const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+    if (pathMatch) {
+      cleanPath = pathMatch[1];
+    } else {
+      // If we can't extract, return as-is (might already be a signed URL)
+      return path;
+    }
+  }
+  
+  // Remove leading slash if present
+  cleanPath = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
+  
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(cleanPath, expiresIn);
+  
+  if (error) {
+    console.error(`[getSupabaseStorageSignedUrl] Error creating signed URL for ${bucket}/${cleanPath}:`, error);
+    throw new Error(`Failed to create signed URL: ${error.message}`);
+  }
+  
+  return data.signedUrl;
 }
 
 /**

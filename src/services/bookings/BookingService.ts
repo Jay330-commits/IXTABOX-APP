@@ -50,15 +50,23 @@ export class BookingService extends BaseService {
   }
 
   /**
-   * Calculate booking price based on dates and model
+   * Calculate booking price based on box price and deposit
    * @deprecated Use BookingValidationService directly
    */
   calculateBookingPrice(
     days: number,
-    modelId: string | null,
-    basePrice: number = 300
-  ): { amount: number; amountStr: string; days: number; basePrice: number; multiplier: number } {
-    return this.validationService.calculateBookingPrice(days, modelId, basePrice);
+    boxPrice: number | string | null,
+    deposit: number | string | null = null
+  ): { 
+    amount: number; 
+    amountStr: string; 
+    days: number; 
+    pricePerDay: number; 
+    deposit: number;
+    subtotal: number;
+    total: number;
+  } {
+    return this.validationService.calculateBookingPrice(days, boxPrice, deposit);
   }
 
   /**
@@ -344,6 +352,58 @@ export class BookingService extends BaseService {
         console.warn('Using default score of 1 hour due to calculation error');
       }
 
+      // Generate display_id: YYMMDD-XXX format (e.g., 251222-001)
+      // Format: 2-digit year (last 2 digits) + 2-digit month + 2-digit day - 3-digit sequence
+      // Uses SELECT FOR UPDATE to prevent race conditions when multiple bookings are created simultaneously
+      const generateDisplayId = async (): Promise<string> => {
+        const now = new Date();
+        const fullYear = now.getFullYear(); // e.g., 2025
+        const year = String(fullYear).slice(-2); // Last 2 digits: "25"
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+        const day = String(now.getDate()).padStart(2, '0'); // 01-31
+        const datePrefix = `${year}${month}${day}`; // e.g., "251222" for Dec 22, 2025
+        
+        // Find the highest sequence number for today using raw SQL with FOR UPDATE lock
+        // This prevents race conditions by locking the row until transaction completes
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        
+        // Use raw SQL with FOR UPDATE to lock the row and prevent concurrent access
+        const result = await tx.$queryRaw<Array<{ display_id: string }>>`
+          SELECT display_id 
+          FROM public.bookings 
+          WHERE created_at >= ${todayStart}::timestamp 
+            AND created_at < ${todayEnd}::timestamp
+            AND display_id LIKE ${datePrefix + '-%'}
+          ORDER BY display_id DESC 
+          LIMIT 1
+          FOR UPDATE
+        `;
+
+        let sequence = 1;
+        if (result && result.length > 0 && result[0]?.display_id) {
+          // Extract sequence number from last booking (last 3 digits after hyphen)
+          // Format: YYMMDD-XXX
+          const parts = result[0].display_id.split('-');
+          if (parts.length === 2) {
+            const lastSequence = parseInt(parts[1], 10);
+            if (!isNaN(lastSequence)) {
+              sequence = lastSequence + 1;
+            }
+          }
+        }
+
+        // Ensure sequence doesn't exceed 999
+        if (sequence > 999) {
+          throw new Error(`Maximum bookings per day (999) exceeded for ${datePrefix}`);
+        }
+
+        const sequenceStr = String(sequence).padStart(3, '0'); // 001-999
+        return `${datePrefix}-${sequenceStr}`; // e.g., "251222-001"
+      };
+
+      const displayId = await generateDisplayId();
+
       // Create booking with PIN
       try {
         const booking = await tx.bookings.create({
@@ -354,6 +414,7 @@ export class BookingService extends BaseService {
             end_date: end,
             status: bookingStatus,
             lock_pin: lockPin, // Set the mandatory PIN
+            display_id: displayId, // Required non-nullable display_id (YYMMDD + 3-digit sequence)
           },
         });
 
@@ -363,7 +424,7 @@ export class BookingService extends BaseService {
         await tx.boxes.update({
           where: { id: boxId },
           data: {
-            Score: boxScore,
+            score: boxScore,
           },
         });
 

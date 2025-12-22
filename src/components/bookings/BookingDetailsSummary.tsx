@@ -4,6 +4,7 @@ import PriceBreakdown, { PriceBreakdownProps } from './PriceBreakdown';
 export interface BookingDetailsSummaryProps {
   locationName?: string;
   standId?: string;
+  standName?: string;
   modelId?: string;
   modelName?: string;
   startDate?: string;
@@ -11,7 +12,7 @@ export interface BookingDetailsSummaryProps {
   startTime?: string;
   endTime?: string;
   pricePerDay: number;
-  modelMultiplier?: number;
+  deposit?: number;
   currency?: string;
   className?: string;
 }
@@ -24,6 +25,7 @@ export interface BookingDetailsSummaryProps {
 const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
   locationName,
   standId,
+  standName,
   modelId,
   modelName,
   startDate,
@@ -31,7 +33,7 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
   startTime,
   endTime,
   pricePerDay,
-  modelMultiplier = 1,
+  deposit = 0,
   currency = 'SEK',
   className = '',
 }) => {
@@ -89,10 +91,12 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
               <span className="text-white text-right font-medium">{locationName}</span>
             </div>
           )}
-          {standId && (
+          {(standName || standId) && (
             <div className="flex justify-between items-start gap-2">
               <span className="text-gray-400 flex-shrink-0">Stand:</span>
-              <span className="text-white text-right font-medium">#{standId}</span>
+              <span className="text-white text-right font-medium">
+                {standName || (standId ? `Stand ${standId.substring(0, 6).toUpperCase()}` : '—')}
+              </span>
             </div>
           )}
           {modelName && (
@@ -134,10 +138,10 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
           <PriceBreakdown
             pricePerDay={pricePerDay}
             days={days}
-            modelMultiplier={modelMultiplier}
+            deposit={deposit}
             modelName={modelName}
             currency={currency}
-            showModelDetails={!!modelName && modelMultiplier !== 1}
+            showDeposit={deposit > 0}
             variant="dark"
             className="bg-transparent p-0"
           />

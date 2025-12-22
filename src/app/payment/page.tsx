@@ -40,6 +40,7 @@ function PaymentContent() {
     locationName?: string;
     boxId?: string;
     standId?: string;
+    standName?: string;
     modelId?: string;
     modelName?: string;
     startDate?: string;
@@ -49,7 +50,7 @@ function PaymentContent() {
     locationDisplayId?: string;
     compartment?: string | null;
     pricePerDay?: number;
-    modelMultiplier?: number;
+    deposit?: number;
   } | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('sek');
@@ -410,15 +411,6 @@ function PaymentContent() {
       
       <main className="py-8 sm:py-16 animate-fadeIn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-4 animate-slideDown">
-              Complete Your Payment
-            </h1>
-            <p className="text-sm sm:text-base text-gray-300 animate-slideDown" style={{animationDelay: '100ms'}}>
-              Secure payment powered by Stripe
-            </p>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Payment Summary & Notifications */}
             <div className="lg:col-span-1 order-2 lg:order-1">
@@ -427,14 +419,15 @@ function PaymentContent() {
                 <BookingDetailsSummary
                   locationName={bookingDetails.locationName}
                   standId={bookingDetails.standId}
+                  standName={bookingDetails.standName}
                   modelId={bookingDetails.modelId}
                   modelName={bookingDetails.modelName}
                   startDate={bookingDetails.startDate}
                   endDate={bookingDetails.endDate}
                   startTime={bookingDetails.startTime}
                   endTime={bookingDetails.endTime}
-                  pricePerDay={bookingDetails.pricePerDay}
-                  modelMultiplier={bookingDetails.modelMultiplier || 1}
+                  pricePerDay={bookingDetails.pricePerDay || 300}
+                  deposit={bookingDetails.deposit || 0}
                   currency={currency}
                 />
               )}

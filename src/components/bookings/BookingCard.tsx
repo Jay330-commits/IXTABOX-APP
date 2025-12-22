@@ -10,8 +10,8 @@ interface BookingCardProps {
     status: 'upcoming' | 'active' | 'completed' | 'cancelled' | 'confirmed';
     model: {
       name: string;
-      priceMultiplier: number;
     };
+    deposit?: number;
     pricePerDay: number;
   };
   onClick: () => void;
@@ -76,7 +76,8 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onClick }) => {
             {(() => {
               const ms = new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime();
               const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-              const total = days * booking.pricePerDay * booking.model.priceMultiplier;
+              const subtotal = days * booking.pricePerDay;
+              const total = subtotal + (booking.deposit || 0);
               return `$${total.toFixed(2)}`;
             })()}
           </span>

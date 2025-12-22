@@ -25,6 +25,11 @@ export interface Booking {
   createdAt?: string;
   returnedAt?: string | null;
   model?: string;
+  pricePerDay?: number;
+  deposit?: number;
+  boxFrontView?: string | null;
+  boxBackView?: string | null;
+  closedStandLock?: string | null;
 }
 
 export interface Notification {

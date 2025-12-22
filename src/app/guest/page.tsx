@@ -119,6 +119,19 @@ const Map = dynamic<MapProps>(() => import("../../components/maps/googlemap"), {
   ),
 });
 
+// Hero background images to rotate through
+const HERO_BACKGROUNDS = [
+  "/images/background/back.jpg",
+  "/images/background/IXTAbox_Hero_Shot_Summer_2025.jpg",
+  "/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP1.jpg",
+  "/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP2.jpg",
+  "/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP3.jpg",
+  "/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP4.jpg",
+  "/images/background/2025_IXTA_LIFESTYLE_SLIDESHOW_CROP5.jpg",
+  "/images/background/2025_IXTAbox_Summer202543.jpg",
+  "/images/background/BMW_i5_Golf_Leo_DSC2698.jpg",
+] as const;
+
 export default function GuestHome() {
   const [mounted, setMounted] = useState(false);
   const [locations, setLocations] = useState<MapProps["locations"]>([]);
@@ -129,6 +142,7 @@ export default function GuestHome() {
   const [activeMetric, setActiveMetric] = useState(0);
   const [metricProgress, setMetricProgress] = useState(0);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(0);
   // const [showFilterForm, setShowFilterForm] = useState(false);
   // const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
   //   startDate: '',
@@ -273,6 +287,15 @@ export default function GuestHome() {
     };
   }, []);
 
+  // Rotate hero background images
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBackgroundIndex((prev) => (prev + 1) % HERO_BACKGROUNDS.length);
+    }, 8000); // Change background every 8 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleSelectTestimonial = (index: number) => {
     setActiveTestimonial(index);
     setTestimonialProgress(0);
@@ -324,13 +347,19 @@ export default function GuestHome() {
           className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
           style={{ minHeight: 560 }}
         >
-          {/* Background image */}
-          <div
-            className="absolute inset-0 bg-center bg-cover"
-            style={{
-              backgroundImage: "url(/images/background/back.jpg)",
-            }}
-          />
+          {/* Background images with fade transition */}
+          {HERO_BACKGROUNDS.map((bg, index) => (
+            <div
+              key={bg}
+              className="absolute inset-0 bg-center bg-cover transition-opacity ease-in-out"
+              style={{
+                backgroundImage: `url(${bg})`,
+                opacity: index === currentBackgroundIndex ? 1 : 0,
+                zIndex: index === currentBackgroundIndex ? 1 : 0,
+                transitionDuration: '2s',
+              }}
+            />
+          ))}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80 z-10" />
           <div className="absolute inset-0 z-10">
             <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />

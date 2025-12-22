@@ -28,8 +28,9 @@ export async function GET(
     
     // Fetch location name from database if locationId is available
     let locationName: string | null = null;
+    let standName: string | null = null;
     let pricePerDay: number | null = null;
-    let modelMultiplier: number | null = null;
+    let deposit: number | null = null;
     let modelName: string | null = null;
     
     if (paymentIntent.metadata.locationId) {
@@ -45,108 +46,52 @@ export async function GET(
       }
     }
     
-    // Fetch base price from platform settings for price breakdown
-    // Price is stored in platform_settings, not in stands table
-    try {
-      const basePriceSetting = await prisma.platform_settings.findUnique({
-        where: { setting_key: 'base_price_per_day' },
-      });
-      
-      if (basePriceSetting?.value) {
-        if (typeof basePriceSetting.value === 'number') {
-          pricePerDay = basePriceSetting.value;
-        } else if (typeof basePriceSetting.value === 'string') {
-          const parsed = parseFloat(basePriceSetting.value);
-          if (!isNaN(parsed)) {
-            pricePerDay = parsed;
-          }
-        }
+    // Fetch stand name from database if standId is available
+    if (paymentIntent.metadata.standId) {
+      try {
+        const stand = await prisma.stands.findUnique({
+          where: { id: paymentIntent.metadata.standId },
+          select: { name: true },
+        });
+        standName = stand?.name || null;
+      } catch (error) {
+        console.error('Error fetching stand name:', error);
+        // Continue without stand name if fetch fails
       }
-      
-      // Default fallback if not found in settings
-      if (!pricePerDay) {
-        pricePerDay = 300; // Default base price
-      }
-    } catch (error) {
-      console.error('Error fetching base price from platform settings:', error);
-      // Use default if fetch fails
-      pricePerDay = 300;
     }
     
-    // Get model information from enum value and platform settings
-    // modelId in metadata is the enum value (Pro_175 or Pro_190)
-    if (paymentIntent.metadata.modelId) {
+    // Fetch box price and deposit from database
+    if (paymentIntent.metadata.boxId) {
       try {
-        const modelIdValue = paymentIntent.metadata.modelId;
+        const box = await prisma.boxes.findUnique({
+          where: { id: paymentIntent.metadata.boxId },
+          select: { price: true, deposit: true, model: true },
+        });
         
-        // Determine model name from enum value
-        if (modelIdValue === 'Pro_175' || modelIdValue === 'Pro 175' || modelIdValue === 'pro_175') {
-          modelName = 'Pro 175';
-          // Get multiplier from platform settings
-          const pro175MultiplierSetting = await prisma.platform_settings.findUnique({
-            where: { setting_key: 'pro_175_model_multiplier' },
-          });
-          if (pro175MultiplierSetting?.value) {
-            if (typeof pro175MultiplierSetting.value === 'number') {
-              modelMultiplier = pro175MultiplierSetting.value;
-            } else if (typeof pro175MultiplierSetting.value === 'string') {
-              const parsed = parseFloat(pro175MultiplierSetting.value);
-              if (!isNaN(parsed)) modelMultiplier = parsed;
-            }
+        if (box) {
+          // Convert Decimal to number
+          pricePerDay = box.price ? (typeof box.price === 'string' ? parseFloat(box.price) : Number(box.price)) : 300;
+          deposit = box.deposit ? (typeof box.deposit === 'string' ? parseFloat(box.deposit) : Number(box.deposit)) : 0;
+          
+          // Get model name from enum
+          if (box.model) {
+            modelName = String(box.model).replace(/_/g, ' ');
           }
-          // Fallback to classic multiplier if pro_175 not found
-          if (!modelMultiplier) {
-            const classicMultiplierSetting = await prisma.platform_settings.findUnique({
-              where: { setting_key: 'classic_model_multiplier' },
-            });
-            if (classicMultiplierSetting?.value) {
-              if (typeof classicMultiplierSetting.value === 'number') {
-                modelMultiplier = classicMultiplierSetting.value;
-              } else if (typeof classicMultiplierSetting.value === 'string') {
-                const parsed = parseFloat(classicMultiplierSetting.value);
-                if (!isNaN(parsed)) modelMultiplier = parsed;
-              }
-            }
-          }
-          // Default multiplier
-          if (!modelMultiplier) modelMultiplier = 1.0;
-        } else if (modelIdValue === 'Pro_190' || modelIdValue === 'Pro 190' || modelIdValue === 'pro_190') {
-          modelName = 'Pro 190';
-          // Get multiplier from platform settings
-          const pro190MultiplierSetting = await prisma.platform_settings.findUnique({
-            where: { setting_key: 'pro_190_model_multiplier' },
-          });
-          if (pro190MultiplierSetting?.value) {
-            if (typeof pro190MultiplierSetting.value === 'number') {
-              modelMultiplier = pro190MultiplierSetting.value;
-            } else if (typeof pro190MultiplierSetting.value === 'string') {
-              const parsed = parseFloat(pro190MultiplierSetting.value);
-              if (!isNaN(parsed)) modelMultiplier = parsed;
-            }
-          }
-          // Fallback to pro multiplier if pro_190 not found
-          if (!modelMultiplier) {
-            const proMultiplierSetting = await prisma.platform_settings.findUnique({
-              where: { setting_key: 'pro_model_multiplier' },
-            });
-            if (proMultiplierSetting?.value) {
-              if (typeof proMultiplierSetting.value === 'number') {
-                modelMultiplier = proMultiplierSetting.value;
-              } else if (typeof proMultiplierSetting.value === 'string') {
-                const parsed = parseFloat(proMultiplierSetting.value);
-                if (!isNaN(parsed)) modelMultiplier = parsed;
-              }
-            }
-          }
-          // Default multiplier for Pro 190
-          if (!modelMultiplier) modelMultiplier = 1.5;
+        } else {
+          // Default fallback if box not found
+          pricePerDay = 300;
+          deposit = 0;
         }
       } catch (error) {
-        console.error('Error fetching model details:', error);
-        // Use defaults on error
-        if (!modelName) modelName = 'Pro 175';
-        if (!modelMultiplier) modelMultiplier = 1.0;
+        console.error('Error fetching box price and deposit:', error);
+        // Use defaults if fetch fails
+        pricePerDay = 300;
+        deposit = 0;
       }
+    } else {
+      // Default fallback if no boxId
+      pricePerDay = 300;
+      deposit = 0;
     }
 
     // Extract booking details from Stripe metadata (always available)
@@ -155,6 +100,7 @@ export async function GET(
       locationName: locationName || paymentIntent.metadata.locationDisplayId || paymentIntent.metadata.locationId,
       boxId: paymentIntent.metadata.boxId,
       standId: paymentIntent.metadata.standId,
+      standName: standName,
       modelId: paymentIntent.metadata.modelId,
       modelName: modelName,
       startDate: paymentIntent.metadata.startDate,
@@ -164,7 +110,7 @@ export async function GET(
       locationDisplayId: paymentIntent.metadata.locationDisplayId || paymentIntent.metadata.locationId,
       compartment: paymentIntent.metadata.compartment || null,
       pricePerDay: pricePerDay,
-      modelMultiplier: modelMultiplier,
+      deposit: deposit,
     };
 
     // Only query database if payment has succeeded (to avoid unnecessary DB calls)

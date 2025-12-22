@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
 import { BookingStatus, boxmodel } from '@prisma/client';
+import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,17 +36,18 @@ export async function POST(request: NextRequest) {
       include: {
         bookings: {
           include: {
-        boxes: {
-          include: {
-            stands: {
+            boxes: {
               include: {
-                locations: true,
+                stands: {
+                  include: {
+                    locations: true,
+                  },
+                },
               },
             },
+            payments: true,
+            box_returns: true,
           },
-        },
-        payments: true,
-      },
         },
         users: true,
       },
@@ -66,12 +68,63 @@ export async function POST(request: NextRequest) {
     const bookings = [payment.bookings];
 
     // Transform bookings to match the frontend format (similar to customer page)
-    const formattedBookings = bookings.map((booking) => {
+    const formattedBookings = await Promise.all(bookings.map(async (booking) => {
       const days = Math.max(1, Math.ceil((booking.end_date.getTime() - booking.start_date.getTime()) / (1000 * 60 * 60 * 24)));
       const totalAmount = parseFloat(booking.payments?.amount.toString() || '0');
-      const modelMultiplier = booking.boxes.model === boxmodel.Pro_190 ? 1.5 : 1.0;
-      // Base price per day (before model multiplier)
-      const basePricePerDay = totalAmount / days / modelMultiplier;
+      
+      // Get price and deposit from box
+      const boxPrice = booking.boxes.price 
+        ? (typeof booking.boxes.price === 'string' ? parseFloat(booking.boxes.price) : Number(booking.boxes.price))
+        : 300; // Default fallback
+      const boxDeposit = booking.boxes.deposit 
+        ? (typeof booking.boxes.deposit === 'string' ? parseFloat(booking.boxes.deposit) : Number(booking.boxes.deposit))
+        : 0;
+
+      // Generate signed URLs for return photos if they exist
+      // For guest bookings, we'll use public URLs or try to create signed URLs without access token
+      const getImageUrl = async (imagePath: string | null | undefined): Promise<string | null> => {
+        if (!imagePath) return null;
+        
+        // If it's already a full URL (including signed URLs), return as-is
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          // Check if it's already a signed URL (contains token parameter)
+          if (imagePath.includes('token=') || imagePath.includes('&t=')) {
+            return imagePath;
+          }
+          
+          // If it's a public URL but bucket is private, try to create a signed URL
+          try {
+            const url = new URL(imagePath);
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+            if (pathMatch) {
+              const extractedPath = pathMatch[1];
+              try {
+                return await getSupabaseStorageSignedUrl('box_returns', extractedPath, 3600);
+              } catch {
+                return imagePath; // Fallback to original URL if signed URL creation fails
+              }
+            }
+          } catch {
+            return imagePath;
+          }
+        }
+        
+        // Otherwise, try to create signed URL from path
+        try {
+          return await getSupabaseStorageSignedUrl('box_returns', imagePath, 3600);
+        } catch (error) {
+          console.error('[Guest Bookings API] Failed to create signed URL, falling back to public URL:', error);
+          // Fallback to public URL if signed URL creation fails
+          return getSupabaseStoragePublicUrl('box_returns', imagePath);
+        }
+      };
+      
+      // Generate URLs for all return photos (expire in 1 hour)
+      const [boxFrontView, boxBackView, closedStandLock] = await Promise.all([
+        getImageUrl(booking.box_returns?.box_front_view),
+        getImageUrl(booking.box_returns?.box_back_view),
+        getImageUrl(booking.box_returns?.closed_stand_lock),
+      ]);
 
       return {
         id: booking.id,
@@ -88,7 +141,8 @@ export async function POST(request: NextRequest) {
         date: booking.start_date.toISOString(), // For compatibility
         status: (booking.status || BookingStatus.Upcoming).toLowerCase() as 'active' | 'upcoming' | 'completed' | 'cancelled' | 'confirmed',
         amount: totalAmount,
-        pricePerDay: basePricePerDay, // Base price per day (before model multiplier)
+        pricePerDay: boxPrice,
+        deposit: boxDeposit,
         model: booking.boxes.model === boxmodel.Pro_190 ? 'Pro 190' : 'Pro 175',
         lockPin: booking.lock_pin ? String(booking.lock_pin) : null,
         paymentId: booking.payments?.id || null,
@@ -96,8 +150,11 @@ export async function POST(request: NextRequest) {
         paymentStatus: booking.payments?.status || null,
         createdAt: booking.created_at?.toISOString() || null,
         returnedAt: booking.returned_at?.toISOString() || null,
+        boxFrontView,
+        boxBackView,
+        closedStandLock,
       };
-    });
+    }));
 
     // Include user details if available
     const userDetails = payment.users ? {

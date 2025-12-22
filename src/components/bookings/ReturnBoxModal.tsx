@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ReturnBoxModalProps {
   bookingId: string;
@@ -33,6 +34,7 @@ export default function ReturnBoxModal({
   returnConfirmed,
   setReturnConfirmed,
 }: ReturnBoxModalProps) {
+  const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("instructions");
@@ -188,28 +190,40 @@ export default function ReturnBoxModal({
     setIsSubmitting(true);
 
     try {
-      const authToken = localStorage.getItem("auth-token");
+      // Use token from auth context (consistent with test page and distributor dashboard)
+      const authToken = token || localStorage.getItem("auth-token");
+      
+      if (!authToken) {
+        setError("Please log in to return the box");
+        setIsSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append("boxFrontView", returnPhotos.boxFrontView);
       formData.append("boxBackView", returnPhotos.boxBackView);
       formData.append("closedStandLock", returnPhotos.closedStandLock);
       formData.append("confirmedGoodStatus", "true");
 
-      const headers: HeadersInit = {};
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-
       const response = await fetch(`/api/bookings/${bookingId}/return`, {
         method: "POST",
-        headers,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
         body: formData,
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to return box");
+        // Provide more detailed error message
+        const errorMessage = data.error || data.message || "Failed to return box";
+        console.error("[ReturnBoxModal] API error:", {
+          status: response.status,
+          error: errorMessage,
+          data,
+        });
+        throw new Error(errorMessage);
       }
 
       onSuccess();

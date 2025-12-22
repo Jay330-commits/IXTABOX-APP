@@ -82,8 +82,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ bookingId: string }> }
 ) {
+  // Extract bookingId outside try block so it's available in catch block
+  let bookingId: string | undefined;
   try {
-    const { bookingId } = await params;
+    const resolvedParams = await params;
+    bookingId = resolvedParams.bookingId;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -193,12 +196,35 @@ export async function POST(
         boxBackView: boxBackViewUrl.url,
         closedStandLock: closedStandLockUrl.url,
       };
+      
+      // Debug logging for uploaded photo URLs
+      console.log('[Return API] Uploaded photo URLs:', {
+        bookingId: bookingId.slice(0, 8),
+        boxFrontView: {
+          path: boxFrontViewUrl.path,
+          url: boxFrontViewUrl.url,
+        },
+        boxBackView: {
+          path: boxBackViewUrl.path,
+          url: boxBackViewUrl.url,
+        },
+        closedStandLock: {
+          path: closedStandLockUrl.path,
+          url: closedStandLockUrl.url,
+        },
+      });
     } catch (uploadError) {
-      console.error('Error uploading photos to Supabase Storage:', uploadError);
+      console.error('[Return API] Error uploading photos to Supabase Storage:', uploadError);
+      const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+      console.error('[Return API] Upload error details:', {
+        errorMessage,
+        errorType: uploadError instanceof Error ? uploadError.constructor.name : typeof uploadError,
+        bookingId: bookingId.slice(0, 8),
+      });
       return NextResponse.json(
         {
           error: 'Failed to upload photos',
-          message: uploadError instanceof Error ? uploadError.message : 'Unknown error',
+          message: errorMessage,
         },
         { status: 500 }
       );
@@ -213,6 +239,10 @@ export async function POST(
     });
 
     if (!returnResult.success) {
+      console.error('[Return API] ReturnBoxService failed:', {
+        bookingId: bookingId.slice(0, 8),
+        error: returnResult.error,
+      });
       return NextResponse.json(
         {
           error: returnResult.error || 'Failed to return box',
@@ -227,11 +257,19 @@ export async function POST(
       return: returnResult,
     });
   } catch (error) {
-    console.error('Error processing box return:', error);
+    console.error('[Return API] Error processing box return:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('[Return API] Error details:', {
+      errorMessage,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorStack,
+      bookingId: bookingId?.slice(0, 8) || 'unknown',
+    });
     return NextResponse.json(
       {
         error: 'Failed to process box return',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: errorMessage,
       },
       { status: 500 }
     );

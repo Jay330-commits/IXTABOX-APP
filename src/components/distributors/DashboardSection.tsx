@@ -73,7 +73,7 @@ const getIconSvg = (iconType: string) => {
     case 'stands':
       return (
         <svg
-          className="w-8 h-8"
+          className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -89,7 +89,7 @@ const getIconSvg = (iconType: string) => {
     case 'rentals':
       return (
         <svg
-          className="w-8 h-8"
+          className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -105,7 +105,7 @@ const getIconSvg = (iconType: string) => {
     case 'earnings':
       return (
         <svg
-          className="w-8 h-8"
+          className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -121,7 +121,7 @@ const getIconSvg = (iconType: string) => {
     case 'contract':
       return (
         <svg
-          className="w-8 h-8"
+          className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -159,6 +159,42 @@ export default function DashboardSection({
   refreshDashboardData,
   setActiveSection,
 }: DashboardSectionProps) {
+  // Column filters state - Excel-style filtering
+  const [columnFilters, setColumnFilters] = React.useState<Record<string, string>>({
+    identifier: '',
+    boxId: '',
+    model: '',
+    location: '',
+    customer: '',
+    from: '',
+    to: '',
+    booking: '',
+    payment: '',
+    amount: '',
+  });
+  const [showFilters, setShowFilters] = React.useState(false);
+  
+  // Get unique booking statuses
+  const getUniqueBookingStatuses = React.useMemo(() => {
+    const statuses = new Set<string>();
+    boxInventory.forEach((booking) => {
+      if (booking.bookingStatus) {
+        statuses.add(booking.bookingStatus);
+      }
+    });
+    return Array.from(statuses).sort();
+  }, [boxInventory]);
+
+  // Get unique payment statuses
+  const getUniquePaymentStatuses = React.useMemo(() => {
+    const statuses = new Set<string>();
+    boxInventory.forEach((booking) => {
+      if (booking.paymentStatus) {
+        statuses.add(booking.paymentStatus);
+      }
+    });
+    return Array.from(statuses).sort();
+  }, [boxInventory]);
   const getBookingStatusColor = (status: string) => {
     const normalized = status?.toLowerCase() || '';
     if (normalized === 'active') {
@@ -199,6 +235,201 @@ export default function DashboardSection({
     setExpandedRows(newExpanded);
   };
 
+  // Filter boxInventory based on column filters
+  const filteredInventory = React.useMemo(() => {
+    return boxInventory.filter((booking) => {
+      // Identifier filter
+      if (columnFilters.identifier) {
+        const identifier = booking.bookingDisplayId || '';
+        if (!identifier.toLowerCase().includes(columnFilters.identifier.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Box ID filter
+      if (columnFilters.boxId) {
+        if (!booking.boxId.toLowerCase().includes(columnFilters.boxId.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Model filter
+      if (columnFilters.model) {
+        const model = booking.boxType?.replace(/_/g, ' ') || '';
+        if (!model.toLowerCase().includes(columnFilters.model.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Location filter
+      if (columnFilters.location) {
+        if (!booking.location.toLowerCase().includes(columnFilters.location.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Customer filter
+      if (columnFilters.customer) {
+        const customer = booking.customer || '';
+        if (!customer.toLowerCase().includes(columnFilters.customer.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // From (Start Date) filter
+      if (columnFilters.from) {
+        const startDate = new Date(booking.startDate);
+        // Compare dates (ignore time)
+        if (startDate.toISOString().split('T')[0] !== columnFilters.from) {
+          return false;
+        }
+      }
+
+      // To (End Date) filter
+      if (columnFilters.to) {
+        const endDate = new Date(booking.endDate);
+        // Compare dates (ignore time)
+        if (endDate.toISOString().split('T')[0] !== columnFilters.to) {
+          return false;
+        }
+      }
+
+      // Booking Status filter
+      if (columnFilters.booking) {
+        if (booking.bookingStatus !== columnFilters.booking) {
+          return false;
+        }
+      }
+
+      // Payment Status filter
+      if (columnFilters.payment) {
+        if (booking.paymentStatus !== columnFilters.payment) {
+          return false;
+        }
+      }
+
+      // Amount filter with comparison operators
+      if (columnFilters.amount) {
+        const filterValue = columnFilters.amount.trim();
+        const bookingAmount = booking.amount;
+        
+        // Check for comparison operators
+        if (filterValue.startsWith('>=')) {
+          const numValue = parseFloat(filterValue.substring(2).trim());
+          if (isNaN(numValue) || bookingAmount < numValue) {
+            return false;
+          }
+        } else if (filterValue.startsWith('<=')) {
+          const numValue = parseFloat(filterValue.substring(2).trim());
+          if (isNaN(numValue) || bookingAmount > numValue) {
+            return false;
+          }
+        } else if (filterValue.startsWith('>')) {
+          const numValue = parseFloat(filterValue.substring(1).trim());
+          if (isNaN(numValue) || bookingAmount <= numValue) {
+            return false;
+          }
+        } else if (filterValue.startsWith('<')) {
+          const numValue = parseFloat(filterValue.substring(1).trim());
+          if (isNaN(numValue) || bookingAmount >= numValue) {
+            return false;
+          }
+        } else {
+          // Fallback to text search for backward compatibility
+          const amountStr = bookingAmount.toString();
+          if (!amountStr.includes(filterValue)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [boxInventory, columnFilters]);
+
+  // Calculate filtered stats, revenue, and status counts
+  const filteredStats = React.useMemo(() => {
+    const hasFilters = Object.values(columnFilters).some(f => f);
+    if (!hasFilters) {
+      return {
+        statsData,
+        revenueSummary,
+        statusCounts,
+      };
+    }
+
+    // Calculate revenue from filtered inventory
+    const totalRevenue = filteredInventory.reduce((sum, booking) => {
+      return sum + (booking.amount || 0);
+    }, 0);
+
+    // Calculate status counts from filtered inventory
+    const counts = {
+      active: 0,
+      upcoming: 0,
+      cancelled: 0,
+      overdue: 0,
+    };
+
+    filteredInventory.forEach((booking) => {
+      const status = booking.bookingStatus?.toLowerCase() || '';
+      if (status === 'active') {
+        counts.active++;
+      } else if (status === 'upcoming' || status === 'confirmed') {
+        counts.upcoming++;
+      } else if (status === 'cancelled') {
+        counts.cancelled++;
+      } else if (status === 'overdue') {
+        counts.overdue++;
+      }
+    });
+
+    // Calculate stats from filtered inventory
+    // Get unique locations/stands count
+    const uniqueLocations = new Set(filteredInventory.map(b => b.location)).size;
+    const totalBookings = filteredInventory.length;
+    
+    // Calculate based on what statsData contains - we'll need to map the existing stats
+    const calculatedStats = statsData.map((stat) => {
+      if (stat.title.toLowerCase().includes('stand') || stat.title.toLowerCase().includes('location')) {
+        return { ...stat, value: uniqueLocations };
+      } else if (stat.title.toLowerCase().includes('rental') || stat.title.toLowerCase().includes('booking')) {
+        return { ...stat, value: totalBookings };
+      } else if (stat.title.toLowerCase().includes('earning') || stat.title.toLowerCase().includes('revenue')) {
+        return { ...stat, value: `${currency}${totalRevenue.toLocaleString()}` };
+      }
+      return stat;
+    });
+
+    return {
+      statsData: calculatedStats,
+      revenueSummary: { totalRevenue, currency },
+      statusCounts: counts,
+    };
+  }, [filteredInventory, columnFilters, statsData, revenueSummary, statusCounts, currency]);
+
+  const updateFilter = (column: string, value: string) => {
+    setColumnFilters((prev) => ({
+      ...prev,
+      [column]: value,
+    }));
+  };
+
+  const clearAllFilters = () => {
+    setColumnFilters({
+      identifier: '',
+      boxId: '',
+      model: '',
+      location: '',
+      customer: '',
+      from: '',
+      to: '',
+      booking: '',
+      payment: '',
+      amount: '',
+    });
+  };
+
   return (
     <>
       {/* Stats Section - Hidden on mobile */}
@@ -227,32 +458,27 @@ export default function DashboardSection({
           /* Stats Cards */
           <div className="mb-8">
             <div className="grid grid-cols-4 gap-6">
-              {statsData.map((stat, index) => (
+              {filteredStats.statsData.map((stat, index) => (
                 <div
                   key={index}
                   className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-cyan-300 w-8 h-8">{getIconSvg(stat.icon)}</div>
-                    <div
-                      className={`text-xs font-semibold px-2 py-1 rounded ${
-                        stat.changeType === 'positive'
-                          ? 'bg-green-500/20 text-green-400'
-                          : stat.changeType === 'negative'
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-blue-500/20 text-blue-400'
-                      }`}
-                    >
-                      {stat.changeType === 'positive' && '↑'}
-                      {stat.changeType === 'negative' && '↓'}
-                    </div>
-                  </div>
-
+                  <div className="flex items-center justify-between">
+                    <div>
                   <h3 className="text-sm text-gray-400 mb-1">{stat.title}</h3>
-                  <p className="text-2xl font-bold text-cyan-300 mb-2">
+                      <p className="text-2xl font-bold text-cyan-300">
                     {stat.value}
                   </p>
-                  <p className="text-sm text-gray-400">{stat.change}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="text-cyan-300 flex items-center justify-center">
+                        {getIconSvg(stat.icon)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm text-gray-400">
+                    {stat.change.replace(/^-/, '')}
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,9 +487,9 @@ export default function DashboardSection({
       </div>
 
       {/* Modern Real-time Box Inventory Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-8">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-4">
             <div>
               <h2 className="text-xl font-bold">Bookings & Revenue Tracking</h2>
               <p className="text-sm text-gray-400 mt-1">Track all bookings, payments, and revenue across your locations</p>
@@ -311,6 +537,37 @@ export default function DashboardSection({
                 >
                   {showAllTime ? 'Filter by Month' : 'Show All Time'}
                 </button>
+                
+                {/* Column Filters Toggle */}
+                <div className="h-4 w-px bg-white/20 mx-1"></div>
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                    showFilters
+                      ? 'bg-cyan-500 text-white hover:bg-cyan-600'
+                      : 'bg-white/10 text-cyan-300 hover:bg-white/20'
+                  }`}
+                  title={showFilters ? 'Hide Column Filters' : 'Show Column Filters'}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  <span>Columns</span>
+                  {Object.values(columnFilters).some(f => f) && (
+                    <span className="bg-white/20 text-white text-xs px-1 py-0.5 rounded-full">
+                      {Object.values(columnFilters).filter(f => f).length}
+                    </span>
+                  )}
+                </button>
+                {Object.values(columnFilters).some(f => f) && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="px-2 py-1 rounded text-xs font-medium transition-all duration-200 bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                    title="Clear all column filters"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
               
               {isRefreshing ? (
@@ -330,7 +587,7 @@ export default function DashboardSection({
             </div>
           </div>
           
-          {/* Modern Excel-like Table */}
+          {/* Modern Table with Inline Filters */}
           {loading ? (
             <div className="py-8 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-cyan-500/20 border-t-cyan-500"></div>
@@ -346,61 +603,227 @@ export default function DashboardSection({
             </div>
           ) : (
             <div className="border border-white/10 rounded-lg overflow-hidden">
+              {/* Results count when filters are active */}
+              {Object.values(columnFilters).some(f => f) && (
+                <div className="bg-gray-800/30 border-b border-white/10 px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs text-gray-400 font-medium">
+                    Showing <span className="text-cyan-300 font-semibold">{filteredInventory.length}</span> of <span className="text-white font-semibold">{boxInventory.length}</span> bookings
+                  </span>
+                </div>
+              )}
               <div className="overflow-auto max-h-[600px]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-gray-900 z-10">
                     <tr className="border-b border-white/20">
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">ID</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Box ID</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Model</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Location</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Customer</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Start</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">End</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Booking</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Payment</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Amount</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Return</th>
-                      <th className="text-left py-4 px-3 text-gray-300 font-semibold bg-gray-900">Details</th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Booking ID</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.identifier}
+                              onChange={(e) => updateFilter('identifier', e.target.value)}
+                              placeholder="Filter..."
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Box ID</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.boxId}
+                              onChange={(e) => updateFilter('boxId', e.target.value)}
+                              placeholder="Filter..."
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Model</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.model}
+                              onChange={(e) => updateFilter('model', e.target.value)}
+                              placeholder="Filter..."
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Location</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.location}
+                              onChange={(e) => updateFilter('location', e.target.value)}
+                              placeholder="Filter..."
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Customer</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.customer}
+                              onChange={(e) => updateFilter('customer', e.target.value)}
+                              placeholder="Filter..."
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">From</span>
+                          {showFilters && (
+                            <input
+                              type="date"
+                              value={columnFilters.from}
+                              onChange={(e) => updateFilter('from', e.target.value)}
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              style={{ colorScheme: 'dark' }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">To</span>
+                          {showFilters && (
+                            <input
+                              type="date"
+                              value={columnFilters.to}
+                              onChange={(e) => updateFilter('to', e.target.value)}
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              style={{ colorScheme: 'dark' }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Booking</span>
+                          {showFilters && (
+                            <select
+                              value={columnFilters.booking}
+                              onChange={(e) => updateFilter('booking', e.target.value)}
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all cursor-pointer"
+                              style={{ colorScheme: 'dark' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="" className="bg-gray-800">All</option>
+                              {getUniqueBookingStatuses.map((status) => (
+                                <option key={status} value={status} className="bg-gray-800">
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Payment</span>
+                          {showFilters && (
+                            <select
+                              value={columnFilters.payment}
+                              onChange={(e) => updateFilter('payment', e.target.value)}
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all cursor-pointer"
+                              style={{ colorScheme: 'dark' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="" className="bg-gray-800">All</option>
+                              {getUniquePaymentStatuses.map((status) => (
+                                <option key={status} value={status} className="bg-gray-800">
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </th>
+                      <th className={`text-left ${showFilters ? 'py-2' : 'py-3'} px-3 bg-gray-900`}>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-sm font-semibold text-gray-300">Amount</span>
+                          {showFilters && (
+                            <input
+                              type="text"
+                              value={columnFilters.amount}
+                              onChange={(e) => updateFilter('amount', e.target.value)}
+                              placeholder="e.g. >100, <500, >=1000"
+                              className="w-full px-2 py-1 text-xs bg-gray-800/50 border border-white/10 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Use >, <, >=, <= for comparisons (e.g. >100, <500, >=1000)"
+                            />
+                          )}
+                        </div>
+                      </th>
+                      <th className="text-left py-2 px-3 bg-gray-900">
+                        <span className="text-sm font-semibold text-gray-300">Details</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {boxInventory.map((booking) => {
+                    {filteredInventory.map((booking) => {
                       const isExpanded = expandedRows.has(booking.bookingId);
 
                       return (
                         <React.Fragment key={booking.bookingId}>
                           <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <td className="py-4 px-3">
-                              <span className="font-mono text-cyan-300 text-xs">
-                                #{booking.bookingDisplayId || booking.bookingId.slice(0, 8)}
+                            <td className="py-4 px-4">
+                              <span className="font-mono text-cyan-300 text-sm whitespace-nowrap">
+                                {booking.bookingDisplayId ? booking.bookingDisplayId : (
+                                  <span className="text-red-400" title="Error: Booking display ID is missing">
+                                    ERROR
+                                  </span>
+                                )}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="font-mono text-white">#{booking.boxId}</span>
+                            <td className="py-4 px-4">
+                              <span className="font-mono text-white text-sm">{booking.boxId}</span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="text-white">{booking.boxType}</span>
+                            <td className="py-4 px-4">
+                              <span className="text-white whitespace-nowrap text-sm">{booking.boxType?.replace(/_/g, ' ')}</span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="text-white break-words" title={booking.location}>
+                            <td className="py-4 px-4">
+                              <span className="text-white text-sm break-words overflow-wrap-anywhere" title={booking.location} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                 {booking.location}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="text-white">{booking.customer}</span>
+                            <td className="py-4 px-4">
+                              <span className="text-white text-sm">{booking.customer}</span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="text-gray-300">
+                            <td className="py-4 px-4">
+                              <span className="text-gray-300 text-sm">
                                 {new Date(booking.startDate).toLocaleDateString()}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="text-gray-300">
+                            <td className="py-4 px-4">
+                              <span className="text-gray-300 text-sm">
                                 {new Date(booking.endDate).toLocaleDateString()}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
+                            <td className="py-4 px-4">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getBookingStatusColor(
                                   booking.bookingStatus
@@ -409,7 +832,7 @@ export default function DashboardSection({
                                 {booking.bookingStatus}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
+                            <td className="py-4 px-4">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getPaymentStatusColor(
                                   booking.paymentStatus
@@ -418,14 +841,9 @@ export default function DashboardSection({
                                 {booking.paymentStatus}
                               </span>
                             </td>
-                            <td className="py-4 px-3">
-                              <span className="font-semibold text-green-400">
+                            <td className="py-4 px-4">
+                              <span className="font-semibold text-green-400 text-sm">
                                 {booking.amount.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="py-4 px-3">
-                              <span className="text-gray-300">
-                                {booking.returnedAt ? new Date(booking.returnedAt).toLocaleDateString() : '-'}
                               </span>
                             </td>
                             <td className="py-4 px-3">
@@ -439,7 +857,7 @@ export default function DashboardSection({
                           </tr>
                           {isExpanded && (
                             <tr className="bg-white/5 border-b border-white/10">
-                              <td colSpan={12} className="py-4 px-6">
+                              <td colSpan={11} className="py-4 px-6">
                                 {/* Booking Details */}
                                 <div className="mb-6">
                                   <h4 className="text-sm font-semibold text-gray-300 mb-4">Booking Details</h4>
@@ -464,6 +882,12 @@ export default function DashboardSection({
                                       <div>
                                         <p className="text-gray-400 text-xs mb-1">Days Remaining</p>
                                         <p className="text-white font-semibold">{booking.daysRemaining} days</p>
+                                      </div>
+                                    )}
+                                    {booking.returnedAt && (
+                                      <div>
+                                        <p className="text-gray-400 text-xs mb-1">Return Date</p>
+                                        <p className="text-white">{new Date(booking.returnedAt).toLocaleDateString()}</p>
                                       </div>
                                     )}
                                   </div>
@@ -628,7 +1052,14 @@ export default function DashboardSection({
                                                 <img
                                                   src={booking.boxFrontView}
                                                   alt="Box Front View"
-                                                  className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"/>
+                                                  className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                                  onError={(e) => {
+                                                    const img = e.target as HTMLImageElement;
+                                                    // If signed URL fails, show error placeholder
+                                                    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3Mzc0MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
+                                                    img.onerror = null; // Prevent infinite loop
+                                                  }}
+                                                />
                                               </a>
                                             </div>
                                           )}
@@ -645,6 +1076,12 @@ export default function DashboardSection({
                                                   src={booking.boxBackView}
                                                   alt="Box Back View"
                                                   className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                                  onError={(e) => {
+                                                    const img = e.target as HTMLImageElement;
+                                                    // If signed URL fails, show error placeholder
+                                                    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3Mzc0MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
+                                                    img.onerror = null; // Prevent infinite loop
+                                                  }}
                                                 />
                                               </a>
                                             </div>
@@ -662,6 +1099,12 @@ export default function DashboardSection({
                                                   src={booking.closedStandLock}
                                                   alt="Closed Stand Lock"
                                                   className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-cyan-400/40 transition-colors cursor-pointer"
+                                                  onError={(e) => {
+                                                    const img = e.target as HTMLImageElement;
+                                                    // If signed URL fails, show error placeholder
+                                                    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3Mzc0MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
+                                                    img.onerror = null; // Prevent infinite loop
+                                                  }}
                                                 />
                                               </a>
                                             </div>
@@ -690,26 +1133,26 @@ export default function DashboardSection({
                 <div className="flex items-center space-x-6">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                    <span className="text-gray-300">{statusCounts.active} Active</span>
+                    <span className="text-gray-300">{filteredStats.statusCounts.active} Active</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                    <span className="text-gray-300">{statusCounts.upcoming} Upcoming</span>
+                    <span className="text-gray-300">{filteredStats.statusCounts.upcoming} Upcoming</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                    <span className="text-gray-300">{statusCounts.cancelled} Cancelled</span>
+                    <span className="text-gray-300">{filteredStats.statusCounts.cancelled} Cancelled</span>
                   </div>
-                  {statusCounts.overdue > 0 && (
+                  {filteredStats.statusCounts.overdue > 0 && (
                     <div className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <span className="text-gray-300">{statusCounts.overdue} Overdue</span>
+                      <span className="text-gray-300">{filteredStats.statusCounts.overdue} Overdue</span>
                     </div>
                   )}
                 </div>
                 <div className="text-cyan-300 font-semibold">
-                  Total Revenue: {currency}{' '}
-                  {revenueSummary?.totalRevenue.toLocaleString() || '0'}
+                  Total Revenue: {filteredStats.revenueSummary?.currency || currency}{' '}
+                  {filteredStats.revenueSummary?.totalRevenue.toLocaleString() || '0'}
                 </div>
               </div>
             </div>

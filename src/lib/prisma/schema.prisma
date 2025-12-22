@@ -419,7 +419,7 @@ model bookings {
   created_at    DateTime        @default(now()) @db.Timestamp(6)
   status        BookingStatus?  @default(Pending)
   returned_at   DateTime?       @db.Timestamp(6)
-  display_id    String?         @unique
+  display_id    String          @unique
   boxes         boxes           @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payments      payments        @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   box_returns   box_returns?
@@ -435,7 +435,9 @@ model boxes {
   display_id  String     @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
   compartment Int?
   status      boxStatus? @default(Active)
-  Score       BigInt?
+  score       BigInt?    @default(0)
+  deposit     Decimal?   @db.Decimal
+  price       Decimal?   @db.Decimal
   bookings    bookings[]
   stands      stands     @relation(fields: [stand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   locks       locks[]
@@ -827,13 +829,6 @@ enum Role {
   Customer
   Distributor
   Admin
-
-  @@schema("public")
-}
-
-enum BoxModel {
-  Classic
-  Pro
 
   @@schema("public")
 }

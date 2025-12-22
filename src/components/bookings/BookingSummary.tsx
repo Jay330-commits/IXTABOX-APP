@@ -15,8 +15,8 @@ interface BookingSummaryProps {
     model: {
       name: string;
       description: string;
-      priceMultiplier: number;
     };
+    deposit?: number;
     pricePerDay: number;
     lockPin?: string | null;
     paymentId?: string;
@@ -28,7 +28,8 @@ interface BookingSummaryProps {
 const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
   const ms = new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime();
   const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  const totalPrice = days * booking.pricePerDay * booking.model.priceMultiplier;
+  const subtotal = days * booking.pricePerDay;
+  const totalPrice = subtotal + (booking.deposit || 0);
 
   return (
     <div className="space-y-4">
@@ -38,7 +39,13 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Booking ID</span>
             <span className="text-sm font-medium text-gray-900">
-              {booking.bookingDisplayId || booking.id.slice(0, 8)}
+              {booking.bookingDisplayId ? (
+                booking.bookingDisplayId
+              ) : (
+                <span className="text-red-600" title="Error: Booking display ID is missing">
+                  ERROR
+                </span>
+              )}
             </span>
           </div>
           <div className="flex justify-between">
@@ -141,10 +148,10 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
           <PriceBreakdown
             pricePerDay={booking.pricePerDay}
             days={days}
-            modelMultiplier={booking.model.priceMultiplier}
+            deposit={booking.deposit || 0}
             modelName={booking.model.name}
             currency="USD"
-            showModelDetails={booking.model.priceMultiplier !== 1}
+            showDeposit={(booking.deposit || 0) > 0}
           />
         </div>
       </div>

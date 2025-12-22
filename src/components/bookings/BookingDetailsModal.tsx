@@ -15,8 +15,8 @@ interface BookingDetailsModalProps {
     model: {
       name: string;
       description: string;
-      priceMultiplier: number;
     };
+    deposit?: number;
     pricePerDay: number;
     lockPin?: string | null;
     paymentId?: string;

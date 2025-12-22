@@ -77,11 +77,18 @@ export async function GET() {
           stand.boxes.forEach((box) => {
             if (box.status === boxStatus.Active) {
               totalBoxes++;
-              const hasActiveBooking = box.bookings.length > 0;
+              // Safely check if box has active bookings
+              const hasActiveBooking = box.bookings && Array.isArray(box.bookings) && box.bookings.length > 0;
               
-              if (box.model === boxmodel.Pro_175) {
+              // Check model - handle both enum and string values
+              // Type assertion needed because Prisma may return string values from database
+              const modelValue = box.model as string;
+              const isPro175 = box.model === boxmodel.Pro_175 || modelValue === 'Pro 175' || modelValue === 'Pro_175';
+              const isPro190 = box.model === boxmodel.Pro_190 || modelValue === 'Pro 190' || modelValue === 'Pro_190';
+              
+              if (isPro175) {
                 classicTotal++;
-              } else if (box.model === boxmodel.Pro_190) {
+              } else if (isPro190) {
                 proTotal++;
               }
               
@@ -91,16 +98,17 @@ export async function GET() {
                 box.bookings.forEach((booking) => {
                   const endDate = new Date(booking.end_date);
                   allBookingEndDates.push(endDate);
-                  if (box.model === boxmodel.Pro_175) {
+                  if (isPro175) {
                     classicBookingEndDates.push(endDate);
-                  } else if (box.model === boxmodel.Pro_190) {
+                  } else if (isPro190) {
                     proBookingEndDates.push(endDate);
                   }
                 });
               } else {
-                if (box.model === boxmodel.Pro_175) {
+                // Box is available - increment counts
+                if (isPro175) {
                   classicCount++;
-                } else if (box.model === boxmodel.Pro_190) {
+                } else if (isPro190) {
                   proCount++;
                 }
               }

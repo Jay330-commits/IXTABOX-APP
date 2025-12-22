@@ -11,8 +11,8 @@ interface BookingListProps {
     status: 'upcoming' | 'active' | 'completed' | 'cancelled';
     model: {
       name: string;
-      priceMultiplier: number;
     };
+    deposit?: number;
     pricePerDay: number;
   }>;
   onBookingClick: (bookingId: string) => void;

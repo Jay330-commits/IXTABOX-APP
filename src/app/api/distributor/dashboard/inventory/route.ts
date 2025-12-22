@@ -12,6 +12,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Extract access token from request for signed URL generation
+  const authHeader = request.headers.get('authorization');
+  const accessToken = authHeader && authHeader.startsWith('Bearer ') 
+    ? authHeader.substring(7) 
+    : undefined;
+
   try {
 
     const user = await prisma.public_users.findUnique({
@@ -51,6 +57,7 @@ export async function GET(request: NextRequest) {
       dateFrom,
       dateTo,
       showAllTime,
+      accessToken, // Pass access token for signed URL generation
     });
 
     // Use booking status counts based on actual booking statuses

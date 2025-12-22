@@ -1,7 +1,7 @@
 import 'server-only';
 import { BookingStatus, boxStatus, PaymentStatus, ContractStatus, Prisma, status } from '@prisma/client';
 import { BaseService } from '../../BaseService';
-import { getSupabaseStoragePublicUrl } from '@/lib/supabase-storage';
+import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export interface DashboardStats {
   activeStands: number;
@@ -246,7 +246,7 @@ export class DashboardStatisticsService extends BaseService {
         // Get contract status
         const activeContract = distributor.contracts[0];
         let contractStatus = {
-          status: 'No Active Contract',
+          status: 'None',
           daysRemaining: 0,
           contractType: 'N/A',
         };
@@ -292,6 +292,7 @@ export class DashboardStatisticsService extends BaseService {
       dateFrom?: Date;
       dateTo?: Date;
       showAllTime?: boolean;
+      accessToken?: string; // Access token for signed URL generation
     }
   ): Promise<BookingInventoryItem[]> {
     return await this.logOperation(
@@ -402,7 +403,8 @@ export class DashboardStatisticsService extends BaseService {
         });
         console.log(`[DashboardStatisticsService] Found ${bookings.length} bookings with status counts:`, statusCounts);
 
-        const mappedBookings = bookings.map((booking): BookingInventoryItem | null => {
+        // Generate signed URLs for return photos (secure, expire in 1 hour)
+        const mappedBookings = await Promise.all(bookings.map(async (booking): Promise<BookingInventoryItem | null> => {
           const startDate = new Date(booking.start_date);
           const endDate = new Date(booking.end_date);
           const days = Math.ceil(
@@ -426,6 +428,12 @@ export class DashboardStatisticsService extends BaseService {
           // Filter by location if provided
           if (filters?.locationId && booking.boxes.stands.locations.id !== filters.locationId) {
             return null;
+          }
+
+          // Validate that display_id exists - should never be null if schema is correct
+          if (!booking.display_id) {
+            console.error(`[DashboardStatisticsService] Booking ${booking.id} has null display_id - this should not happen!`);
+            throw new Error(`Booking ${booking.id} is missing display_id. This indicates a data integrity issue.`);
           }
 
           return {
@@ -457,25 +465,64 @@ export class DashboardStatisticsService extends BaseService {
             // - box_back_view/
             // - closed_stand_view/
             // The database may store either full URLs or relative paths (e.g., "box_front_view/123-456.jpg")
-            boxFrontView: booking.box_returns?.box_front_view 
-              ? (booking.box_returns.box_front_view.startsWith('http') 
-                  ? booking.box_returns.box_front_view 
-                  : getSupabaseStoragePublicUrl('box_returns', booking.box_returns.box_front_view))
-              : null,
-            boxBackView: booking.box_returns?.box_back_view
-              ? (booking.box_returns.box_back_view.startsWith('http')
-                  ? booking.box_returns.box_back_view
-                  : getSupabaseStoragePublicUrl('box_returns', booking.box_returns.box_back_view))
-              : null,
-            closedStandLock: booking.box_returns?.closed_stand_lock
-              ? (booking.box_returns.closed_stand_lock.startsWith('http')
-                  ? booking.box_returns.closed_stand_lock
-                  : getSupabaseStoragePublicUrl('box_returns', booking.box_returns.closed_stand_lock))
-              : null,
+            // We use signed URLs (expire in 1 hour) for security - bucket can remain private
+            // IMPORTANT: Use undefined accessToken to use service role key (bypasses RLS)
+            // This allows distributors to see images uploaded by customers
+            boxFrontView: await (async () => {
+              const path = booking.box_returns?.box_front_view;
+              if (!path) return null;
+              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
+              if (path.startsWith('http')) {
+                try {
+                  const url = new URL(path);
+                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
+                } catch { return path; }
+              }
+              try {
+                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
+              } catch {
+                return getSupabaseStoragePublicUrl('box_returns', path);
+              }
+            })(),
+            boxBackView: await (async () => {
+              const path = booking.box_returns?.box_back_view;
+              if (!path) return null;
+              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
+              if (path.startsWith('http')) {
+                try {
+                  const url = new URL(path);
+                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
+                } catch { return path; }
+              }
+              try {
+                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
+              } catch {
+                return getSupabaseStoragePublicUrl('box_returns', path);
+              }
+            })(),
+            closedStandLock: await (async () => {
+              const path = booking.box_returns?.closed_stand_lock;
+              if (!path) return null;
+              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
+              if (path.startsWith('http')) {
+                try {
+                  const url = new URL(path);
+                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
+                } catch { return path; }
+              }
+              try {
+                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
+              } catch {
+                return getSupabaseStoragePublicUrl('box_returns', path);
+              }
+            })(),
             boxReturnStatus: booking.box_returns?.confirmed_good_status ?? null,
             boxReturnDate: booking.box_returns?.created_at || null,
           };
-        });
+        }));
 
         return mappedBookings.filter((item): item is BookingInventoryItem => item !== null);
       },

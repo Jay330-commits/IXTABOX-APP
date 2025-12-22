@@ -45,6 +45,23 @@ const getDefaultEndTime = (): string => {
   return '17:00';
 };
 
+// Helper function to normalize model ID to display format
+const normalizeModelId = (modelId: string): string => {
+  const normalized = modelId.toLowerCase().trim();
+  if (normalized === 'pro_175' || normalized === 'pro 175' || normalized === 'classic') {
+    return 'Pro 175';
+  }
+  if (normalized === 'pro_190' || normalized === 'pro 190' || normalized === 'pro') {
+    return 'Pro 190';
+  }
+  // If already in display format, return as is
+  if (modelId === 'Pro 175' || modelId === 'Pro 190') {
+    return modelId;
+  }
+  // Default fallback
+  return modelId;
+};
+
 interface LocationDetailsProps {
   location: {
     id: string;
@@ -104,7 +121,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     return initialStartDate && initialEndDate ? 'model' : 'dates';
   });
   
-  const [selectedModel, setSelectedModel] = useState<string>(initialModelId || '');
+  const [selectedModel, setSelectedModel] = useState<string>(normalizeModelId(initialModelId || ''));
   const [startDate, setStartDate] = useState<string>(extractDatePart(initialStartDate));
   const [endDate, setEndDate] = useState<string>(extractDatePart(initialEndDate));
   const [startTime, setStartTime] = useState<string>(extractTimePart(initialStartDate) || getDefaultStartTime());
@@ -117,8 +134,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   const [boxError, setBoxError] = useState<string | null>(null);
   const [pricing, setPricing] = useState<{
     basePrice: number;
-    classic: { pricePerDay: number; multiplier: number };
-    pro: { pricePerDay: number; multiplier: number };
+    classic: { pricePerDay: number };
+    pro: { pricePerDay: number };
   } | null>(null);
   const [, setLoadingPricing] = useState(false);
 
@@ -140,7 +157,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     }
     
     if (initialModelId) {
-      setSelectedModel(initialModelId);
+      setSelectedModel(normalizeModelId(initialModelId));
     }
   }, [initialStartDate, initialEndDate, initialModelId]);
 
@@ -189,8 +206,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
           // Fallback to defaults if API fails
           setPricing({
             basePrice: 300,
-            classic: { pricePerDay: 300, multiplier: 1.0 },
-            pro: { pricePerDay: 300, multiplier: 1.0 },
+            classic: { pricePerDay: 300 },
+            pro: { pricePerDay: 300 },
           });
         }
       } catch (error) {
@@ -198,8 +215,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         // Fallback to defaults on error
         setPricing({
           basePrice: 300,
-          classic: { pricePerDay: 300, multiplier: 1.0 },
-          pro: { pricePerDay: 300, multiplier: 1.0 },
+          classic: { pricePerDay: 300 },
+          pro: { pricePerDay: 300 },
         });
       } finally {
         setLoadingPricing(false);
@@ -245,9 +262,12 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     
       try {
         // Simple API call with dates and model - server handles filtering
-        const modelParam = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
+        // selectedModel is now always normalized to 'Pro 175' or 'Pro 190'
+        const modelParam = selectedModel;
+        // URL encode the model parameter to handle spaces
+        const encodedModel = encodeURIComponent(modelParam);
         const response = await fetch(
-          `/api/locations/${location.id}/boxes?startDate=${startDate}&endDate=${endDate}&model=${modelParam}`
+          `/api/locations/${location.id}/boxes?startDate=${startDate}&endDate=${endDate}&model=${encodedModel}`
         );
 
         if (!response.ok) {
@@ -265,10 +285,12 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
           const firstStand = boxesByStand[0];
           if (firstStand.boxes.length > 0) {
             const firstBox = firstStand.boxes[0];
-            const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
+            // selectedModel is now always normalized to 'Pro 175' or 'Pro 190'
+            // API now returns normalized model (with spaces), but normalize as safety measure
+            const boxModelNormalized = String(firstBox.model || '').replace(/_/g, ' ');
             
             // Only auto-select if the box model matches the selected model
-            if (firstBox.model === expectedModel) {
+            if (boxModelNormalized === selectedModel) {
             setSelectedBox({
               boxId: firstBox.id,
               standId: firstStand.standId,
@@ -463,8 +485,9 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   };
 
   // Get pricing from API or use defaults - all models are 300 per day
+  // selectedModel is now always normalized to 'Pro 175' or 'Pro 190'
   const pricePerDay = 
-    selectedModel === 'pro' || selectedModel === 'Pro' || selectedModel === 'pro_190' || selectedModel === 'Pro 190'
+    selectedModel === 'Pro 190'
       ? (pricing?.pro.pricePerDay ?? 300)
       : (pricing?.classic.pricePerDay ?? 300);
   
@@ -667,7 +690,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         checked={selectedModel === model.id}
                         onChange={(e) => {
                           // Removed logging for performance (reduces overhead on mobile)
-                          setSelectedModel(e.target.value);
+                          // Normalize model ID to display format (Pro 175 or Pro 190)
+                          setSelectedModel(normalizeModelId(e.target.value));
                         }}
                         className="sr-only"
                       />
@@ -786,10 +810,15 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                                   checked={selectedBox?.boxId === box.id}
                                   onChange={() => {
                                         if (!isBooked) {
-                                          // Validate that the box model matches the selected model
-                                          const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190';
-                                          if (box.model !== expectedModel) {
-                                            alert(`This box is ${box.model} but you selected ${selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190'}. Please select a box that matches your selected model.`);
+                                          // selectedModel is always 'Pro 175' or 'Pro 190' (normalized)
+                                          // API now returns normalized model, but normalize as safety measure
+                                          const boxModelNormalized = String(box.model || '').replace(/_/g, ' ');
+                                          
+                                          // Check if the box model matches the selected model
+                                          const modelsMatch = boxModelNormalized === selectedModel;
+                                          
+                                          if (!modelsMatch) {
+                                            alert(`This box is ${boxModelNormalized} but you selected ${selectedModel}. Please select a box that matches your selected model.`);
                                             return;
                                           }
                                           
@@ -851,11 +880,16 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               
               if (onBook && selectedBox && !isBooking) {
                 // Validate that the selected box's model matches the selected model
-                const selectedBoxModel = selectedBox.model; // This is 'Pro 175' or 'Pro 190' from database
-                const expectedModel = selectedModel === 'classic' || selectedModel === 'pro_175' ? 'Pro 175' : 'Pro 190'; // Convert frontend model to database format
+                // selectedModel is now always normalized to 'Pro 175' or 'Pro 190'
+                // selectedBox.model can be 'Pro_175', 'Pro 175', 'Pro_190', or 'Pro 190'
+                const selectedBoxModel = selectedBox.model;
+                const selectedBoxModelNormalized = String(selectedBoxModel || '').replace(/_/g, ' ');
                 
-                if (selectedBoxModel !== expectedModel) {
-                  alert(`Model mismatch: Selected box is ${selectedBoxModel} but you selected ${selectedModel}. Please select a box that matches your selected model.`);
+                // Check if models match
+                const modelsMatch = selectedBoxModelNormalized === selectedModel;
+                
+                if (!modelsMatch) {
+                  alert(`Model mismatch: Selected box is ${selectedBoxModelNormalized} but you selected ${selectedModel}. Please select a box that matches your selected model.`);
                   setIsBooking(false);
                   return;
               }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { JSX } from "react";
 
 type NavItem = {
@@ -36,6 +36,7 @@ export default function GuestHeader(): JSX.Element {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeHash, setActiveHash] = useState<string>("");
   const pathname = usePathname();
+  const router = useRouter();
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function GuestHeader(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const targets = ["#benefits", "#footer"];
+    const targets = ["#map", "#benefits", "#footer"];
     const elements = targets
       .map((sel) => document.querySelector(sel))
       .filter((el): el is Element => !!el);
@@ -130,12 +131,23 @@ export default function GuestHeader(): JSX.Element {
                     onClick={(e) => {
                       if (item.href.startsWith("#")) {
                         e.preventDefault();
+                        // If we're on a different page, navigate to home first
+                        if (pathname !== "/") {
+                          router.push(`/${item.href}`);
+                          return;
+                        }
+                        // Set active hash immediately for instant feedback
+                        setActiveHash(item.href);
                         const el = document.querySelector(item.href);
                         if (el) {
                           (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                          // Also update after scroll completes to ensure it stays active
+                          setTimeout(() => {
+                            setActiveHash(item.href);
+                          }, 500);
                         }
-                        setActiveHash(item.href);
                       }
+                      // For non-hash links, let Link handle navigation normally
                     }}
                     aria-current={active ? "page" : undefined}
                     className={`
@@ -235,11 +247,22 @@ export default function GuestHeader(): JSX.Element {
                       onClick={(e) => {
                         if (item.href.startsWith("#")) {
                           e.preventDefault();
+                          // If we're on a different page, navigate to home first
+                          if (pathname !== "/") {
+                            router.push(`/${item.href}`);
+                            setMobileOpen(false);
+                            return;
+                          }
+                          // Set active hash immediately for instant feedback
+                          setActiveHash(item.href);
                           const el = document.querySelector(item.href);
                           if (el) {
                             (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
+                            // Also update after scroll completes to ensure it stays active
+                            setTimeout(() => {
+                              setActiveHash(item.href);
+                            }, 500);
                           }
-                          setActiveHash(item.href);
                         }
                         setMobileOpen(false);
                       }}

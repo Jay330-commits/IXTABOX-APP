@@ -11,6 +11,8 @@ import AccountUpgradeSection from '@/components/distributors/AccountUpgradeSecti
 import Inventory from '@/components/distributors/Inventory';
 import DashboardSection from '@/components/distributors/DashboardSection';
 import DistributerHeader from '@/components/layouts/DistributerHeader';
+import DistributorProfileSection from '@/components/distributors/ProfileSection';
+import SettingsSection from '@/components/customers/SettingsSection';
 
 interface StatCard {
   title: string;
@@ -66,7 +68,7 @@ interface BookingInventoryItem {
 }
 
 export default function DistributerDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, token } = useAuth();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -89,6 +91,12 @@ export default function DistributerDashboard() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [showAllTime, setShowAllTime] = useState<boolean>(false);
+  
+  // Settings state
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [smsNotifications, setSmsNotifications] = useState(false);
+  const [pushNotifications, setPushNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(true);
 
   // Protect route - check authentication and role FIRST
   useEffect(() => {
@@ -133,13 +141,17 @@ export default function DistributerDashboard() {
         setIsRefreshing(true);
       }
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem('auth-token');
+      // Get auth token from context (consistent with test page approach)
+      const authToken = token || localStorage.getItem('auth-token');
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
+      } else {
+        // If no token available, redirect to login
+        router.replace('/auth/login');
+        return;
       }
 
       // Fetch dashboard stats
@@ -449,6 +461,32 @@ export default function DistributerDashboard() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <PerformanceComparison />
           </div>
+        );
+      case 'profile':
+        return (
+          <DistributorProfileSection
+            user={user ? {
+              fullName: user.fullName || null,
+              email: user.email || null,
+              phone: user.phone || null,
+              role: user.role || 'Distributor',
+            } : null}
+            dashboardStats={dashboardStats}
+            currency={currency}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsSection
+            emailNotifications={emailNotifications}
+            setEmailNotifications={setEmailNotifications}
+            smsNotifications={smsNotifications}
+            setSmsNotifications={setSmsNotifications}
+            pushNotifications={pushNotifications}
+            setPushNotifications={setPushNotifications}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
         );
       case 'dashboard':
       default:

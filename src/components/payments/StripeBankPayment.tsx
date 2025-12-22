@@ -293,14 +293,8 @@ export default function StripeBankPayment({
   };
 
   return (
-    <div className="w-full">
+
       <div className="bg-gray-800/50 border border-white/10 rounded-lg p-3 sm:p-4 lg:p-5">
-        <div className="text-center mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">Secure Payment</h2>
-          <p className="text-xs sm:text-sm text-gray-300">
-            Complete your payment securely with Stripe
-          </p>
-        </div>
 
         <Elements options={options} stripe={stripePromise}>
           <PaymentForm 
@@ -317,18 +311,8 @@ export default function StripeBankPayment({
           <p className="text-xs text-gray-400">
             Your payment information is encrypted and secure
           </p>
-          <div className="flex justify-center items-center mt-1.5 space-x-3">
-            <Image 
-              src="https://js.stripe.com/v3/fingerprinted/img/stripe-logo.svg" 
-              alt="Stripe" 
-              width={60}
-              height={20}
-              className="h-5 opacity-60"
-            />
-            <span className="text-xs text-gray-500">Powered by Stripe</span>
-          </div>
         </div>
       </div>
-    </div>
+    
   );
 }

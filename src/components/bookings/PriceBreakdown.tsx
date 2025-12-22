@@ -3,11 +3,11 @@ import React from 'react';
 export interface PriceBreakdownProps {
   pricePerDay: number;
   days: number;
-  modelMultiplier?: number;
+  deposit?: number;
   modelName?: string;
   currency?: string;
   className?: string;
-  showModelDetails?: boolean;
+  showDeposit?: boolean;
   variant?: 'light' | 'dark';
 }
 
@@ -18,17 +18,15 @@ export interface PriceBreakdownProps {
 const PriceBreakdown: React.FC<PriceBreakdownProps> = ({
   pricePerDay,
   days,
-  modelMultiplier = 1,
+  deposit = 0,
   modelName,
   currency = 'SEK',
   className = '',
-  showModelDetails = true,
+  showDeposit = true,
   variant = 'light',
 }) => {
-  const basePrice = pricePerDay;
-  const subtotal = basePrice * days;
-  const modelPriceAdjustment = modelMultiplier !== 1 ? subtotal * (modelMultiplier - 1) : 0;
-  const total = subtotal * modelMultiplier;
+  const subtotal = pricePerDay * days;
+  const total = subtotal + deposit;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('sv-SE', {
@@ -54,8 +52,8 @@ const PriceBreakdown: React.FC<PriceBreakdownProps> = ({
       
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <span className={`text-sm ${textSecondaryClass}`}>Base price per day</span>
-          <span className={`text-sm font-medium ${textPrimaryClass}`}>{formatPrice(basePrice)}</span>
+          <span className={`text-sm ${textSecondaryClass}`}>Price per day</span>
+          <span className={`text-sm font-medium ${textPrimaryClass}`}>{formatPrice(pricePerDay)}</span>
         </div>
         
         <div className="flex justify-between items-center">
@@ -68,20 +66,19 @@ const PriceBreakdown: React.FC<PriceBreakdownProps> = ({
           <span className={`text-sm font-medium ${textPrimaryClass}`}>{formatPrice(subtotal)}</span>
         </div>
         
-        {showModelDetails && modelMultiplier !== 1 && modelName && (
+        {showDeposit && deposit > 0 && (
           <div className={`pt-2 border-t ${borderClass}`}>
-            <div className="flex justify-between items-center mb-1">
-              <span className={`text-sm ${textSecondaryClass}`}>Model: {modelName}</span>
-              <span className={`text-xs ${textTertiaryClass}`}>×{modelMultiplier.toFixed(2)}</span>
-            </div>
-            {modelPriceAdjustment > 0 && (
-              <div className="flex justify-between items-center">
-                <span className={`text-xs ${textTertiaryClass}`}>Model adjustment</span>
-                <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {modelPriceAdjustment > 0 ? '+' : ''}{formatPrice(modelPriceAdjustment)}
-                </span>
+            {modelName && (
+              <div className="flex justify-between items-center mb-1">
+                <span className={`text-sm ${textSecondaryClass}`}>Model: {modelName}</span>
               </div>
             )}
+            <div className="flex justify-between items-center">
+              <span className={`text-xs ${textTertiaryClass}`}>Deposit</span>
+              <span className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                {formatPrice(deposit)}
+              </span>
+            </div>
           </div>
         )}
         

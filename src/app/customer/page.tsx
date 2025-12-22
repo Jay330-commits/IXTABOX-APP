@@ -41,6 +41,9 @@
     createdAt?: string;
     returnedAt?: string | null;
     model?: string;
+    boxFrontView?: string | null;
+    boxBackView?: string | null;
+    closedStandLock?: string | null;
   };
 
   type Payment = {
@@ -274,9 +277,9 @@
       };
     }, [user, loading]);
 
-    // Periodic booking status sync
+    // Periodic booking status sync - runs every 10 seconds to catch status changes quickly
     useEffect(() => {
-      if (!user || bookings.length === 0) return;
+      if (!user) return;
 
       /**
        * Calculate booking status based on dates (client-side)
@@ -300,9 +303,12 @@
         }
       };
 
-      const syncStatuses = async () => {
+      const syncStatuses = () => {
+        setBookings(currentBookings => {
+          if (currentBookings.length === 0) return currentBookings;
+
         const updates: Array<{ bookingId: string; newStatus: string }> = [];
-        const updatedBookings = bookings.map(booking => {
+          const updatedBookings = currentBookings.map(booking => {
           if (!booking.startDate || !booking.endDate) {
             return booking;
           }
@@ -311,7 +317,6 @@
           
           // Skip only "confirmed" status - keep it on hold, don't recalculate
           if (currentStatusLower === 'confirmed') {
-            console.log(`[Status Sync] Skipping ${booking.id.slice(0, 8)} - status is "confirmed" (manually set, keeping on hold)`);
             return booking;
           }
 
@@ -321,7 +326,6 @@
           // For cancelled/completed: keep them as final states (don't change them even if calculated status differs)
           if (currentStatusLower === 'cancelled' || currentStatusLower === 'completed') {
             // Keep cancelled/completed as final states - don't change them
-            console.log(`[Status Sync] ${booking.id.slice(0, 8)}: Keeping ${currentStatusLower} (final state, calculated would be: ${calculatedStatus})`);
             return booking;
           }
           
@@ -338,11 +342,8 @@
           return booking;
         });
 
-        // Update UI immediately (optimistic update)
+          // Sync with DB in background if there are updates
         if (updates.length > 0) {
-          setBookings(updatedBookings);
-          
-          // Sync with DB in background (fire and forget)
           const authToken = localStorage.getItem('auth-token');
           const headers: HeadersInit = { 'Content-Type': 'application/json' };
           if (authToken) {
@@ -355,17 +356,20 @@
             body: JSON.stringify({ updates }),
           }).catch(err => {
             console.error('Failed to sync booking statuses in DB:', err);
-            // Optionally revert UI update on error, but for now we keep optimistic update
           });
         }
+
+          // Return updated bookings (or original if no changes)
+          return updates.length > 0 ? updatedBookings : currentBookings;
+        });
       };
 
-      // Run immediately, then every 30 seconds
+      // Run immediately, then every 10 seconds for faster status updates
       syncStatuses();
-      const interval = setInterval(syncStatuses, 30000);
+      const interval = setInterval(syncStatuses, 10000);
 
       return () => clearInterval(interval);
-    }, [user, bookings]);
+    }, [user]);
 
     // Load locations when book section is active
     useEffect(() => {
@@ -602,9 +606,7 @@
               const bookingsRes = await fetch('/api/customer/bookings', { headers });
               if (bookingsRes.ok) {
                 const bookingsData = await bookingsRes.json();
-                if (bookingsData.success) {
                   setBookings(bookingsData.bookings || []);
-                }
               }
               
               setShowCancelModal(false);
@@ -643,9 +645,7 @@
               fetch('/api/customer/bookings', { headers })
                 .then(res => res.json())
                 .then(data => {
-                  if (data.success) {
                     setBookings(data.bookings || []);
-                  }
                 })
                 .catch(err => console.error('Failed to refresh bookings:', err));
             }}

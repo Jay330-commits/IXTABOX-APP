@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
 import { BookingStatusService } from '@/services/bookings/BookingStatusService';
 import { BookingStatus } from '@prisma/client';
+import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +23,12 @@ export async function GET(request: NextRequest) {
     }
     
     console.log('[Bookings API] Authenticated user:', supabaseUser.email);
+
+    // Extract access token from request for signed URL generation
+    const authHeader = request.headers.get('authorization');
+    const accessToken = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : undefined;
 
     // Get user from database
     const user = await prisma.public_users.findUnique({
@@ -79,6 +86,7 @@ export async function GET(request: NextRequest) {
             users: true,
           },
         },
+        box_returns: true,
       },
       orderBy: [
         // Sort by status priority using CASE: active/confirmed > Upcoming > completed > cancelled
@@ -126,7 +134,8 @@ export async function GET(request: NextRequest) {
     })));
 
     // Transform bookings to match the frontend format
-    const formattedBookings = bookings.map((booking) => {
+    // Note: We need to use Promise.all because we're generating signed URLs asynchronously
+    const formattedBookings = await Promise.all(bookings.map(async (booking) => {
       // Use DB status if booking is Cancelled or Completed (these should never change)
       // Otherwise calculate status based on dates
       let finalStatus: string;
@@ -178,6 +187,81 @@ export async function GET(request: NextRequest) {
       
       console.log(`[Bookings API] Booking ${booking.id.slice(0, 8)}: Final status for response = "${finalStatus}"`);
 
+      // Convert bucket paths to signed URLs for return photos (secure, temporary access)
+      // Images are stored in the 'box_returns' bucket in folders:
+      // - box_front_view/
+      // - box_back_view/
+      // - closed_stand_view/
+      // The database may store either full URLs or relative paths (e.g., "box_front_view/123-456.jpg")
+      // We use signed URLs (expire in 1 hour) for security - bucket can remain private
+      const getImageUrl = async (imagePath: string | null | undefined): Promise<string | null> => {
+        if (!imagePath) return null;
+        
+        // If it's already a full URL (including signed URLs), check if it's a signed URL
+        // Signed URLs contain a token parameter, public URLs don't
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          // Check if it's already a signed URL (contains token parameter)
+          if (imagePath.includes('token=') || imagePath.includes('&t=')) {
+            console.log('[Bookings API] Image already signed URL:', imagePath.substring(0, 100) + '...');
+            return imagePath;
+          }
+          
+          // If it's a public URL but bucket is private, we need to create a signed URL
+          // Extract path from URL and create signed URL
+          try {
+            const url = new URL(imagePath);
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+            if (pathMatch) {
+              const extractedPath = pathMatch[1];
+              const signedUrl = await getSupabaseStorageSignedUrl('box_returns', extractedPath, 3600, accessToken);
+              console.log('[Bookings API] Converted public URL to signed URL');
+              return signedUrl;
+            }
+          } catch {
+            console.warn('[Bookings API] Could not parse URL, using as-is:', imagePath);
+            return imagePath;
+          }
+        }
+        
+        // Otherwise, create signed URL from path (bucket is private, use signed URLs)
+        try {
+          const signedUrl = await getSupabaseStorageSignedUrl('box_returns', imagePath, 3600, accessToken);
+          console.log('[Bookings API] Created signed URL from path:', { path: imagePath, url: signedUrl.substring(0, 100) + '...' });
+          return signedUrl;
+        } catch (error) {
+          console.error('[Bookings API] Failed to create signed URL, falling back to public URL:', error);
+          // Fallback to public URL if signed URL creation fails
+          return getSupabaseStoragePublicUrl('box_returns', imagePath);
+        }
+      };
+      
+      // Generate signed URLs for all return photos (expire in 1 hour)
+      const [boxFrontView, boxBackView, closedStandLock] = await Promise.all([
+        getImageUrl(booking.box_returns?.box_front_view),
+        getImageUrl(booking.box_returns?.box_back_view),
+        getImageUrl(booking.box_returns?.closed_stand_lock),
+      ]);
+      
+      // Debug logging for return photos
+      if (booking.box_returns) {
+        console.log('[Bookings API] Return photos for booking', booking.id.slice(0, 8), {
+          box_front_view_db: booking.box_returns.box_front_view?.substring(0, 100),
+          box_back_view_db: booking.box_returns.box_back_view?.substring(0, 100),
+          closed_stand_lock_db: booking.box_returns.closed_stand_lock?.substring(0, 100),
+          boxFrontView_url: boxFrontView?.substring(0, 100),
+          boxBackView_url: boxBackView?.substring(0, 100),
+          closedStandLock_url: closedStandLock?.substring(0, 100),
+        });
+      }
+
+      // Get price and deposit from box
+      const boxPrice = booking.boxes.price 
+        ? (typeof booking.boxes.price === 'string' ? parseFloat(booking.boxes.price) : Number(booking.boxes.price))
+        : 300; // Default fallback
+      const boxDeposit = booking.boxes.deposit 
+        ? (typeof booking.boxes.deposit === 'string' ? parseFloat(booking.boxes.deposit) : Number(booking.boxes.deposit))
+        : 0;
+
       const formattedBooking = {
         id: booking.id,
         bookingDisplayId: booking.display_id,
@@ -201,6 +285,11 @@ export async function GET(request: NextRequest) {
         createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
         returnedAt: booking.returned_at ? booking.returned_at.toISOString() : null,
         model: booking.boxes.model || 'Pro 175',
+        pricePerDay: boxPrice,
+        deposit: boxDeposit,
+        boxFrontView,
+        boxBackView,
+        closedStandLock,
       };
       
       // Log the formatted booking status - especially for cancelled bookings
@@ -214,18 +303,7 @@ export async function GET(request: NextRequest) {
       }
       
       return formattedBooking;
-      
-      // Log the formatted booking status before returning
-      if (finalStatus === 'cancelled') {
-        console.log(`[Bookings API] Formatted cancelled booking ${booking.id.slice(0, 8)}:`, {
-          id: formattedBooking.id.slice(0, 8),
-          status: formattedBooking.status,
-          statusType: typeof formattedBooking.status,
-        });
-      }
-      
-      return formattedBooking;
-    });
+    }));
 
     // Debug: Log all booking statuses before returning
     const finalStatusCounts: Record<string, number> = {};

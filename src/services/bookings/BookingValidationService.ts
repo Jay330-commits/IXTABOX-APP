@@ -65,28 +65,50 @@ export class BookingValidationService extends BaseService {
   // ============================================================================
 
   /**
-   * Calculate booking price based on dates and model
+   * Calculate booking price based on box price and deposit
+   * @param days Number of days for the booking
+   * @param boxPrice Price per day from the box (Decimal or number)
+   * @param deposit Deposit amount from the box (Decimal or number, optional)
+   * @returns Price calculation result
    */
   calculateBookingPrice(
     days: number,
-    modelId: string | null,
-    basePrice: number = 300
-  ): { amount: number; amountStr: string; days: number; basePrice: number; multiplier: number } {
-    const multiplier = modelId === 'pro' || modelId === 'Pro' || modelId === 'pro_190' || modelId === 'Pro 190' ? 1.5 : 1.0;
-    const amount = basePrice * multiplier * days;
-    const amountStr = amount.toFixed(2);
-
+    boxPrice: number | string | null,
+    deposit: number | string | null = null
+  ): { 
+    amount: number; 
+    amountStr: string; 
+    days: number; 
+    pricePerDay: number; 
+    deposit: number;
+    subtotal: number;
+    total: number;
+  } {
+    // Convert Decimal to number if needed
+    const pricePerDay = boxPrice 
+      ? (typeof boxPrice === 'string' ? parseFloat(boxPrice) : Number(boxPrice))
+      : 300; // Default fallback
+    
+    const depositAmount = deposit 
+      ? (typeof deposit === 'string' ? parseFloat(deposit) : Number(deposit))
+      : 0;
+    
+    const subtotal = pricePerDay * days;
+    const total = subtotal + depositAmount;
+    
     return {
-      amount,
-      amountStr,
+      amount: total,
+      amountStr: total.toFixed(2),
       days,
-      basePrice,
-      multiplier,
+      pricePerDay,
+      deposit: depositAmount,
+      subtotal,
+      total,
     };
   }
 
   /**
-   * Validate and prepare booking with price calculation
+   * Validate and prepare booking with price calculation using box price and deposit
    */
   async validateAndPrepareBooking(bookingData: {
     locationId: string;
@@ -104,6 +126,8 @@ export class BookingValidationService extends BaseService {
     amountStr: string;
     metadata: Record<string, string>;
     validatedDates: { start: Date; end: Date };
+    pricePerDay: number;
+    deposit: number;
   }> {
     // Validate dates
     const dateValidation = this.validateBookingDates(
@@ -117,9 +141,40 @@ export class BookingValidationService extends BaseService {
       throw new Error(dateValidation.error || 'Invalid booking dates');
     }
 
+    // Fetch box to get price and deposit
+    const box = await this.prisma.boxes.findUnique({
+      where: { id: bookingData.boxId },
+      select: { price: true, deposit: true },
+    });
+
+    if (!box) {
+      throw new Error(`Box with id ${bookingData.boxId} not found`);
+    }
+
+    // Convert Prisma Decimal to number or string for calculateBookingPrice
+    // Prisma Decimal type needs explicit conversion - use Number() or toString()
+    const boxPrice: number | string | null = box.price 
+      ? (typeof box.price === 'string' 
+          ? box.price 
+          : typeof box.price === 'number' 
+            ? box.price 
+            : Number(box.price as unknown as number | string) || String(box.price))
+      : null;
+    const boxDeposit: number | string | null = box.deposit 
+      ? (typeof box.deposit === 'string' 
+          ? box.deposit 
+          : typeof box.deposit === 'number' 
+            ? box.deposit 
+            : Number(box.deposit as unknown as number | string) || String(box.deposit))
+      : null;
+
     const { start, end } = dateValidation;
     const days = this.calculateBookingDays(start, end);
-    const priceCalculation = this.calculateBookingPrice(days, bookingData.modelId || null);
+    const priceCalculation = this.calculateBookingPrice(
+      days,
+      boxPrice,
+      boxDeposit
+    );
 
     // Prepare metadata
     const metadata: Record<string, string> = {
@@ -134,6 +189,8 @@ export class BookingValidationService extends BaseService {
       locationDisplayId: bookingData.locationDisplayId || bookingData.locationId,
       compartment: bookingData.compartment || '',
       amount: priceCalculation.amountStr,
+      pricePerDay: priceCalculation.pricePerDay.toString(),
+      deposit: priceCalculation.deposit.toString(),
       source: 'ixtabox-app',
     };
 
@@ -142,6 +199,8 @@ export class BookingValidationService extends BaseService {
       amountStr: priceCalculation.amountStr,
       metadata,
       validatedDates: { start, end },
+      pricePerDay: priceCalculation.pricePerDay,
+      deposit: priceCalculation.deposit,
     };
   }
 }

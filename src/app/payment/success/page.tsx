@@ -261,6 +261,7 @@ function PaymentSuccessContent() {
                 bookingWasCreated = true;
                 const bookingDetails = {
                   standId: updatedData.booking.standId,
+                  standName: updatedData.booking.standName,
                   startDate: updatedData.booking.startDate,
                   endDate: updatedData.booking.endDate,
                   startTime: updatedData.booking.startTime || undefined,
@@ -292,6 +293,7 @@ function PaymentSuccessContent() {
                 bookingWasCreated = true;
                 const bookingDetails = {
                   standId: updatedData.booking.standId,
+                  standName: updatedData.booking.standName,
                   startDate: updatedData.booking.startDate,
                   endDate: updatedData.booking.endDate,
                   startTime: updatedData.booking.startTime || undefined,
@@ -473,6 +475,7 @@ function PaymentSuccessContent() {
                   // Trigger re-render with booking data
                   setBookingDetails({
                     standId: pollData.booking.standId,
+                    standName: pollData.booking.standName,
                     startDate: pollData.booking.startDate,
                     endDate: pollData.booking.endDate,
                     startTime: pollData.booking.startTime || undefined,
@@ -511,6 +514,7 @@ function PaymentSuccessContent() {
         if (data.bookingExists && data.booking && !bookingWasCreated) {
           const booking = {
             standId: data.booking.standId,
+            standName: data.booking.standName,
             startDate: data.booking.startDate,
             endDate: data.booking.endDate,
             startTime: data.booking.startTime || undefined,
