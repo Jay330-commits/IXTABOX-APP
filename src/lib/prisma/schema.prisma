@@ -410,20 +410,19 @@ model admins {
 }
 
 model bookings {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  box_id        String          @db.Uuid
-  payment_id    String          @unique @db.Uuid
-  start_date    DateTime        @db.Timestamp(6)
-  end_date      DateTime        @db.Timestamp(6)
-  lock_pin      Int
-  created_at    DateTime        @default(now()) @db.Timestamp(6)
-  status        BookingStatus?  @default(Pending)
-  returned_at   DateTime?       @db.Timestamp(6)
-  display_id    String          @unique
-  boxes         boxes           @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payments      payments        @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  box_returns   box_returns?
-  notifications notifications[]
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  box_id      String         @db.Uuid
+  payment_id  String         @unique @db.Uuid
+  start_date  DateTime       @db.Timestamp(6)
+  end_date    DateTime       @db.Timestamp(6)
+  lock_pin    Int
+  created_at  DateTime       @default(now()) @db.Timestamp(6)
+  status      BookingStatus? @default(Pending)
+  returned_at DateTime?      @db.Timestamp(6)
+  display_id  String         @unique
+  boxes       boxes          @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments    payments       @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  box_returns box_returns?
 
   @@schema("public")
 }
@@ -552,17 +551,17 @@ model locks {
 }
 
 model notifications {
-  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id            String           @db.Uuid
-  type               NotificationType @default(Email)
-  title              String           @db.VarChar
-  message            String?
-  read               Boolean?         @default(false)
-  related_booking_id String?          @db.Uuid
-  created_at         DateTime?        @default(now()) @db.Timestamp(6)
-  updated_at         DateTime?        @default(now()) @db.Timestamp(6)
-  bookings           bookings?        @relation(fields: [related_booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users              public_users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String           @db.Uuid
+  type        NotificationType @default(Email)
+  title       String           @db.VarChar
+  message     String?
+  read        Boolean?         @default(false)
+  created_at  DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at  DateTime?        @default(now()) @db.Timestamp(6)
+  entity_type String?
+  entity_id   String?          @db.Uuid
+  users       public_users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }

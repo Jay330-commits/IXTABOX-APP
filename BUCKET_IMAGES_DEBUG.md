@@ -22,7 +22,7 @@ Images uploaded to Supabase Storage bucket `box_returns` are not visible on the 
 
 ## Possible Issues
 
-### 1. Bucket Not Public (MOST LIKELY)
+### 1. Bucket Not Public 
 The `box_returns` bucket must be **public** for public URLs to work.
 
 **Check in Supabase Dashboard:**

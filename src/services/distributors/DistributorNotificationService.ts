@@ -9,7 +9,8 @@ export interface DistributorNotification {
   message?: string;
   read: boolean;
   createdAt: Date;
-  relatedBookingId?: string;
+  entityType?: string; // e.g., 'booking', 'feedback', etc.
+  entityId?: string; // ID of the related entity
 }
 
 /**
@@ -50,7 +51,8 @@ export class DistributorNotificationService extends BaseService {
           message: notif.message || undefined,
           read: notif.read || false,
           createdAt: notif.created_at || new Date(),
-          relatedBookingId: notif.related_booking_id || undefined,
+          entityType: notif.entity_type || undefined,
+          entityId: notif.entity_id || undefined,
         }));
       },
       'DistributorNotificationService.getDistributorNotifications',

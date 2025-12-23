@@ -38,6 +38,8 @@ export interface Notification {
   message: string;
   date: string;
   read: boolean;
+  entityType?: string; // e.g., 'booking', 'feedback', etc.
+  entityId?: string; // ID of the related entity
 }
 
 export interface UserStats {

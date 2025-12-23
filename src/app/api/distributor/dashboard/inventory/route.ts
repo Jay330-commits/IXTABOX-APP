@@ -12,11 +12,59 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Extract access token from request for signed URL generation
+  // Extract access token from request for signed URL generation (server-side only)
+  // SECURITY: Token is never sent to client - only used server-side to generate signed URLs
+  let accessToken: string | undefined;
   const authHeader = request.headers.get('authorization');
-  const accessToken = authHeader && authHeader.startsWith('Bearer ') 
-    ? authHeader.substring(7) 
-    : undefined;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    accessToken = authHeader.substring(7);
+  } else {
+    // Fallback: extract from Supabase cookies
+    const cookieStore = request.cookies;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0] || '';
+    const authTokenCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+    
+    if (authTokenCookieName) {
+      const authCookie = cookieStore.get(authTokenCookieName);
+      if (authCookie) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(authCookie.value));
+          if (parsed?.access_token) {
+            accessToken = parsed.access_token;
+          }
+        } catch {
+          if (authCookie.value.length > 50) {
+            accessToken = authCookie.value;
+          }
+        }
+      }
+    }
+    
+    // Fallback: search for any cookie containing 'auth-token'
+    if (!accessToken) {
+      for (const cookie of cookieStore.getAll()) {
+        if (cookie.name.includes('auth-token') || cookie.name.includes('supabase') || cookie.name.startsWith('sb-')) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(cookie.value));
+            if (parsed?.access_token) {
+              accessToken = parsed.access_token;
+              break;
+            }
+          } catch {
+            if (cookie.value.length > 50 && !accessToken) {
+              accessToken = cookie.value;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  if (!accessToken) {
+    console.warn('[Inventory API] No access token found - signed URL generation may fail');
+  }
 
   try {
 
@@ -57,7 +105,7 @@ export async function GET(request: NextRequest) {
       dateFrom,
       dateTo,
       showAllTime,
-      accessToken, // Pass access token for signed URL generation
+      accessToken, // Pass access token for signed URL generation (server-side only)
     });
 
     // Use booking status counts based on actual booking statuses

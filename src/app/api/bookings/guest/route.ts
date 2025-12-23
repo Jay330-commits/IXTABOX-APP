@@ -36,18 +36,18 @@ export async function POST(request: NextRequest) {
       include: {
         bookings: {
           include: {
-            boxes: {
+        boxes: {
+          include: {
+            stands: {
               include: {
-                stands: {
-                  include: {
-                    locations: true,
-                  },
-                },
+                locations: true,
               },
             },
-            payments: true,
-            box_returns: true,
           },
+        },
+        payments: true,
+            box_returns: true,
+      },
         },
         users: true,
       },
@@ -81,50 +81,103 @@ export async function POST(request: NextRequest) {
         : 0;
 
       // Generate signed URLs for return photos if they exist
-      // For guest bookings, we'll use public URLs or try to create signed URLs without access token
+      // IMPORTANT: box_returns bucket is PRIVATE, so we MUST always generate signed URLs
+      // For guest bookings, we use service role key (no access token available)
       const getImageUrl = async (imagePath: string | null | undefined): Promise<string | null> => {
         if (!imagePath) return null;
         
-        // If it's already a full URL (including signed URLs), return as-is
+        // If it's already a signed URL (contains token parameter), use it as-is
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-          // Check if it's already a signed URL (contains token parameter)
           if (imagePath.includes('token=') || imagePath.includes('&t=')) {
             return imagePath;
           }
           
-          // If it's a public URL but bucket is private, try to create a signed URL
+          // Even if it looks like a public URL, extract the path and generate a signed URL
+          // because the bucket is private
           try {
             const url = new URL(imagePath);
             const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
             if (pathMatch) {
               const extractedPath = pathMatch[1];
-              try {
-                return await getSupabaseStorageSignedUrl('box_returns', extractedPath, 3600);
-              } catch {
-                return imagePath; // Fallback to original URL if signed URL creation fails
-              }
+              // Generate signed URL using service role key (no access token for guests)
+              const signedUrl = await getSupabaseStorageSignedUrl('box_returns', extractedPath, 3600);
+              return signedUrl;
             }
-          } catch {
-            return imagePath;
+          } catch (error) {
+            console.error('[Guest Bookings API] Failed to parse URL:', error);
           }
         }
         
-        // Otherwise, try to create signed URL from path
+        // Extract just the path part if it's a full URL, or use as-is if it's already a path
+        let cleanPath = imagePath;
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          try {
+            const url = new URL(imagePath);
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+            if (pathMatch) {
+              cleanPath = pathMatch[1];
+            }
+          } catch {
+            // If we can't parse it, try to extract path manually
+            const parts = imagePath.split('/box_returns/');
+            if (parts.length > 1) {
+              cleanPath = parts[1];
+            }
+          }
+        }
+        
+        // Security: Validate path format to prevent path traversal attacks
+        // Expected format: box_front_view/uuid-timestamp.jpg or box_back_view/... or closed_stand_view/...
+        // Note: closed_stand_view doesn't have 'box_' prefix, so we need to allow both patterns
+        const isValidPath = /^(box_(front_view|back_view)|closed_stand_view)\/[a-f0-9-]+-\d+\.(jpg|jpeg|png)$/i;
+        if (!isValidPath.test(cleanPath)) {
+          console.error('[Guest Bookings API] Security: Invalid image path format:', cleanPath);
+          return null;
+        }
+        
+        // Always generate signed URL for private bucket (using service role key)
+        // SECURITY: Uses service role key. Permission verified by requiring email + chargeId match.
         try {
-          return await getSupabaseStorageSignedUrl('box_returns', imagePath, 3600);
+          const signedUrl = await getSupabaseStorageSignedUrl('box_returns', cleanPath, 3600);
+          return signedUrl;
         } catch (error) {
-          console.error('[Guest Bookings API] Failed to create signed URL, falling back to public URL:', error);
-          // Fallback to public URL if signed URL creation fails
-          return getSupabaseStoragePublicUrl('box_returns', imagePath);
+          console.error('[Guest Bookings API] Failed to create signed URL for box_returns:', error);
+          // Return null if we can't generate signed URL (better than returning broken public URL)
+          return null;
         }
       };
       
       // Generate URLs for all return photos (expire in 1 hour)
-      const [boxFrontView, boxBackView, closedStandLock] = await Promise.all([
-        getImageUrl(booking.box_returns?.box_front_view),
-        getImageUrl(booking.box_returns?.box_back_view),
-        getImageUrl(booking.box_returns?.closed_stand_lock),
-      ]);
+      let boxFrontView: string | null = null;
+      let boxBackView: string | null = null;
+      let closedStandLock: string | null = null;
+      
+      try {
+        const results = await Promise.all([
+          getImageUrl(booking.box_returns?.box_front_view),
+          getImageUrl(booking.box_returns?.box_back_view),
+          getImageUrl(booking.box_returns?.closed_stand_lock),
+        ]);
+        
+        // Ensure we never return public URLs - if any result is a public URL, set it to null
+        boxFrontView = results[0] && !results[0].includes('/storage/v1/object/public/') ? results[0] : null;
+        boxBackView = results[1] && !results[1].includes('/storage/v1/object/public/') ? results[1] : null;
+        closedStandLock = results[2] && !results[2].includes('/storage/v1/object/public/') ? results[2] : null;
+        
+        // Log if we filtered out any public URLs
+        if (results[0]?.includes('/storage/v1/object/public/') || 
+            results[1]?.includes('/storage/v1/object/public/') || 
+            results[2]?.includes('/storage/v1/object/public/')) {
+          console.error('[Guest Bookings API] Filtered out public URLs - signed URL generation failed:', {
+            boxFrontView: results[0]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+            boxBackView: results[1]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+            closedStandLock: results[2]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+          });
+        }
+      } catch (error) {
+        console.error('[Guest Bookings API] Error processing return photos:', error);
+        // Keep values as null if processing fails
+      }
 
       return {
         id: booking.id,

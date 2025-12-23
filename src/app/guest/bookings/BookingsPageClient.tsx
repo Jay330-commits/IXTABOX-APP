@@ -566,6 +566,20 @@ export default function BookingsPageClient() {
                         {/* Expanded Booking Details */}
                         {isExpanded && (
                           <div className="px-6 pb-6 border-t border-white/10 pt-6 space-y-6">
+                            {/* Lock PIN */}
+                            {booking.lockPin && (
+                              <div>
+                                <h3 className="text-sm font-medium text-gray-400 mb-3">Access Information</h3>
+                                <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg p-4 border border-cyan-400/20">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-400">Lock Access PIN</span>
+                                    <span className="text-2xl font-bold text-cyan-400 font-mono">{booking.lockPin}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-2">Use this PIN to access your box during the booking period.</p>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Booking Details */}
                             <div>
                               <h3 className="text-sm font-medium text-gray-400 mb-3">Booking Details</h3>
@@ -737,20 +751,6 @@ export default function BookingsPageClient() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Lock PIN */}
-                            {booking.lockPin && (
-                              <div>
-                                <h3 className="text-sm font-medium text-gray-400 mb-3">Access Information</h3>
-                                <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg p-4 border border-cyan-400/20">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-400">Lock Access PIN</span>
-                                    <span className="text-2xl font-bold text-cyan-400 font-mono">{booking.lockPin}</span>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-2">Use this PIN to access your box during the booking period.</p>
-                                </div>
-                              </div>
-                            )}
 
                             {/* Booking Created Date */}
                             {booking.createdAt && (

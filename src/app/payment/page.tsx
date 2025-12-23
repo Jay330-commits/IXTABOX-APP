@@ -31,6 +31,58 @@ function PaymentContent() {
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   
+  // Real-time email validation
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailError('');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  // Real-time phone validation
+  const validatePhone = (phone: string) => {
+    if (!phone) {
+      setPhoneError('');
+      return;
+    }
+    const phoneRegex = /^[+]?[\d\s-()]+$/;
+    if (!phoneRegex.test(phone) || phone.replace(/\D/g, '').length < 8) {
+      setPhoneError('Please enter a valid phone number');
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  // Autofill contact information for authenticated users
+  useEffect(() => {
+    // Only autofill when auth has loaded and user is authenticated as a customer
+    // Check if fields are empty to avoid overwriting user input
+    if (!authLoading && user && isCustomer && user.email) {
+      // Autofill email if empty (only once)
+      if (customerEmail === '' && user.email) {
+        setCustomerEmail(user.email);
+        validateEmail(user.email);
+        // Store email in localStorage immediately for payment processing
+        const currentPaymentIntentId = searchParams.get('payment_intent');
+        if (currentPaymentIntentId && user.email.includes('@')) {
+          localStorage.setItem(`payment_email_${currentPaymentIntentId}`, user.email);
+        }
+      }
+      // Autofill phone if empty (only once)
+      if (customerPhone === '' && user.phone) {
+        setCustomerPhone(user.phone);
+        validatePhone(user.phone);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email, user?.phone, authLoading, isCustomer]); // Only autofill when user data changes
+  
   // Get payment intent ID from URL (ONLY non-sensitive identifier)
   const paymentIntentId = searchParams.get('payment_intent');
   
@@ -271,34 +323,6 @@ function PaymentContent() {
     const emailParam = encodeURIComponent(emailToUse);
     console.log('[handlePaymentSuccess] Redirecting with email:', emailToUse);
     window.location.replace(`/payment/success?payment_intent=${paymentIntent.id}&email=${emailParam}`);
-  };
-
-  // Real-time email validation
-  const validateEmail = (email: string) => {
-    if (!email) {
-      setEmailError('');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email');
-    } else {
-      setEmailError('');
-    }
-  };
-
-  // Real-time phone validation
-  const validatePhone = (phone: string) => {
-    if (!phone) {
-      setPhoneError('');
-      return;
-    }
-    const phoneRegex = /^[+]?[\d\s-()]+$/;
-    if (!phoneRegex.test(phone) || phone.replace(/\D/g, '').length < 8) {
-      setPhoneError('Please enter a valid phone number');
-    } else {
-      setPhoneError('');
-    }
   };
 
   const handlePaymentError = (error: StripeError | null | undefined) => {

@@ -25,10 +25,64 @@ export async function GET(request: NextRequest) {
     console.log('[Bookings API] Authenticated user:', supabaseUser.email);
 
     // Extract access token from request for signed URL generation
+    // Try Authorization header first
+    let accessToken: string | undefined;
     const authHeader = request.headers.get('authorization');
-    const accessToken = authHeader && authHeader.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
-      : undefined;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      accessToken = authHeader.substring(7);
+      console.log('[Bookings API] Found access token in Authorization header');
+    } else {
+      // Fallback: extract from Supabase cookies (same logic as createServerSupabaseClient)
+      const cookieStore = request.cookies;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0] || '';
+      const authTokenCookieName = projectRef ? `sb-${projectRef}-auth-token` : null;
+      
+      if (authTokenCookieName) {
+        const authCookie = cookieStore.get(authTokenCookieName);
+        if (authCookie) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(authCookie.value));
+            if (parsed?.access_token) {
+              accessToken = parsed.access_token;
+              console.log('[Bookings API] Found access token in cookie:', authTokenCookieName);
+            }
+          } catch {
+            // If not JSON, might be a direct token
+            if (authCookie.value.length > 50) {
+              accessToken = authCookie.value;
+              console.log('[Bookings API] Found access token in cookie (non-JSON)');
+            }
+          }
+        }
+      }
+      
+      // Fallback: search for any cookie containing 'auth-token'
+      if (!accessToken) {
+        for (const cookie of cookieStore.getAll()) {
+          if (cookie.name.includes('auth-token') || cookie.name.includes('supabase') || cookie.name.startsWith('sb-')) {
+            try {
+              const parsed = JSON.parse(decodeURIComponent(cookie.value));
+              if (parsed?.access_token) {
+                accessToken = parsed.access_token;
+                console.log('[Bookings API] Found access token in cookie:', cookie.name);
+                break;
+              }
+            } catch {
+              if (cookie.value.length > 50 && !accessToken) {
+                accessToken = cookie.value;
+                console.log('[Bookings API] Found access token in cookie (non-JSON):', cookie.name);
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      if (!accessToken) {
+        console.warn('[Bookings API] No access token found in headers or cookies - signed URL generation may fail');
+      }
+    }
 
     // Get user from database
     const user = await prisma.public_users.findUnique({
@@ -193,65 +247,123 @@ export async function GET(request: NextRequest) {
       // - box_back_view/
       // - closed_stand_view/
       // The database may store either full URLs or relative paths (e.g., "box_front_view/123-456.jpg")
-      // We use signed URLs (expire in 1 hour) for security - bucket can remain private
+      // IMPORTANT: box_returns bucket is PRIVATE, so we MUST always generate signed URLs
       const getImageUrl = async (imagePath: string | null | undefined): Promise<string | null> => {
         if (!imagePath) return null;
         
-        // If it's already a full URL (including signed URLs), check if it's a signed URL
-        // Signed URLs contain a token parameter, public URLs don't
+        // If it's already a signed URL (contains token parameter), use it as-is
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-          // Check if it's already a signed URL (contains token parameter)
           if (imagePath.includes('token=') || imagePath.includes('&t=')) {
-            console.log('[Bookings API] Image already signed URL:', imagePath.substring(0, 100) + '...');
             return imagePath;
           }
+          }
           
-          // If it's a public URL but bucket is private, we need to create a signed URL
-          // Extract path from URL and create signed URL
+        // Extract the path from the URL - the path format is: box_front_view/filename.jpg
+        let cleanPath = imagePath;
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
           try {
             const url = new URL(imagePath);
+            // Match pattern: /storage/v1/object/public/box_returns/box_front_view/filename.jpg
+            // We want to extract: box_front_view/filename.jpg
             const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
-            if (pathMatch) {
-              const extractedPath = pathMatch[1];
-              const signedUrl = await getSupabaseStorageSignedUrl('box_returns', extractedPath, 3600, accessToken);
-              console.log('[Bookings API] Converted public URL to signed URL');
-              return signedUrl;
+            if (pathMatch && pathMatch[1]) {
+              cleanPath = pathMatch[1];
+              console.log('[Bookings API] Extracted path from URL:', { original: imagePath.substring(0, 100), extracted: cleanPath });
+            } else {
+              // Try manual extraction
+              const parts = imagePath.split('/box_returns/');
+              if (parts.length > 1) {
+                cleanPath = parts[1];
+                console.log('[Bookings API] Manually extracted path:', cleanPath);
+              } else {
+                console.error('[Bookings API] Could not extract path from URL:', imagePath);
+                return null;
+              }
             }
-          } catch {
-            console.warn('[Bookings API] Could not parse URL, using as-is:', imagePath);
-            return imagePath;
+          } catch (error) {
+            console.error('[Bookings API] Failed to parse URL:', error);
+            return null;
           }
         }
         
-        // Otherwise, create signed URL from path (bucket is private, use signed URLs)
+        // Security: Validate path format to prevent path traversal attacks
+        // Expected format: box_front_view/uuid-timestamp.jpg or box_back_view/... or closed_stand_view/...
+        // Note: closed_stand_view doesn't have 'box_' prefix, so we need to allow both patterns
+        const isValidPath = /^(box_(front_view|back_view)|closed_stand_view)\/[a-f0-9-]+-\d+\.(jpg|jpeg|png)$/i;
+        if (!isValidPath.test(cleanPath)) {
+          console.error('[Bookings API] Security: Invalid image path format:', cleanPath);
+          return null;
+        }
+        
+        // Always generate signed URL for private bucket
+        // SECURITY: Use user's access token (server-side only, never sent to client)
+        // Authentication is verified above via getCurrentUser() before reaching this point
+        // Permission is verified by only returning bookings owned by the user (via payment.user_id check above)
         try {
-          const signedUrl = await getSupabaseStorageSignedUrl('box_returns', imagePath, 3600, accessToken);
-          console.log('[Bookings API] Created signed URL from path:', { path: imagePath, url: signedUrl.substring(0, 100) + '...' });
+          if (!accessToken) {
+            console.error('[Bookings API] No access token available for signed URL generation');
+            return null;
+          }
+          console.log('[Bookings API] Generating signed URL for path:', cleanPath, '(using user access token)');
+          const signedUrl = await getSupabaseStorageSignedUrl('box_returns', cleanPath, 3600, accessToken);
+          if (!signedUrl || signedUrl.includes('/storage/v1/object/public/')) {
+            console.error('[Bookings API] Signed URL generation returned public URL - this should not happen!');
+            return null;
+          }
+          console.log('[Bookings API] Generated signed URL successfully (first 100 chars):', signedUrl.substring(0, 100));
           return signedUrl;
         } catch (error) {
-          console.error('[Bookings API] Failed to create signed URL, falling back to public URL:', error);
-          // Fallback to public URL if signed URL creation fails
-          return getSupabaseStoragePublicUrl('box_returns', imagePath);
+          console.error('[Bookings API] Failed to create signed URL for box_returns:', {
+            path: cleanPath,
+            error: error instanceof Error ? error.message : String(error),
+            errorStack: error instanceof Error ? error.stack : undefined,
+            originalPath: imagePath?.substring(0, 100),
+            hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+          });
+          // Return null if we can't generate signed URL (better than returning broken public URL)
+          return null;
         }
       };
       
-      // Generate signed URLs for all return photos (expire in 1 hour)
-      const [boxFrontView, boxBackView, closedStandLock] = await Promise.all([
+      // Only generate signed URLs for completed bookings with return photos
+      // This avoids unnecessary API calls for active/upcoming bookings
+      let boxFrontView: string | null = null;
+      let boxBackView: string | null = null;
+      let closedStandLock: string | null = null;
+      
+      // Only process return photos if booking is completed and has return data
+      if (finalStatus === 'completed' && booking.box_returns) {
+        try {
+          const results = await Promise.all([
         getImageUrl(booking.box_returns?.box_front_view),
         getImageUrl(booking.box_returns?.box_back_view),
         getImageUrl(booking.box_returns?.closed_stand_lock),
       ]);
       
-      // Debug logging for return photos
-      if (booking.box_returns) {
-        console.log('[Bookings API] Return photos for booking', booking.id.slice(0, 8), {
-          box_front_view_db: booking.box_returns.box_front_view?.substring(0, 100),
-          box_back_view_db: booking.box_returns.box_back_view?.substring(0, 100),
-          closed_stand_lock_db: booking.box_returns.closed_stand_lock?.substring(0, 100),
-          boxFrontView_url: boxFrontView?.substring(0, 100),
-          boxBackView_url: boxBackView?.substring(0, 100),
-          closedStandLock_url: closedStandLock?.substring(0, 100),
-        });
+          // Ensure we never return public URLs - if any result is a public URL, set it to null
+          boxFrontView = results[0] && !results[0].includes('/storage/v1/object/public/') ? results[0] : null;
+          boxBackView = results[1] && !results[1].includes('/storage/v1/object/public/') ? results[1] : null;
+          closedStandLock = results[2] && !results[2].includes('/storage/v1/object/public/') ? results[2] : null;
+          
+          // Log if we filtered out any public URLs
+          if (results[0]?.includes('/storage/v1/object/public/') || 
+              results[1]?.includes('/storage/v1/object/public/') || 
+              results[2]?.includes('/storage/v1/object/public/')) {
+            console.error('[Bookings API] Filtered out public URLs - signed URL generation failed:', {
+              boxFrontView: results[0]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+              boxBackView: results[1]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+              closedStandLock: results[2]?.includes('/storage/v1/object/public/') ? 'public URL filtered' : 'ok',
+            });
+          }
+        } catch (error) {
+          console.error('[Bookings API] Error processing return photos:', error);
+          // Keep values as null if processing fails
+        }
+      }
+      
+      // Debug logging for return photos (only log if we actually processed them)
+      if (finalStatus === 'completed' && booking.box_returns && (boxFrontView || boxBackView || closedStandLock)) {
+        console.log('[Bookings API] Return photos processed for completed booking', booking.id.slice(0, 8));
       }
 
       // Get price and deposit from box

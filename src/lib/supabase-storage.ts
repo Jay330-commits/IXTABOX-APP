@@ -226,14 +226,41 @@ export async function getSupabaseStorageSignedUrl(
   // If path is already a full URL, extract the path from it
   let cleanPath = path;
   if (path.startsWith('http://') || path.startsWith('https://')) {
-    // Extract path from full URL
+    // If it's already a signed URL (contains token parameter), we shouldn't be here
+    // But if we are, try to extract the path anyway
+    if (path.includes('token=') || path.includes('&t=')) {
+      console.warn(`[getSupabaseStorageSignedUrl] Received what appears to be a signed URL: ${path.substring(0, 100)}...`);
+      // Try to extract path from signed URL
+      try {
     const url = new URL(path);
-    const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/sign\/\w+\/(.+)$/);
     if (pathMatch) {
       cleanPath = pathMatch[1];
+        } else {
+          throw new Error(`Cannot extract path from signed URL: ${path.substring(0, 100)}`);
+        }
+      } catch (error) {
+        throw new Error(`Failed to extract path from signed URL: ${error instanceof Error ? error.message : String(error)}`);
+      }
     } else {
-      // If we can't extract, return as-is (might already be a signed URL)
-      return path;
+      // Extract path from public URL
+      try {
+        const url = new URL(path);
+        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+        if (pathMatch && pathMatch[1]) {
+          cleanPath = pathMatch[1];
+        } else {
+          // Try manual extraction
+          const parts = path.split(`/${bucket}/`);
+          if (parts.length > 1) {
+            cleanPath = parts[1].split('?')[0]; // Remove query params
+          } else {
+            throw new Error(`Cannot extract path from URL: ${path.substring(0, 100)}`);
+          }
+        }
+      } catch (error) {
+        throw new Error(`Failed to extract path from URL: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
   
@@ -247,6 +274,16 @@ export async function getSupabaseStorageSignedUrl(
   if (error) {
     console.error(`[getSupabaseStorageSignedUrl] Error creating signed URL for ${bucket}/${cleanPath}:`, error);
     throw new Error(`Failed to create signed URL: ${error.message}`);
+  }
+  
+  if (!data?.signedUrl) {
+    throw new Error(`No signed URL returned for ${bucket}/${cleanPath}`);
+  }
+  
+  // Safety check: ensure we never return a public URL
+  if (data.signedUrl.includes('/storage/v1/object/public/')) {
+    console.error(`[getSupabaseStorageSignedUrl] Signed URL generation returned public URL instead of signed URL for ${bucket}/${cleanPath}`);
+    throw new Error(`Signed URL generation failed - returned public URL instead`);
   }
   
   return data.signedUrl;

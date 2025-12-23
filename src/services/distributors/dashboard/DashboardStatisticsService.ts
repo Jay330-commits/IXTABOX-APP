@@ -1,7 +1,7 @@
 import 'server-only';
 import { BookingStatus, boxStatus, PaymentStatus, ContractStatus, Prisma, status } from '@prisma/client';
 import { BaseService } from '../../BaseService';
-import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
+import { getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export interface DashboardStats {
   activeStands: number;
@@ -292,7 +292,7 @@ export class DashboardStatisticsService extends BaseService {
       dateFrom?: Date;
       dateTo?: Date;
       showAllTime?: boolean;
-      accessToken?: string; // Access token for signed URL generation
+      accessToken?: string; // User's access token for signed URL generation (server-side only)
     }
   ): Promise<BookingInventoryItem[]> {
     return await this.logOperation(
@@ -436,6 +436,103 @@ export class DashboardStatisticsService extends BaseService {
             throw new Error(`Booking ${booking.id} is missing display_id. This indicates a data integrity issue.`);
           }
 
+          // Helper function to generate signed URLs for return photos
+          // IMPORTANT: box_returns bucket is PRIVATE, so we MUST always generate signed URLs
+          const getImageUrl = async (imagePath: string | null | undefined): Promise<string | null> => {
+            if (!imagePath) return null;
+            
+            // If it's already a signed URL (contains token parameter), use it as-is
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+              if (imagePath.includes('token=') || imagePath.includes('&t=')) {
+                return imagePath;
+              }
+            }
+            
+            // Extract the path from the URL - the path format is: box_front_view/filename.jpg
+            let cleanPath = imagePath;
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+              try {
+                const url = new URL(imagePath);
+                // Match pattern: /storage/v1/object/public/box_returns/box_front_view/filename.jpg
+                // We want to extract: box_front_view/filename.jpg
+                const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
+                if (pathMatch && pathMatch[1]) {
+                  cleanPath = pathMatch[1];
+                } else {
+                  // Try manual extraction
+                  const parts = imagePath.split('/box_returns/');
+                  if (parts.length > 1) {
+                    cleanPath = parts[1];
+                  } else {
+                    console.error('[DashboardStatisticsService] Could not extract path from URL:', imagePath);
+                    return null;
+                  }
+                }
+              } catch (error) {
+                console.error('[DashboardStatisticsService] Failed to parse URL:', error);
+                return null;
+              }
+            }
+            
+            // Security: Validate path format to prevent path traversal attacks
+            // Expected format: box_front_view/uuid-timestamp.jpg or box_back_view/... or closed_stand_view/...
+            // Note: closed_stand_view doesn't have 'box_' prefix, so we need to allow both patterns
+            const isValidPath = /^(box_(front_view|back_view)|closed_stand_view)\/[a-f0-9-]+-\d+\.(jpg|jpeg|png)$/i;
+            if (!isValidPath.test(cleanPath)) {
+              console.error('[DashboardStatisticsService] Security: Invalid image path format:', cleanPath);
+              return null;
+            }
+            
+            // Always generate signed URL for private bucket
+            // SECURITY: Use user's access token (server-side only, never sent to client)
+            // Authentication is verified before this method is called
+            // Permission is verified by only returning bookings for the distributor's locations
+            try {
+              if (!filters?.accessToken) {
+                console.error('[DashboardStatisticsService] No access token available for signed URL generation');
+                return null;
+              }
+              console.log('[DashboardStatisticsService] Generating signed URL for path:', cleanPath, '(using user access token)');
+              const signedUrl = await getSupabaseStorageSignedUrl('box_returns', cleanPath, 3600, filters.accessToken);
+              if (!signedUrl || signedUrl.includes('/storage/v1/object/public/')) {
+                console.error('[DashboardStatisticsService] Signed URL generation returned public URL - this should not happen!');
+                return null;
+              }
+              return signedUrl;
+            } catch (error) {
+              console.error('[DashboardStatisticsService] Failed to create signed URL for box_returns:', {
+                path: cleanPath,
+                error: error instanceof Error ? error.message : String(error),
+                originalPath: imagePath?.substring(0, 100),
+              });
+              // Return null if we can't generate signed URL (better than returning broken public URL)
+              return null;
+            }
+          };
+          
+          // Only process return photos if booking is completed and has return data
+          let boxFrontView: string | null = null;
+          let boxBackView: string | null = null;
+          let closedStandLock: string | null = null;
+          
+          if (booking.status === BookingStatus.Completed && booking.box_returns) {
+            try {
+              const results = await Promise.all([
+                getImageUrl(booking.box_returns?.box_front_view),
+                getImageUrl(booking.box_returns?.box_back_view),
+                getImageUrl(booking.box_returns?.closed_stand_lock),
+              ]);
+              
+              // Ensure we never return public URLs - if any result is a public URL, set it to null
+              boxFrontView = results[0] && !results[0].includes('/storage/v1/object/public/') ? results[0] : null;
+              boxBackView = results[1] && !results[1].includes('/storage/v1/object/public/') ? results[1] : null;
+              closedStandLock = results[2] && !results[2].includes('/storage/v1/object/public/') ? results[2] : null;
+            } catch (error) {
+              console.error('[DashboardStatisticsService] Error processing return photos:', error);
+              // Keep values as null if processing fails
+            }
+          }
+
           return {
             bookingId: booking.id,
             bookingDisplayId: booking.display_id,
@@ -460,65 +557,9 @@ export class DashboardStatisticsService extends BaseService {
             lockPin: booking.lock_pin,
             compartment: booking.boxes.compartment,
             daysRemaining,
-            // Images are stored in the 'box_returns' bucket in folders:
-            // - box_front_view/
-            // - box_back_view/
-            // - closed_stand_view/
-            // The database may store either full URLs or relative paths (e.g., "box_front_view/123-456.jpg")
-            // We use signed URLs (expire in 1 hour) for security - bucket can remain private
-            // IMPORTANT: Use undefined accessToken to use service role key (bypasses RLS)
-            // This allows distributors to see images uploaded by customers
-            boxFrontView: await (async () => {
-              const path = booking.box_returns?.box_front_view;
-              if (!path) return null;
-              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
-              if (path.startsWith('http')) {
-                try {
-                  const url = new URL(path);
-                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
-                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
-                } catch { return path; }
-              }
-              try {
-                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
-              } catch {
-                return getSupabaseStoragePublicUrl('box_returns', path);
-              }
-            })(),
-            boxBackView: await (async () => {
-              const path = booking.box_returns?.box_back_view;
-              if (!path) return null;
-              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
-              if (path.startsWith('http')) {
-                try {
-                  const url = new URL(path);
-                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
-                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
-                } catch { return path; }
-              }
-              try {
-                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
-              } catch {
-                return getSupabaseStoragePublicUrl('box_returns', path);
-              }
-            })(),
-            closedStandLock: await (async () => {
-              const path = booking.box_returns?.closed_stand_lock;
-              if (!path) return null;
-              if (path.startsWith('http') && (path.includes('token=') || path.includes('&t='))) return path;
-              if (path.startsWith('http')) {
-                try {
-                  const url = new URL(path);
-                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/)\w+\/(.+)$/);
-                  if (pathMatch) return await getSupabaseStorageSignedUrl('box_returns', pathMatch[1], 3600, undefined);
-                } catch { return path; }
-              }
-              try {
-                return await getSupabaseStorageSignedUrl('box_returns', path, 3600, undefined);
-              } catch {
-                return getSupabaseStoragePublicUrl('box_returns', path);
-              }
-            })(),
+            boxFrontView,
+            boxBackView,
+            closedStandLock,
             boxReturnStatus: booking.box_returns?.confirmed_good_status ?? null,
             boxReturnDate: booking.box_returns?.created_at || null,
           };

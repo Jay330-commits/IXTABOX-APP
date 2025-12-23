@@ -15,7 +15,8 @@ export interface NotificationData {
   type: NotificationType;
   title: string;
   message: string;
-  relatedBookingId?: string;
+  entityType?: string; // e.g., 'booking', 'feedback', etc.
+  entityId?: string; // ID of the related entity
 }
 
 /**
@@ -131,7 +132,8 @@ export class NotificationService extends BaseService {
         type: NotificationType.Email,
         title,
         message,
-        related_booking_id: bookingId,
+        entity_type: 'booking',
+        entity_id: bookingId,
         read: false,
       },
     });
@@ -223,7 +225,8 @@ export class NotificationService extends BaseService {
         type: NotificationType.Email,
         title,
         message,
-        related_booking_id: bookingId,
+        entity_type: 'booking',
+        entity_id: bookingId,
         read: false,
       },
     });
@@ -240,7 +243,8 @@ export class NotificationService extends BaseService {
         type: data.type,
         title: data.title,
         message: data.message,
-        related_booking_id: data.relatedBookingId,
+        entity_type: data.entityType,
+        entity_id: data.entityId,
         read: false,
       },
     });

@@ -8,7 +8,7 @@ meaning we need a score column in boxes to store score
 
 
 In Use is displayed in two lines fix that 
-remove the box icons near model
+2remove the box icons near model
 
 
 apply the same principles of customer starts hear from from the icon placement and different view of them in small screen 

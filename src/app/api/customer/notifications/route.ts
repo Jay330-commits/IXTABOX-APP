@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
       message: notification.message || '',
       date: notification.created_at?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
       read: notification.read || false,
+      entityType: notification.entity_type || undefined,
+      entityId: notification.entity_id || undefined,
     }));
 
     return NextResponse.json({ notifications: formattedNotifications });
