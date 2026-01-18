@@ -46,6 +46,7 @@ export type MapProps = {
         nextAvailableDate: string | null;
       };
     };
+    image?: string | null;
   }[];
   filterForm?: React.ReactNode;
   filterValues?: {
@@ -70,6 +71,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [mapZoom, setMapZoom] = useState(12);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const [exitHintVisible, setExitHintVisible] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -84,6 +86,16 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     libraries: ["places"],
     id: "google-map-script",
   });
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Log API key status in development
   useEffect(() => {
@@ -500,18 +512,39 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       
       {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
       {selectedLocation && (
-        <div
-          className="fixed inset-0 z-[1003] bg-black/50 flex items-center justify-center px-4 py-4"
-          // Modal only closes via X button - no onClick handler to prevent closing on backdrop click
-        >
+        <>
+          {/* Backdrop for mobile */}
+          {isMobile && (
+            <div
+              className="fixed inset-0 bg-black/50 z-[10000]"
+              onClick={() => setSelectedLocation(null)}
+            />
+          )}
+
+          {/* Panel */}
           <div
-            className="max-w-lg w-full max-h-[calc(100vh-80px)] overflow-y-auto bg-white rounded-lg shadow-xl"
-            style={{ maxHeight: 'calc(100vh - 80px)' }}
-            onClick={(e) => {
-              // Prevent clicks inside modal from bubbling up to backdrop
-              e.stopPropagation();
+            className={`
+              fixed z-[10001] bg-slate-800 shadow-2xl
+              flex flex-col
+              ${isMobile 
+                ? 'left-0 right-0 bottom-0 rounded-t-xl border-t border-x border-slate-600/30 max-h-[calc(100vh-80px)]'
+                : 'left-0 top-[80px] w-1/2 max-w-[600px] border-r border border-slate-600/30 h-[calc(100vh-80px)]'
+              }
+            `}
+            style={{
+              ...(isMobile ? {
+                display: 'flex',
+                flexDirection: 'column',
+                transform: 'translate3d(0, 0, 0)',
+                animation: 'slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              } : {
+                transform: 'translate3d(0, 0, 0)',
+              }),
+              transition: 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+              willChange: 'transform',
             }}
           >
+            <div className={isMobile ? 'h-full' : 'flex-1 min-h-0 h-full'} style={{ display: 'flex', flexDirection: 'column' }}>
             <LocationDetails
               location={{
                 id: selectedLocation.id,
@@ -526,6 +559,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
                 isFullyBooked: selectedLocation.isFullyBooked,
                 earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
                 modelAvailability: selectedLocation.modelAvailability,
+                image: selectedLocation.image || null,
               }}
               initialStartDate={filterValues?.startDate}
               initialEndDate={filterValues?.endDate}
@@ -533,8 +567,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               onBook={handleBookLocation}
               onClose={() => setSelectedLocation(null)}
             />
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {!interactionEnabled && !fullscreen && (

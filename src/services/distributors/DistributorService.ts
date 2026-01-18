@@ -60,6 +60,13 @@ export class DistributorService extends BaseService {
           throw new Error(`Invalid contract type: ${data.contractType}. Must be LEASING or OWNING.`);
         }
 
+        // Generate a 6-character display_id (similar to database default)
+        // Format: first 6 characters of UUID with dashes removed
+        const generateDisplayId = (): string => {
+          const uuid = crypto.randomUUID().replace(/-/g, '');
+          return uuid.substring(0, 6).toUpperCase();
+        };
+
         // Create distributor record
         const distributor = await this.prisma.distributor.create({
           data: {
@@ -75,6 +82,7 @@ export class DistributorService extends BaseService {
             business_description: data.businessDescription || null,
             contract_type: data.contractType,
             active: true,
+            display_id: generateDisplayId(),
           },
           include: {
             users: true,

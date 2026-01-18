@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { status, boxStatus, boxmodel } from '@prisma/client';
 import { LocationService } from '@/services/locations/LocationService';
+import { getSupabaseStoragePublicUrl } from '@/lib/supabase-storage';
 
 type ApiLocation = {
   id: string;
@@ -26,6 +27,7 @@ type ApiLocation = {
       nextAvailableDate: string | null;
     };
   };
+  image?: string | null;
 };
 
 function toNumber(value: unknown): number | null {
@@ -154,6 +156,23 @@ export async function GET() {
           [status.Inactive]: 'inactive',
         };
 
+        // Convert image path to full URL if it's stored as a path
+        let imageUrl: string | null = null;
+        if (location.image) {
+          // If it's already a full URL, use it directly
+          if (location.image.startsWith('http://') || location.image.startsWith('https://')) {
+            imageUrl = location.image;
+          } else {
+            // Otherwise, treat it as a path in the locations bucket
+            try {
+              imageUrl = getSupabaseStoragePublicUrl('locations', location.image);
+            } catch (error) {
+              console.error('Error generating image URL:', error);
+              imageUrl = location.image; // Fallback to original value
+            }
+          }
+        }
+
         const apiLocation: ApiLocation = {
           id: location.id,
           lat,
@@ -178,6 +197,7 @@ export async function GET() {
               nextAvailableDate: proLatestEndDate ? proLatestEndDate.toISOString() : null,
             },
           },
+          image: imageUrl,
         };
         
         // Location API response (logging removed)

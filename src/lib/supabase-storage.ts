@@ -150,18 +150,12 @@ export async function uploadToSupabaseStorage(
     }
     
     if (errorMessage.includes('new row violates row-level security') || statusCode === 403) {
-      const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-      const errorMsg = hasServiceRole
-        ? `Permission denied: Cannot upload to bucket '${bucket}' even with service role key. ` +
-          `This might indicate the bucket doesn't exist or has incorrect permissions. ` +
-          `Please check: 1) Bucket exists in Supabase Dashboard → Storage, 2) Bucket is public or has proper RLS policies. ` +
-          `Original error: ${errorMessage}`
-        : `Permission denied: Cannot upload to bucket '${bucket}'. ` +
-          `You're using NEXT_PUBLIC_SUPABASE_ANON_KEY which requires RLS policies. ` +
-          `Solution: Set SUPABASE_SERVICE_ROLE_KEY environment variable to bypass RLS, or configure RLS policies in Supabase Dashboard → Storage → ${bucket} → Policies. ` +
-          `Original error: ${errorMessage}`;
-      
-      throw new Error(errorMsg);
+      throw new Error(
+        `Permission denied: Cannot upload to bucket '${bucket}'. ` +
+        `Please configure RLS policies in Supabase Dashboard → Storage → ${bucket} → Policies to allow authenticated uploads. ` +
+        `The bucket should allow INSERT operations for authenticated users. ` +
+        `Original error: ${errorMessage}`
+      );
     }
     
     throw new Error(

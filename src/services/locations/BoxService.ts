@@ -45,6 +45,12 @@ export class BoxService extends BaseService {
           throw new Error(`Invalid box model: ${data.model}`);
         }
 
+        // Generate a 6-character display_id if not provided (similar to database default)
+        const generateDisplayId = (): string => {
+          const uuid = crypto.randomUUID().replace(/-/g, '');
+          return uuid.substring(0, 6).toUpperCase();
+        };
+
         // Create box
         const box = await this.prisma.boxes.create({
           data: {
@@ -52,7 +58,7 @@ export class BoxService extends BaseService {
             model: data.model,
             compartment: data.compartment ?? null,
             status: data.status ?? boxStatus.Active,
-            display_id: data.displayId, // If not provided, database will auto-generate
+            display_id: data.displayId || generateDisplayId(),
           },
           include: {
             stands: {

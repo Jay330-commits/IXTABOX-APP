@@ -18,6 +18,7 @@ export interface UpdateLocationData {
   coordinates?: Prisma.JsonValue | null;
   status?: status;
   displayId?: string;
+  image?: string | null;
 }
 
 /**
@@ -47,6 +48,12 @@ export class LocationService extends BaseService {
           throw new Error(`Invalid location status: ${data.status}`);
         }
 
+        // Generate a 6-character display_id if not provided (similar to database default)
+        const generateDisplayId = (): string => {
+          const uuid = crypto.randomUUID().replace(/-/g, '');
+          return uuid.substring(0, 6).toUpperCase();
+        };
+
         // Create location
         const location = await this.prisma.locations.create({
           data: {
@@ -55,7 +62,7 @@ export class LocationService extends BaseService {
             address: data.address ?? null,
             coordinates: data.coordinates ?? Prisma.JsonNull,
             status: data.status ?? status.Available,
-            display_id: data.displayId, // If not provided, database will auto-generate
+            display_id: data.displayId || generateDisplayId(),
           },
           include: {
             distributors: {
@@ -145,6 +152,9 @@ export class LocationService extends BaseService {
         }
         if (data.displayId !== undefined) {
           updateData.display_id = data.displayId;
+        }
+        if (data.image !== undefined) {
+          updateData.image = data.image;
         }
 
         // Update location

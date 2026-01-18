@@ -53,11 +53,11 @@ export class BookingService extends BaseService {
    * Calculate booking price based on box price and deposit
    * @deprecated Use BookingValidationService directly
    */
-  calculateBookingPrice(
+  async calculateBookingPrice(
     days: number,
     boxPrice: number | string | null,
     deposit: number | string | null = null
-  ): { 
+  ): Promise<{ 
     amount: number; 
     amountStr: string; 
     days: number; 
@@ -65,8 +65,8 @@ export class BookingService extends BaseService {
     deposit: number;
     subtotal: number;
     total: number;
-  } {
-    return this.validationService.calculateBookingPrice(days, boxPrice, deposit);
+  }> {
+    return await this.validationService.calculateBookingPrice(days, boxPrice, deposit);
   }
 
   /**

@@ -13,6 +13,7 @@ import DashboardSection from '@/components/distributors/DashboardSection';
 import DistributerHeader from '@/components/layouts/DistributerHeader';
 import DistributorProfileSection from '@/components/distributors/ProfileSection';
 import SettingsSection from '@/components/customers/SettingsSection';
+import AdminSection from '@/components/distributors/AdminSection';
 
 interface StatCard {
   title: string;
@@ -488,6 +489,8 @@ export default function DistributerDashboard() {
             setDarkMode={setDarkMode}
           />
         );
+      case 'admin':
+        return <AdminSection />;
       case 'dashboard':
       default:
         return (

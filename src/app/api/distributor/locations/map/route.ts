@@ -10,14 +10,19 @@ export interface DistributorLocationForMap {
   lat: number;
   lng: number;
   status: 'available' | 'maintenance' | 'inactive';
+  image: string | null;
   stands: {
     id: string;
     name: string;
     capacity: number;
     boxes: {
       id: string;
+      display_id: string;
+      model: string;
       type: string;
       status: string;
+      compartment: number | null;
+      bookingStatus: string | null;
     }[];
   }[];
   inventoryStats: {
@@ -147,8 +152,11 @@ export async function GET(request: NextRequest) {
 
             return {
               id: box.id,
-              type: box.model || 'Unknown',
+              display_id: box.display_id || '',
+              model: box.model || 'Unknown',
+              type: box.model || 'Unknown', // Keep for backward compatibility
               status,
+              compartment: box.compartment || null,
               bookingStatus: bookingStatus || null,
             };
           });
@@ -175,6 +183,7 @@ export async function GET(request: NextRequest) {
           lat: coords.lat,
           lng: coords.lng,
           status: locationStatus,
+          image: location.image || null,
           stands: standsWithInventory,
           inventoryStats: {
             totalBoxes,

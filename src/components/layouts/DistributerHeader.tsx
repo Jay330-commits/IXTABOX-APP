@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { label: "Marketing", section: "marketing", icon: "" },
   { label: "Contracts", section: "contracts", icon: "" },
   { label: "Statistics", section: "statistics", icon: "" },
+  { label: "Admin", section: "admin", icon: "" },
 ];
 
 interface DistributerHeaderProps {

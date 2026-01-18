@@ -69,13 +69,21 @@ export class BookingValidationService extends BaseService {
    * @param days Number of days for the booking
    * @param boxPrice Price per day from the box (Decimal or number)
    * @param deposit Deposit amount from the box (Decimal or number, optional)
+   * @param locationId Optional location ID for dynamic pricing
+   * @param startDate Optional start date for dynamic pricing
+   * @param endDate Optional end date for dynamic pricing
+   * @param modelType Optional model type for dynamic pricing
    * @returns Price calculation result
    */
-  calculateBookingPrice(
+  async calculateBookingPrice(
     days: number,
     boxPrice: number | string | null,
-    deposit: number | string | null = null
-  ): { 
+    deposit: number | string | null = null,
+    locationId?: string,
+    startDate?: Date | string,
+    endDate?: Date | string,
+    modelType?: string | null
+  ): Promise<{ 
     amount: number; 
     amountStr: string; 
     days: number; 
@@ -83,27 +91,55 @@ export class BookingValidationService extends BaseService {
     deposit: number;
     subtotal: number;
     total: number;
-  } {
-    // Convert Decimal to number if needed
-    const pricePerDay = boxPrice 
+    breakdown?: Array<{ date: string; price: number }>;
+  }> {
+    // Default price from box
+    const defaultPricePerDay = boxPrice 
       ? (typeof boxPrice === 'string' ? parseFloat(boxPrice) : Number(boxPrice))
       : 300; // Default fallback
+    
+    let pricePerDay = defaultPricePerDay;
+    let subtotal = pricePerDay * days;
+    let breakdown: Array<{ date: string; price: number }> | undefined;
+
+    // If location pricing is available, use dynamic pricing
+    if (locationId && startDate && endDate) {
+      try {
+        const { LocationPricingService } = await import('@/services/pricing/LocationPricingService');
+        const pricingService = new LocationPricingService();
+        const pricingResult = await pricingService.calculateTotalPrice(
+          locationId,
+          startDate,
+          endDate,
+          modelType,
+          defaultPricePerDay
+        );
+        
+        subtotal = pricingResult.total;
+        breakdown = pricingResult.breakdown;
+        // Calculate average price per day for display
+        pricePerDay = days > 0 ? subtotal / days : defaultPricePerDay;
+      } catch (error) {
+        console.error('Error calculating dynamic pricing, using default:', error);
+        // Fall back to default pricing if dynamic pricing fails
+      }
+    }
     
     const depositAmount = deposit 
       ? (typeof deposit === 'string' ? parseFloat(deposit) : Number(deposit))
       : 0;
     
-    const subtotal = pricePerDay * days;
     const total = subtotal + depositAmount;
     
     return {
       amount: total,
       amountStr: total.toFixed(2),
       days,
-      pricePerDay,
+      pricePerDay: Math.round(pricePerDay * 100) / 100, // Round to 2 decimals
       deposit: depositAmount,
       subtotal,
       total,
+      breakdown,
     };
   }
 
@@ -141,10 +177,23 @@ export class BookingValidationService extends BaseService {
       throw new Error(dateValidation.error || 'Invalid booking dates');
     }
 
-    // Fetch box to get price and deposit
+    // Fetch box to get price, deposit, and location info
     const box = await this.prisma.boxes.findUnique({
       where: { id: bookingData.boxId },
-      select: { price: true, deposit: true },
+      select: { 
+        price: true, 
+        deposit: true,
+        model: true,
+        stands: {
+          select: {
+            locations: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!box) {
@@ -170,10 +219,18 @@ export class BookingValidationService extends BaseService {
 
     const { start, end } = dateValidation;
     const days = this.calculateBookingDays(start, end);
-    const priceCalculation = this.calculateBookingPrice(
+    
+    const locationId = box.stands?.locations?.id;
+    const modelType = box.model || null;
+
+    const priceCalculation = await this.calculateBookingPrice(
       days,
       boxPrice,
-      boxDeposit
+      boxDeposit,
+      locationId,
+      start,
+      end,
+      modelType
     );
 
     // Prepare metadata
