@@ -320,7 +320,7 @@ export class ExtensionRequestService extends BaseService {
         // Find an available box for the conflicting booking period
         let alternativeBox = null;
         for (const box of alternativeBoxes) {
-          const hasConflict = box.bookings.some((b) => {
+          const hasConflict = box.bookings.some((b: { start_date: Date; end_date: Date }) => {
             const bookingStart = new Date(b.start_date);
             const bookingEnd = new Date(b.end_date);
             const conflictStart = new Date(conflictingBooking.start_date);

@@ -12,9 +12,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ bookingId: string }> }
 ) {
+  const { bookingId } = await params;
   try {
-    const { bookingId } = await params;
-
     if (!bookingId) {
       return NextResponse.json(
         { error: 'Booking ID is required' },
@@ -75,10 +74,10 @@ export async function POST(
     }
 
     // Create payment record for the extension FIRST (before processing extension)
-    const chargeId = paymentIntent.latest_charge 
-      ? (typeof paymentIntent.latest_charge === 'string' 
-          ? paymentIntent.latest_charge 
-          : (paymentIntent.latest_charge as any).id)
+    const chargeId = paymentIntent.latest_charge
+      ? (typeof paymentIntent.latest_charge === 'string'
+          ? paymentIntent.latest_charge
+          : (paymentIntent.latest_charge as { id: string }).id)
       : null;
 
     let extensionPaymentId: string | null = null;

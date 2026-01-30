@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
+import type { Prisma } from '@prisma/client';
 
 /**
  * Report problems with a booked box
@@ -95,12 +96,12 @@ export async function POST(
     const boxReturn = await prisma.box_returns.upsert({
       where: { booking_id: bookingId },
       update: {
-        reported_problems: problems as any, // Store as JSON
+        reported_problems: problems as Prisma.InputJsonValue,
       },
       create: {
         booking_id: bookingId,
         confirmed_good_status: false, // Default, will be updated when box is returned
-        reported_problems: problems as any, // Store as JSON
+        reported_problems: problems as Prisma.InputJsonValue,
       },
     });
 

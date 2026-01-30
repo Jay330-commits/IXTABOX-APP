@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
 import { BookingStatusService } from '@/services/bookings/BookingStatusService';
 import { BookingStatus } from '@prisma/client';
-import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
+import { getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export async function GET(request: NextRequest) {
   try {
@@ -160,7 +160,8 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       // If extensions relation doesn't exist (database not migrated), try without it
-      if (error instanceof Error && error.message.includes('column') || error.message.includes('does not exist')) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('column') || msg.includes('does not exist')) {
         console.warn('[Bookings API] Extensions table not found, fetching bookings without extensions. Please run migration.');
         bookings = await prisma.bookings.findMany({
           where: {
@@ -427,26 +428,33 @@ export async function GET(request: NextRequest) {
       const originalAmount = parseFloat(booking.payments?.amount.toString() || '0');
       
       // Calculate total extension amount (if extensions exist)
-      const extensionAmount = (booking.extensions && Array.isArray(booking.extensions))
-        ? booking.extensions.reduce((sum: number, ext: any) => {
+      type BookingWithExtensions = typeof booking & {
+        extension_count?: number;
+        is_extended?: boolean;
+        extensions?: Array<{ additional_cost?: unknown }>;
+      };
+      const bookingWithExt = booking as BookingWithExtensions;
+      const extensions = bookingWithExt.extensions;
+      const extensionAmount = extensions && Array.isArray(extensions)
+        ? extensions.reduce((sum: number, ext: { additional_cost?: unknown }) => {
             return sum + Number(ext.additional_cost || 0);
           }, 0)
         : 0;
-      
+
       // Total amount = original booking + all extensions
       const totalAmount = originalAmount + extensionAmount;
 
       // Check if booking has extensions (from booking_extensions table)
-      const hasExtensions = booking.extensions && Array.isArray(booking.extensions) && booking.extensions.length > 0;
-      const extensionCountFromDB = (booking as any).extension_count || 0;
-      const isExtendedFromDB = (booking as any).is_extended || false;
-      
+      const hasExtensions = extensions && Array.isArray(extensions) && extensions.length > 0;
+      const extensionCountFromDB = bookingWithExt.extension_count ?? 0;
+      const isExtendedFromDB = bookingWithExt.is_extended ?? false;
+
       // A booking is extended if:
       // 1. The is_extended flag is true in the database, OR
       // 2. The extension_count > 0, OR
       // 3. There are actual extension records in booking_extensions table
       const isExtended = isExtendedFromDB || extensionCountFromDB > 0 || hasExtensions;
-      const extensionCount = hasExtensions ? booking.extensions.length : extensionCountFromDB;
+      const extensionCount = hasExtensions ? extensions.length : extensionCountFromDB;
 
       const formattedBooking = {
         id: booking.id,
