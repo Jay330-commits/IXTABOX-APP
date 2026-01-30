@@ -298,21 +298,22 @@ const StandDetails: React.FC<StandDetailsProps> = ({
                     const is175cm = model.name.includes('175');
                     const dimension = is175cm ? '175 cm' : '190 cm';
                     const imageWidth = is175cm ? 100 : 150; // 175 cm box is shorter, 190 cm box is longer
+                    const isSelected = selectedModel === model.id;
                     
                     return (
                       <label
                         key={model.id}
-                        className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors
-                          ${selectedModel === model.id 
-                            ? 'border-emerald-500 bg-emerald-50' 
-                            : 'border-gray-200'
+                        className={`relative flex flex-col p-4 rounded-lg cursor-pointer transition-all duration-200
+                          ${isSelected 
+                            ? 'border-2 border-emerald-500 bg-emerald-50/80 shadow-md shadow-emerald-500/20' 
+                            : 'border-2 border-gray-200 hover:border-emerald-300 hover:bg-gray-50'
                           }`}
                       >
                         <input
                           type="radio"
                           name="model"
                           value={model.id}
-                          checked={selectedModel === model.id}
+                          checked={isSelected}
                           onChange={(e) => setSelectedModel(e.target.value)}
                           className="sr-only"
                         />
@@ -331,7 +332,7 @@ const StandDetails: React.FC<StandDetailsProps> = ({
                         <span className="text-xs font-medium text-gray-600 mt-1 text-center">{dimension}</span>
                         <span className="text-xs font-medium text-emerald-600 mt-1 text-center">
                         </span>
-                        {selectedModel === model.id && (
+                        {isSelected && (
                           <div className="absolute top-2 right-2">
                             <svg className="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />

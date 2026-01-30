@@ -9,7 +9,9 @@ export interface Booking {
   locationAddress?: string | null;
   date: string;
   status: string;
-  amount: number;
+  amount: number; // Total amount (original + extensions)
+  originalAmount?: number; // Original booking amount
+  extensionAmount?: number; // Total extension amount
   startDate?: string;
   endDate?: string;
   boxId?: string;
@@ -30,6 +32,8 @@ export interface Booking {
   boxFrontView?: string | null;
   boxBackView?: string | null;
   closedStandLock?: string | null;
+  extensionCount?: number;
+  isExtended?: boolean;
 }
 
 export interface Notification {

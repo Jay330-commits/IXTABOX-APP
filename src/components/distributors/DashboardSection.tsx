@@ -11,6 +11,18 @@ interface StatCard {
   icon: string;
 }
 
+interface BookingExtension {
+  id: string;
+  previousEndDate: string;
+  newEndDate: string;
+  previousLockPin: number;
+  newLockPin: number;
+  additionalDays: number;
+  additionalCost: number;
+  createdAt: string;
+  boxStatusAtExtension?: string;
+}
+
 interface BookingInventoryItem {
   bookingId: string;
   bookingDisplayId?: string | null;
@@ -40,6 +52,11 @@ interface BookingInventoryItem {
   closedStandLock?: string | null;
   boxReturnStatus?: boolean | null;
   boxReturnDate?: string | null;
+  reportedProblems?: Array<{ type: string; description?: string }> | null;
+  extensionCount?: number;
+  originalEndDate?: string;
+  isExtended?: boolean;
+  extensions?: BookingExtension[];
 }
 
 interface DashboardSectionProps {
@@ -824,13 +841,20 @@ export default function DashboardSection({
                               </span>
                             </td>
                             <td className="py-4 px-4">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getBookingStatusColor(
-                                  booking.bookingStatus
-                                )}`}
-                              >
-                                {booking.bookingStatus}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getBookingStatusColor(
+                                    booking.bookingStatus
+                                  )}`}
+                                >
+                                  {booking.bookingStatus}
+                                </span>
+                                {booking.isExtended && (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                    Extended
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-4 px-4">
                               <span
@@ -939,8 +963,67 @@ export default function DashboardSection({
                                   </div>
                                 )}
 
+                                {/* Extension Information */}
+                                {booking.extensionCount && booking.extensionCount > 0 && (
+                                  <div className="mb-6 pt-4 border-t border-white/10">
+                                    <h4 className="text-sm font-semibold text-gray-300 mb-4">
+                                      Extension History ({booking.extensionCount} {booking.extensionCount === 1 ? 'extension' : 'extensions'})
+                                    </h4>
+                                    {booking.originalEndDate && (
+                                      <div className="mb-3 text-sm">
+                                        <p className="text-gray-400 text-xs mb-1">Original End Date</p>
+                                        <p className="text-white">{booking.originalEndDate}</p>
+                                      </div>
+                                    )}
+                                    {booking.extensions && booking.extensions.length > 0 && (
+                                      <div className="space-y-3">
+                                        {booking.extensions.map((ext, idx) => (
+                                          <div key={ext.id} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <span className="text-xs text-gray-400">Extension #{booking.extensions!.length - idx}</span>
+                                              <span className="text-xs text-gray-400">{ext.createdAt}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">Previous End</p>
+                                                <p className="text-white">{ext.previousEndDate}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">New End</p>
+                                                <p className="text-white font-semibold">{ext.newEndDate}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">Additional Days</p>
+                                                <p className="text-white">{ext.additionalDays} day{ext.additionalDays !== 1 ? 's' : ''}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">Additional Cost</p>
+                                                <p className="text-green-400 font-semibold">SEK {ext.additionalCost.toFixed(2)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">Previous PIN</p>
+                                                <p className="text-white font-mono text-xs">{ext.previousLockPin}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-gray-400 text-xs mb-1">New PIN</p>
+                                                <p className="text-white font-mono text-xs">{ext.newLockPin}</p>
+                                              </div>
+                                              {ext.boxStatusAtExtension && (
+                                                <div>
+                                                  <p className="text-gray-400 text-xs mb-1">Box Status</p>
+                                                  <p className="text-white">{ext.boxStatusAtExtension}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
                                 {/* Box Return Information */}
-                                {(booking.returnedAt || booking.boxReturnDate || booking.boxReturnStatus !== null || booking.boxFrontView || booking.boxBackView || booking.closedStandLock) && (
+                                {(booking.returnedAt || booking.boxReturnDate || booking.boxReturnStatus !== null || booking.boxFrontView || booking.boxBackView || booking.closedStandLock || (booking.reportedProblems && Array.isArray(booking.reportedProblems) && booking.reportedProblems.length > 0)) && (
                                   <div className="mb-6 pt-4 border-t border-white/10">
                                     <h4 className="text-sm font-semibold text-gray-300 mb-4">Box Return Information</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
@@ -1035,6 +1118,43 @@ export default function DashboardSection({
                                         ) : null}
                                       </div>
                                     </div>
+                                    
+                                    {/* Reported Problems */}
+                                    {booking.reportedProblems && Array.isArray(booking.reportedProblems) && booking.reportedProblems.length > 0 && (
+                                      <div className="mb-4">
+                                        <p className="text-gray-400 text-xs mb-2 font-semibold">Reported Problems</p>
+                                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                                          <div className="flex flex-wrap gap-2">
+                                            {booking.reportedProblems.map((problem: { type: string; description?: string }, index: number) => {
+                                              const problemLabels: Record<string, string> = {
+                                                'led_light': 'LED Light Issue',
+                                                'hinge': 'Hinge Problem',
+                                                'scratches': 'Scratches/Damage',
+                                                'lock': 'Lock Issue',
+                                                'other': 'Other Issue',
+                                              };
+                                              
+                                              const label = problemLabels[problem.type] || problem.type;
+                                              
+                                              return (
+                                                <div
+                                                  key={index}
+                                                  className="bg-yellow-500/20 border border-yellow-400/40 rounded-md px-3 py-1.5 text-xs"
+                                                >
+                                                  <span className="text-yellow-200 font-medium">{label}</span>
+                                                  {problem.description && (
+                                                    <div className="text-yellow-300/80 text-xs mt-1">
+                                                      {problem.description}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
                                     {/* Return Photos */}
                                     {(booking.boxFrontView || booking.boxBackView || booking.closedStandLock) && (
                                       <div>

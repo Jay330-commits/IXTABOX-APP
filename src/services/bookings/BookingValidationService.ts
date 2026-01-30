@@ -111,7 +111,6 @@ export class BookingValidationService extends BaseService {
           locationId,
           startDate,
           endDate,
-          modelType,
           defaultPricePerDay
         );
         

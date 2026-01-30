@@ -226,8 +226,13 @@ export default function ReturnBoxModal({
         throw new Error(errorMessage);
       }
 
+      // Call onSuccess first to update state, then close modal
+      // Call onSuccess first to update state
       onSuccess();
-      onClose();
+      // Close modal after a brief delay to allow state updates
+      setTimeout(() => {
+        onClose();
+      }, 200);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to return box");
       console.error("Error returning box:", err);

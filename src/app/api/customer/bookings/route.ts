@@ -114,42 +114,91 @@ export async function GET(request: NextRequest) {
     // Fetch ALL bookings that are linked to payments with this user_id
     // IMPORTANT: Do NOT filter by status - return all bookings regardless of status
     // (active, completed, upcoming, cancelled, confirmed, etc.)
-    const bookings = await prisma.bookings.findMany({
-      where: {
-        payment_id: {
-          in: userPayments.map(p => p.id),
+    // Note: Extensions include may fail if database hasn't been migrated yet
+    let bookings;
+    try {
+      bookings = await prisma.bookings.findMany({
+        where: {
+          payment_id: {
+            in: userPayments.map(p => p.id),
+          },
+          // Explicitly do NOT filter by status - return all statuses
         },
-        // Explicitly do NOT filter by status - return all statuses
-      },
-      include: {
-        boxes: {
-          include: {
-            stands: {
-              include: {
-                locations: {
-                  include: {
-                    distributors: true,
+        include: {
+          boxes: {
+            include: {
+              stands: {
+                include: {
+                  locations: {
+                    include: {
+                      distributors: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        payments: {
-          include: {
-            users: true,
+          payments: {
+            include: {
+              users: true,
+            },
+          },
+          box_returns: true,
+          extensions: {
+            orderBy: {
+              created_at: 'desc',
+            },
           },
         },
-        box_returns: true,
-      },
-      orderBy: [
-        // Sort by status priority using CASE: active/confirmed > Upcoming > completed > cancelled
-        // In Prisma, we'll sort manually in JavaScript since CASE expressions aren't directly supported
-        {
-          created_at: 'desc', // First sort by date
-        },
-      ],
-    });
+        orderBy: [
+          // Sort by status priority using CASE: active/confirmed > Upcoming > completed > cancelled
+          // In Prisma, we'll sort manually in JavaScript since CASE expressions aren't directly supported
+          {
+            created_at: 'desc', // First sort by date
+          },
+        ],
+      });
+    } catch (error) {
+      // If extensions relation doesn't exist (database not migrated), try without it
+      if (error instanceof Error && error.message.includes('column') || error.message.includes('does not exist')) {
+        console.warn('[Bookings API] Extensions table not found, fetching bookings without extensions. Please run migration.');
+        bookings = await prisma.bookings.findMany({
+          where: {
+            payment_id: {
+              in: userPayments.map(p => p.id),
+            },
+          },
+          include: {
+            boxes: {
+              include: {
+                stands: {
+                  include: {
+                    locations: {
+                      include: {
+                        distributors: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            payments: {
+              include: {
+                users: true,
+              },
+            },
+            box_returns: true,
+          },
+          orderBy: [
+            {
+              created_at: 'desc',
+            },
+          ],
+        });
+      } else {
+        throw error;
+      }
+    }
 
     console.log('[Bookings API] Found bookings:', bookings.length);
     
@@ -374,6 +423,31 @@ export async function GET(request: NextRequest) {
         ? (typeof booking.boxes.deposit === 'string' ? parseFloat(booking.boxes.deposit) : Number(booking.boxes.deposit))
         : 0;
 
+      // Calculate original booking amount
+      const originalAmount = parseFloat(booking.payments?.amount.toString() || '0');
+      
+      // Calculate total extension amount (if extensions exist)
+      const extensionAmount = (booking.extensions && Array.isArray(booking.extensions))
+        ? booking.extensions.reduce((sum: number, ext: any) => {
+            return sum + Number(ext.additional_cost || 0);
+          }, 0)
+        : 0;
+      
+      // Total amount = original booking + all extensions
+      const totalAmount = originalAmount + extensionAmount;
+
+      // Check if booking has extensions (from booking_extensions table)
+      const hasExtensions = booking.extensions && Array.isArray(booking.extensions) && booking.extensions.length > 0;
+      const extensionCountFromDB = (booking as any).extension_count || 0;
+      const isExtendedFromDB = (booking as any).is_extended || false;
+      
+      // A booking is extended if:
+      // 1. The is_extended flag is true in the database, OR
+      // 2. The extension_count > 0, OR
+      // 3. There are actual extension records in booking_extensions table
+      const isExtended = isExtendedFromDB || extensionCountFromDB > 0 || hasExtensions;
+      const extensionCount = hasExtensions ? booking.extensions.length : extensionCountFromDB;
+
       const formattedBooking = {
         id: booking.id,
         bookingDisplayId: booking.display_id,
@@ -381,7 +455,9 @@ export async function GET(request: NextRequest) {
         locationAddress: booking.boxes.stands.locations.address || null,
         date: booking.start_date.toISOString().split('T')[0],
         status: finalStatus, // Use DB status if Cancelled/Completed, otherwise calculated
-        amount: parseFloat(booking.payments?.amount.toString() || '0'),
+        amount: totalAmount, // Total amount including extensions
+        originalAmount, // Original booking amount (for reference)
+        extensionAmount, // Total extension amount (for reference)
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
         boxId: booking.box_id,
@@ -402,6 +478,8 @@ export async function GET(request: NextRequest) {
         boxFrontView,
         boxBackView,
         closedStandLock,
+        extensionCount,
+        isExtended,
       };
       
       // Log the formatted booking status - especially for cancelled bookings

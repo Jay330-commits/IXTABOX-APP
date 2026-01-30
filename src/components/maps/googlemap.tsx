@@ -544,30 +544,57 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               willChange: 'transform',
             }}
           >
-            <div className={isMobile ? 'h-full' : 'flex-1 min-h-0 h-full'} style={{ display: 'flex', flexDirection: 'column' }}>
-            <LocationDetails
-              location={{
-                id: selectedLocation.id,
-                name: selectedLocation.name,
-                address: selectedLocation.address,
-                  coordinates: {
-                  lat: selectedLocation.lat,
-                  lng: selectedLocation.lng,
-                  },
-                status: selectedLocation.status,
-                availableBoxes: selectedLocation.availableBoxes,
-                isFullyBooked: selectedLocation.isFullyBooked,
-                earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
-                modelAvailability: selectedLocation.modelAvailability,
-                image: selectedLocation.image || null,
-              }}
-              initialStartDate={filterValues?.startDate}
-              initialEndDate={filterValues?.endDate}
-              initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
-              onBook={handleBookLocation}
-              onClose={() => setSelectedLocation(null)}
-            />
-            </div>
+            {isMobile ? (
+              <div className="mobile-panel-content" style={{ display: 'flex', flexDirection: 'column' }}>
+                <LocationDetails
+                    location={{
+                      id: selectedLocation.id,
+                      name: selectedLocation.name,
+                      address: selectedLocation.address,
+                        coordinates: {
+                        lat: selectedLocation.lat,
+                        lng: selectedLocation.lng,
+                        },
+                      status: selectedLocation.status,
+                      availableBoxes: selectedLocation.availableBoxes,
+                      isFullyBooked: selectedLocation.isFullyBooked,
+                      earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
+                      modelAvailability: selectedLocation.modelAvailability,
+                      image: selectedLocation.image || null,
+                    }}
+                    initialStartDate={filterValues?.startDate}
+                    initialEndDate={filterValues?.endDate}
+                    initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
+                    onBook={handleBookLocation}
+                    onClose={() => setSelectedLocation(null)}
+                  />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 h-full" style={{ display: 'flex', flexDirection: 'column' }}>
+                <LocationDetails
+                  location={{
+                    id: selectedLocation.id,
+                    name: selectedLocation.name,
+                    address: selectedLocation.address,
+                      coordinates: {
+                      lat: selectedLocation.lat,
+                      lng: selectedLocation.lng,
+                      },
+                    status: selectedLocation.status,
+                    availableBoxes: selectedLocation.availableBoxes,
+                    isFullyBooked: selectedLocation.isFullyBooked,
+                    earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
+                    modelAvailability: selectedLocation.modelAvailability,
+                    image: selectedLocation.image || null,
+                  }}
+                  initialStartDate={filterValues?.startDate}
+                  initialEndDate={filterValues?.endDate}
+                  initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
+                  onBook={handleBookLocation}
+                  onClose={() => setSelectedLocation(null)}
+                />
+              </div>
+            )}
           </div>
         </>
       )}

@@ -245,6 +245,16 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         
         setAvailableBoxes(boxesByStand);
         
+        // Check if currently selected box matches the new model
+        if (selectedBoxRef.current) {
+          const currentBoxModelNormalized = String(selectedBoxRef.current.model || '').replace(/_/g, ' ');
+          if (currentBoxModelNormalized !== selectedModel) {
+            // Clear selected box if it doesn't match the new model
+            setSelectedBox(null);
+            selectedBoxRef.current = null;
+          }
+        }
+        
         // Auto-select first available box if none selected
         // Validate that the box model matches the selected model
         if (boxesByStand.length > 0 && !selectedBoxRef.current) {
@@ -441,6 +451,22 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     }
   };
 
+  /**
+   * Format time for display (HH:MM)
+   */
+  const formatTimeForDisplay = (timeStr: string | null): string => {
+    if (!timeStr) return '';
+    // If already in HH:MM format, return as is
+    if (timeStr.match(/^\d{2}:\d{2}$/)) {
+      return timeStr;
+    }
+    // If in HH:MM:SS format, extract HH:MM
+    if (timeStr.match(/^\d{2}:\d{2}:\d{2}/)) {
+      return timeStr.substring(0, 5);
+    }
+    return timeStr;
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
@@ -538,6 +564,26 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             )}
           </button>
         </div>
+        {/* Show selected date range and model when dates are chosen */}
+        {startDate && endDate && (
+          <div className="px-3 py-2 border-t border-slate-700/20">
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-300 flex-wrap">
+              <span className="text-gray-400">Selected:</span>
+              <span className="font-medium text-white">
+                {formatDateForDisplay(startDate)} {formatTimeForDisplay(startTime)}
+              </span>
+              <span className="text-gray-500">→</span>
+              <span className="font-medium text-white">
+                {formatDateForDisplay(endDate)} {formatTimeForDisplay(endTime)}
+              </span>
+              {days > 0 && (
+                <span className="text-gray-400 ml-2">
+                  ({days} {days === 1 ? 'day' : 'days'})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -566,7 +612,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             
             {/* Date Inputs Overlay */}
             {activeTab === 'dates' && (
-              <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div className="absolute top-0 left-0 right-0 bottom-8 flex items-center justify-center p-4 z-10">
                 <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-3">
                   <div className="bg-black/35 rounded-lg p-3 border border-white/10">
                     <label className="block text-xs font-medium text-white mb-1.5">Start</label>
@@ -623,7 +669,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             
             {/* Model Selection Overlay */}
             {activeTab === 'model' && startDate && endDate && (
-              <div className="absolute inset-0 flex items-center justify-center overflow-y-auto p-4">
+              <div className="absolute top-0 left-0 right-0 bottom-8 flex items-center justify-center overflow-y-auto p-4 z-10">
                 <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-3">
                   {[
                     { id: 'pro_175', name: 'IXTAbox Pro 175', dimension: '175 cm' },
@@ -634,16 +680,18 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                     const modelBooked = isModelFullyBooked(model.id);
                     const modelAvailable = isModelAvailable(model.id);
                     const nextAvailableDate = getModelNextAvailableDate(model.id);
+                    const normalizedModelId = normalizeModelId(model.id);
+                    const isSelected = selectedModel === normalizedModelId;
                     
                     return (
                       <label
                         key={model.id}
-                        className={`relative flex flex-col p-3 rounded-lg transition-all duration-200 cursor-pointer bg-black/35 border border-white/10
-                          ${selectedModel === model.id 
-                            ? 'bg-gradient-to-br from-cyan-500/40 to-cyan-600/30 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-500/50'
+                        className={`relative flex flex-col p-3 rounded-lg transition-all duration-200 cursor-pointer
+                          ${isSelected 
+                            ? 'bg-black/50 border-2 border-cyan-400 shadow-lg shadow-cyan-500/40'
                             : modelBooked
-                            ? 'opacity-60 cursor-not-allowed'
-                            : 'hover:bg-black/45 hover:ring-1 hover:ring-cyan-500/30'
+                            ? 'bg-black/35 opacity-60 cursor-not-allowed border border-white/10'
+                            : 'bg-black/35 border border-white/10 hover:bg-black/45 hover:ring-1 hover:ring-cyan-500/30'
                           }`}
                       >
                         <input
@@ -681,10 +729,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                             </span>
                           ) : null}
                         </div>
-                        {selectedModel === model.id && (
-                          <div className="absolute top-2 right-2">
-                            <svg className="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 bg-cyan-400/90 rounded-full p-1.5 shadow-md">
+                            <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           </div>
                         )}
@@ -695,9 +743,9 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               </div>
             )}
             
-            {/* Availability Details Overlay - Bottom of image */}
-            <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1 text-center">
-              <div className="flex items-center justify-center gap-4 text-[10px] text-white">
+            {/* Availability Details Overlay - Bottom of image - Always visible */}
+            <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1.5 text-center z-10">
+              <div className="flex items-center justify-center gap-3 text-[10px] text-white flex-wrap">
                 <span>Pro 175: <span className="font-bold">{location.availableBoxes.classic}</span></span>
                 <span>Pro 190: <span className="font-bold">{location.availableBoxes.pro}</span></span>
                 <span>Total: <span className="font-bold">{location.availableBoxes.total}</span></span>
@@ -707,16 +755,21 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
           </div>
         </div>
 
-
         {/* Box Selection - Hidden, runs in background */}
         {/* Availability checking and box selection happens automatically in the background */}
 
         {/* Action Section - Always visible */}
-        <div className="px-3 py-2.5 border-t border-slate-700/20 flex-shrink-0 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm sticky bottom-0 z-10">
-          {totalPrice > 0 && (
+        <div className="px-3 py-2.5 border-t border-slate-700/20 flex-shrink-0 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm sticky bottom-0 z-20 relative">
+          {/* Show total price when dates are selected, always visible */}
+          {startDate && endDate && (
             <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">
               <span className="text-xs font-medium text-gray-400">Total: </span>
               <span className="text-lg font-bold text-cyan-400">{formatPrice(totalPrice)}</span>
+              {days > 0 && (
+                <span className="text-xs text-gray-400 ml-2">
+                  ({days} {days === 1 ? 'day' : 'days'} × {formatPrice(pricePerDay)})
+                </span>
+              )}
             </div>
           )}
           <button

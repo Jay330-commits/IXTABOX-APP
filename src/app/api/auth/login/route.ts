@@ -31,13 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Login with Supabase Auth
-    console.log('Attempting Supabase login for:', email);
     const authResult = await loginWithSupabase(email, password);
 
-    console.log('Supabase login result:', authResult);
-
     if (!authResult.success || !authResult.user) {
-      console.log('Supabase login failed:', authResult.message);
       return NextResponse.json(
         { success: false, message: authResult.message },
         { status: 401 }
@@ -48,14 +44,21 @@ export async function POST(request: NextRequest) {
     const userService = new UserService();
 
     // Try to fetch user from Prisma database
+    // Only fetch role-related data, not full relations for better performance
     let user;
     try {
       user = await prisma.public_users.findUnique({
         where: { email: supabaseUser.email! },
-        include: {
-          customers: true,
-          distributors: true,
-          admins: true,
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          phone: true,
+          role: true,
+          // Only check if relations exist (one-to-one: customer, distributor, admin)
+          customers: { select: { id: true } },
+          distributors: { select: { id: true } },
+          admins: { select: { id: true } },
         },
       });
     } catch (dbError: unknown) {
@@ -91,7 +94,6 @@ export async function POST(request: NextRequest) {
 
     // If user doesn't exist in Prisma, create/link them
     if (!user) {
-      console.log('User not found in Prisma, creating/linking user...');
       try {
         // Use the Supabase user ID and metadata to create Prisma user
         const fullName = supabaseUser.user_metadata?.full_name || email.split('@')[0];
@@ -104,17 +106,19 @@ export async function POST(request: NextRequest) {
           email: supabaseUser.email!,
           phone: phone || undefined,
         });
-
-        console.log('Successfully created/linked user in Prisma');
       } catch (linkError) {
-        console.error('Failed to create/link user in Prisma:', linkError);
         // Try to fetch again in case it was created
         user = await prisma.public_users.findUnique({
           where: { email: supabaseUser.email! },
-          include: {
-            customers: true,
-            distributors: true,
-            admins: true,
+          select: {
+            id: true,
+            email: true,
+            full_name: true,
+            phone: true,
+            role: true,
+            customers: { select: { id: true } },
+            distributors: { select: { id: true } },
+            admins: { select: { id: true } },
           },
         });
       }
@@ -155,9 +159,7 @@ export async function POST(request: NextRequest) {
 
     // Return user data from Prisma if available, otherwise fallback to Supabase data
     if (user) {
-      console.log('User role from database:', user.role, 'Type:', typeof user.role);
       const redirectPath = getRedirectPath(user.role);
-      console.log('Redirect path determined:', redirectPath);
       
       // Map Prisma Role enum (PascalCase) to client Role enum (UPPERCASE)
       const roleMap: Record<string, string> = {
@@ -167,7 +169,6 @@ export async function POST(request: NextRequest) {
         'Admin': 'ADMIN'
       };
       const clientRole = roleMap[String(user.role)] || 'GUEST';
-      console.log('Mapped role from', user.role, 'to', clientRole);
       
       return NextResponse.json({
         success: true,
@@ -187,7 +188,6 @@ export async function POST(request: NextRequest) {
     // Final fallback: return Supabase user data
     // If user doesn't exist in Prisma, we can't determine their role
     // This should not happen in normal flow, but if it does, return error
-    console.error('User not found in Prisma database after login attempt');
     return NextResponse.json({
       success: false,
       message: 'User account not properly set up. Please contact support.'

@@ -27,7 +27,10 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[LoginForm] Form submitted!', { email, hasPassword: !!password });
+    
+    // Prevent multiple simultaneous submissions
+    if (isLoading) return;
+    
     setError("");
     setIsLoading(true);
     
@@ -40,35 +43,24 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
     }
     
     try {
-      console.log('Starting login for:', email);
-      console.log('Login function available:', typeof login);
-      
       if (!login) {
-        console.error('Login function is not available!');
         setError('Authentication system error. Please refresh the page.');
         setIsLoading(false);
         return;
       }
       
       const result = await login(email, password);
-      console.log('Login result:', result);
-      console.log('Redirect path from result:', result.redirectPath);
       
       if (result.success) {
         // The API must provide redirectPath based on user role - no fallbacks
         if (!result.redirectPath) {
-          console.error('ERROR: No redirectPath received from API');
           setError('Login successful but routing failed. Please contact support.');
           setIsLoading(false);
           return;
         }
         
-        console.log('Navigating to exact path from API:', result.redirectPath);
-        // Small delay to ensure AuthContext state is updated before navigation
-        setTimeout(() => {
-          // At this point redirectPath is guaranteed (checked above)
-          router.replace(result.redirectPath as string);
-        }, 100);
+        // Navigate immediately - no delay needed as state is already updated
+        router.replace(result.redirectPath as string);
         // Don't set loading to false here - let the navigation happen
       } else {
         setError(result.message || "Login failed");
@@ -79,7 +71,6 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
         }
       }
     } catch (error) {
-      console.error('Login form error:', error);
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -156,9 +147,19 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 rounded-md bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="w-full py-2.5 rounded-md bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 text-white font-semibold hover:scale-105 transition-transform duration-200 shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative"
         >
-          {isLoading ? "Logging in..." : "Login"}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Logging in...
+            </span>
+          ) : (
+            "Login"
+          )}
         </button>
       </form>
 

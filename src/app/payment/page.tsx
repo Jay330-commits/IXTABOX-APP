@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -133,16 +133,34 @@ function PaymentContent() {
 
         const data = await response.json();
         
+        // Validate response data
+        if (!data.paymentIntent || !data.paymentIntent.clientSecret) {
+          throw new Error('Invalid payment intent response: missing clientSecret');
+        }
+        
         // Set payment details from server response
         setClientSecret(data.paymentIntent.clientSecret);
         setAmount(data.paymentIntent.amount / 100); // Convert from cents
         setCurrency(data.paymentIntent.currency);
         setBookingDetails(data.booking);
+        
+        console.log('[Payment Page] Payment details loaded:', {
+          hasClientSecret: !!data.paymentIntent.clientSecret,
+          amount: data.paymentIntent.amount / 100,
+          currency: data.paymentIntent.currency,
+          isExtension: data.paymentIntent.metadata?.type === 'booking_extension',
+        });
       } catch (err) {
+        console.error('[Payment Page] Error fetching payment details:', err);
         if (err instanceof Error && err.name === 'AbortError') {
           setError('Request timed out. Please try again.');
         } else {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+          const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+          setError(errorMessage);
+          console.error('[Payment Page] Payment fetch error details:', {
+            paymentIntentId,
+            error: errorMessage,
+          });
         }
       } finally {
         setLoading(false);

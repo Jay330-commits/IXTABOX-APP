@@ -138,9 +138,26 @@ export class ReturnBoxService extends BaseService {
           },
         });
 
-        // Create box_returns record with photo URLs
-        await tx.box_returns.create({
-          data: {
+        // Create or update box_returns record with photo URLs
+        // Use upsert to preserve any reported_problems that were already saved
+        const existingReturn = await tx.box_returns.findUnique({
+          where: { booking_id: params.bookingId },
+          select: { reported_problems: true },
+        });
+
+        await tx.box_returns.upsert({
+          where: { booking_id: params.bookingId },
+          update: {
+            confirmed_good_status: params.confirmedGoodStatus,
+            box_front_view: params.photos.boxFrontView,
+            box_back_view: params.photos.boxBackView,
+            closed_stand_lock: params.photos.closedStandLock,
+            // Preserve reported_problems if they were already reported
+            ...(existingReturn?.reported_problems && {
+              reported_problems: existingReturn.reported_problems,
+            }),
+          },
+          create: {
             booking_id: params.bookingId,
             confirmed_good_status: params.confirmedGoodStatus,
             box_front_view: params.photos.boxFrontView,

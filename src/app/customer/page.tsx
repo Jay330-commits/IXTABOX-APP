@@ -8,6 +8,7 @@
   import Footer from "@/components/layouts/Footer";
   import ReturnBoxModal from "@/components/bookings/ReturnBoxModal";
   import CancelBookingModal from "@/components/bookings/CancelBookingModal";
+  import ExtendBookingModal from "@/components/bookings/ExtendBookingModal";
   import DashboardSection from "@/components/customers/DashboardSection";
   import BookSection from "@/components/customers/BookSection";
   import BookingsSection from "@/components/customers/BookingsSection";
@@ -15,6 +16,7 @@
   import NotificationsSection from "@/components/customers/NotificationsSection";
   import ProfileSection from "@/components/customers/ProfileSection";
   import SettingsSection from "@/components/customers/SettingsSection";
+  import SupportSection from "@/components/customers/SupportSection";
   import type { MapProps } from "@/components/maps/googlemap";
 
   // Type definitions
@@ -25,7 +27,9 @@
     locationAddress?: string | null;
     date: string;
     status: string;
-    amount: number;
+    amount: number; // Total amount (original + extensions)
+    originalAmount?: number; // Original booking amount
+    extensionAmount?: number; // Total extension amount
     startDate?: string;
     endDate?: string;
     boxId?: string;
@@ -44,6 +48,8 @@
     boxFrontView?: string | null;
     boxBackView?: string | null;
     closedStandLock?: string | null;
+    extensionCount?: number;
+    isExtended?: boolean;
   };
 
   type Payment = {
@@ -85,7 +91,7 @@
     // Read section from URL query parameter when navigating from other pages
     useEffect(() => {
       const section = searchParams.get('section');
-      if (section && ['dashboard', 'book', 'bookings', 'payments', 'notifications', 'profile', 'settings'].includes(section)) {
+      if (section && ['dashboard', 'book', 'bookings', 'payments', 'notifications', 'profile', 'settings', 'support'].includes(section)) {
         setActiveSection(section);
       }
     }, [searchParams]);
@@ -121,11 +127,13 @@
   const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
   const [statsExpanded, setStatsExpanded] = useState(false);
   
-  // Cancel/Return state
+  // Cancel/Return/Extension state
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
+  const [extendingBookingId, setExtendingBookingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [extensionSuccess, setExtensionSuccess] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returnPhotos, setReturnPhotos] = useState<{
@@ -438,22 +446,38 @@
           );
         case "bookings":
           return (
-            <BookingsSection
-              bookings={bookings}
-              isLoadingData={isLoadingData}
-              dataError={dataError}
-              expandedBookingId={expandedBookingId}
-              setExpandedBookingId={setExpandedBookingId}
-              cancellingBookingId={cancellingBookingId}
-              setCancellingBookingId={setCancellingBookingId}
-              returningBookingId={returningBookingId}
-              setReturningBookingId={setReturningBookingId}
-              cancelError={cancelError}
-              setCancelError={setCancelError}
-              setShowCancelModal={setShowCancelModal}
-              setReturnPhotos={setReturnPhotos}
-              setReturnConfirmed={setReturnConfirmed}
-            />
+            <>
+              {extensionSuccess && (
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+                  <div className="bg-green-500/10 border border-green-400/30 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm text-green-400 font-medium">{extensionSuccess}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <BookingsSection
+                bookings={bookings}
+                isLoadingData={isLoadingData}
+                dataError={dataError}
+                expandedBookingId={expandedBookingId}
+                setExpandedBookingId={setExpandedBookingId}
+                cancellingBookingId={cancellingBookingId}
+                setCancellingBookingId={setCancellingBookingId}
+                returningBookingId={returningBookingId}
+                setReturningBookingId={setReturningBookingId}
+                extendingBookingId={extendingBookingId}
+                setExtendingBookingId={setExtendingBookingId}
+                cancelError={cancelError}
+                setCancelError={setCancelError}
+                setShowCancelModal={setShowCancelModal}
+                setReturnPhotos={setReturnPhotos}
+                setReturnConfirmed={setReturnConfirmed}
+              />
+            </>
           );
         case "notifications":
           return (
@@ -483,6 +507,8 @@
               setDarkMode={setDarkMode}
             />
           );
+        case "support":
+          return <SupportSection />;
         case "dashboard":
         default:
           return (
@@ -617,6 +643,45 @@
           />
         )}
 
+        {extendingBookingId && (() => {
+          const booking = bookings.find(b => b.id === extendingBookingId);
+          const currentEndDate = booking?.endDate || booking?.date;
+          return currentEndDate ? (
+            <ExtendBookingModal
+              bookingId={extendingBookingId}
+              currentEndDate={currentEndDate}
+              isOpen={!!extendingBookingId}
+              onClose={() => {
+                setExtendingBookingId(null);
+              }}
+              onConfirm={async (newEndDate: string, newEndTime: string) => {
+                // Show success message
+                setExtensionSuccess('Your booking has been extended successfully.');
+                
+                // Refresh bookings data
+                const authToken = localStorage.getItem('auth-token');
+                const headers: HeadersInit = { 'Content-Type': 'application/json' };
+                if (authToken) {
+                  headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const bookingsRes = await fetch('/api/customer/bookings', { headers });
+                if (bookingsRes.ok) {
+                  const bookingsData = await bookingsRes.json();
+                  setBookings(bookingsData.bookings || []);
+                }
+                
+                setExtendingBookingId(null);
+                
+                // Clear success message after 5 seconds
+                setTimeout(() => {
+                  setExtensionSuccess(null);
+                }, 5000);
+              }}
+            />
+          ) : null;
+        })()}
+
         {returningBookingId && (
           <ReturnBoxModal
             bookingId={returningBookingId}
@@ -630,7 +695,11 @@
               });
               setReturnConfirmed(false);
             }}
-            onSuccess={() => {
+            onSuccess={async () => {
+              // Capture bookingId before clearing state
+              const completedBookingId = returningBookingId;
+              
+              // Clear return state
               setReturningBookingId(null);
               setReturnPhotos({
                 boxFrontView: null,
@@ -638,18 +707,43 @@
                 closedStandLock: null,
               });
               setReturnConfirmed(false);
-              // Refresh bookings data
-              const authToken = localStorage.getItem('auth-token');
-              const headers: HeadersInit = { 'Content-Type': 'application/json' };
-              if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
+              
+              // Immediately update the booking status locally for instant feedback
+              if (completedBookingId) {
+                setBookings(currentBookings => 
+                  currentBookings.map(booking => 
+                    booking.id === completedBookingId 
+                      ? { ...booking, status: 'completed' }
+                      : booking
+                  )
+                );
               }
-              fetch('/api/customer/bookings', { headers })
-                .then(res => res.json())
-                .then(data => {
-                    setBookings(data.bookings || []);
-                })
-                .catch(err => console.error('Failed to refresh bookings:', err));
+              
+              // Wait a moment for database transaction to complete, then refresh bookings data
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              try {
+                const authToken = localStorage.getItem('auth-token');
+                const headers: HeadersInit = { 'Content-Type': 'application/json' };
+                if (authToken) {
+                  headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                // Add cache-busting parameter to ensure fresh data
+                const response = await fetch(`/api/customer/bookings?t=${Date.now()}`, { 
+                  headers,
+                  cache: 'no-store'
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  const bookingsArray = data.bookings || [];
+                  // Force new array reference and update each booking to ensure React detects changes
+                  setBookings(bookingsArray.map((b: Booking) => ({ ...b })));
+                }
+              } catch (err) {
+                console.error('Failed to refresh bookings:', err);
+                // Local update already done above, so UI will still show correct state
+              }
             }}
             returnPhotos={returnPhotos}
             setReturnPhotos={setReturnPhotos}

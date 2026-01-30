@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { label: "Bookings", section: "bookings", icon: "" },
   { label: "Payments", section: "payments", icon: "" },
   { label: "Notifications", section: "notifications", icon: "" },
+  { label: "Support", section: "support", icon: "" },
 ];
 
 interface CustomerHeaderProps {

@@ -52,10 +52,9 @@ interface PricingLocation {
 
 interface PricingRule {
   id: string;
-  week_from: number;
-  week_to: number;
-  price_per_day: number | string;
-  model_type: string | null;
+  week: number;
+  recommended_price: number | string | null;
+  actual_price: number | string;
 }
 
 interface LocationApiData {
@@ -116,12 +115,13 @@ export default function AdminSection() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [editingPricing, setEditingPricing] = useState<{ locationId: string; week: number } | null>(null);
   const [pricingForm, setPricingForm] = useState({ 
-    weekFrom: '', 
-    weekTo: '', 
-    pricePerDay: '', 
-    modelType: '' 
+    week: '', 
+    recommendedPrice: '', 
+    actualPrice: '' 
   });
   const [maxWeeks, setMaxWeeks] = useState(12);
+  const [editingCell, setEditingCell] = useState<{ locationId: string; week: number } | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'locations', label: 'Locations' },
@@ -230,18 +230,84 @@ export default function AdminSection() {
     }
   };
 
-  // Get price for a specific location and week
-  const getPriceForLocationWeek = (locationId: string, week: number): number | null => {
+  // Get recommended price for a specific location and week (fallback to 300 if null)
+  const getPriceForLocationWeek = (locationId: string, week: number): number => {
+    const locationData = allPricingData.find(d => d.location.id === locationId);
+    if (!locationData) return 300;
+    
+    // Find pricing rule for exact week match
+    const rule = locationData.pricing.find(r => r.week === week);
+    if (rule && rule.recommended_price !== null) {
+      return Number(rule.recommended_price);
+    }
+    // Fallback to 300 if no recommended_price
+    return 300;
+  };
+
+  // Calculate min and max prices based on recommended price
+  const getPriceConstraints = (recommendedPrice: number) => {
+    const min = Math.round(recommendedPrice * (2/3));
+    const max = Math.round(recommendedPrice * (4/3));
+    return { min, max };
+  };
+
+  // Get pricing rule for a location and week (for editing)
+  const getPricingRuleForWeek = (locationId: string, week: number): PricingRule | null => {
     const locationData = allPricingData.find(d => d.location.id === locationId);
     if (!locationData) return null;
     
-    // Find pricing rule that covers this week
-    for (const rule of locationData.pricing) {
-      if (week >= rule.week_from && week <= rule.week_to) {
-        return Number(rule.price_per_day);
+    return locationData.pricing.find(r => r.week === week) || null;
+  };
+
+  // Handle inline price update
+  const handleInlinePriceUpdate = async (locationId: string, week: number, recommendedPrice: string) => {
+    const priceValue = recommendedPrice === '' ? null : parseFloat(recommendedPrice);
+    const existingRule = getPricingRuleForWeek(locationId, week);
+
+    try {
+      // Only update if value actually changed
+      if (existingRule) {
+        const currentRecommendedPrice = existingRule.recommended_price !== null ? Number(existingRule.recommended_price) : null;
+        if (currentRecommendedPrice === priceValue) {
+          return; // No change, skip update
+        }
       }
+
+      setLoading(true);
+      
+      if (existingRule) {
+        // Update existing pricing
+        const response = await fetch(`/api/distributor/admin/pricing/${existingRule.id}`, {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            week: week,
+            recommendedPrice: priceValue,
+            actualPrice: existingRule.actual_price,
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to update pricing');
+      } else {
+        // Create new pricing (need actualPrice, use recommendedPrice or 300)
+        const response = await fetch('/api/distributor/admin/pricing', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            locationId: locationId,
+            week: week,
+            recommendedPrice: priceValue,
+            actualPrice: priceValue || 300,
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to create pricing');
+      }
+      
+      await fetchAllPricingData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update pricing');
+    } finally {
+      setLoading(false);
     }
-    return null;
   };
 
   // Fetch customers
@@ -543,24 +609,22 @@ export default function AdminSection() {
     // Find existing pricing rule for this location and week, if any
     const locationData = allPricingData.find(d => d.location.id === locationId);
     const existingRule = locationData?.pricing.find(
-      rule => week >= rule.week_from && week <= rule.week_to
+      rule => rule.week === week
     );
 
     if (existingRule) {
       setEditingPricing({ locationId, week });
       setPricingForm({
-        weekFrom: existingRule.week_from.toString(),
-        weekTo: existingRule.week_to.toString(),
-        pricePerDay: existingRule.price_per_day.toString(),
-        modelType: existingRule.model_type || '',
+        week: existingRule.week.toString(),
+        recommendedPrice: existingRule.recommended_price?.toString() || '',
+        actualPrice: existingRule.actual_price.toString(),
       });
     } else {
       setEditingPricing({ locationId, week });
       setPricingForm({
-        weekFrom: week.toString(),
-        weekTo: week.toString(),
-        pricePerDay: '',
-        modelType: '',
+        week: week.toString(),
+        recommendedPrice: '',
+        actualPrice: '',
       });
     }
     setShowPricingModal(true);
@@ -576,10 +640,9 @@ export default function AdminSection() {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           locationId: editingPricing.locationId,
-          weekFrom: pricingForm.weekFrom,
-          weekTo: pricingForm.weekTo,
-          pricePerDay: pricingForm.pricePerDay,
-          modelType: pricingForm.modelType || null,
+          week: pricingForm.week,
+          recommendedPrice: pricingForm.recommendedPrice || null,
+          actualPrice: pricingForm.actualPrice,
         }),
       });
       if (!response.ok) {
@@ -589,7 +652,7 @@ export default function AdminSection() {
       await fetchAllPricingData();
       setShowPricingModal(false);
       setEditingPricing(null);
-      setPricingForm({ weekFrom: '', weekTo: '', pricePerDay: '', modelType: '' });
+      setPricingForm({ week: '', recommendedPrice: '', actualPrice: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create pricing rule');
     } finally {
@@ -603,7 +666,7 @@ export default function AdminSection() {
     // Find the existing pricing rule ID
     const locationData = allPricingData.find(d => d.location.id === editingPricing.locationId);
     const existingRule = locationData?.pricing.find(
-      rule => editingPricing.week >= rule.week_from && editingPricing.week <= rule.week_to
+      rule => rule.week === editingPricing.week
     );
 
     if (!existingRule) {
@@ -617,10 +680,9 @@ export default function AdminSection() {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          weekFrom: pricingForm.weekFrom,
-          weekTo: pricingForm.weekTo,
-          pricePerDay: pricingForm.pricePerDay,
-          modelType: pricingForm.modelType || null,
+          week: pricingForm.week,
+          recommendedPrice: pricingForm.recommendedPrice || null,
+          actualPrice: pricingForm.actualPrice,
         }),
       });
       if (!response.ok) {
@@ -630,7 +692,7 @@ export default function AdminSection() {
       await fetchAllPricingData();
       setShowPricingModal(false);
       setEditingPricing(null);
-      setPricingForm({ weekFrom: '', weekTo: '', pricePerDay: '', modelType: '' });
+      setPricingForm({ week: '', recommendedPrice: '', actualPrice: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update pricing rule');
     } finally {
@@ -963,18 +1025,68 @@ export default function AdminSection() {
                       </td>
                       {Array.from({ length: maxWeeks }, (_, i) => i + 1).map((week) => {
                         const price = getPriceForLocationWeek(item.location.id, week);
+                        const isEditing = editingCell?.locationId === item.location.id && editingCell?.week === week;
+                        
                         return (
                           <td
                             key={week}
-                            className="px-3 py-3 text-center text-sm border-r border-gray-700 last:border-r-0 cursor-pointer hover:bg-cyan-500/20 transition-colors"
-                            onClick={() => openPricingModal(item.location.id, week)}
+                            className="px-3 py-3 text-center text-sm border-r border-gray-700 last:border-r-0"
                           >
-                            {price !== null ? (
-                              <span className="text-white font-semibold">
-                                {price.toLocaleString()} SEK
-                              </span>
-                            ) : (
-                              <span className="text-gray-500">-</span>
+                            {isEditing ? (() => {
+                              const recommendedPrice = price || 300;
+                              const { min, max } = getPriceConstraints(recommendedPrice);
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <input
+                                    type="number"
+                                    min={min}
+                                    max={max}
+                                    step="0.01"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={(e) => {
+                                      // Small delay to allow onKeyDown to fire first
+                                      setTimeout(() => {
+                                        if (editingCell?.locationId === item.location.id && editingCell?.week === week) {
+                                          handleInlinePriceUpdate(item.location.id, week, editValue);
+                                          setEditingCell(null);
+                                          setEditValue('');
+                                        }
+                                      }, 100);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleInlinePriceUpdate(item.location.id, week, editValue);
+                                        setEditingCell(null);
+                                        setEditValue('');
+                                      } else if (e.key === 'Escape') {
+                                        setEditingCell(null);
+                                        setEditValue('');
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full px-2 py-1 bg-gray-900 border border-cyan-500/50 rounded text-white text-center focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                    autoFocus
+                                  />
+                                  <div className="text-xs text-gray-400 text-center">
+                                    Min: {min} | Max: {max}
+                                  </div>
+                                </div>
+                              );
+                            })() : (
+                              <div
+                                className="cursor-pointer hover:bg-cyan-500/20 transition-colors px-2 py-1 rounded"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setEditingCell({ locationId: item.location.id, week });
+                                  setEditValue(price.toString());
+                                }}
+                              >
+                                <span className="text-white font-semibold">
+                                  {price.toLocaleString()}
+                                </span>
+                              </div>
                             )}
                           </td>
                         );
@@ -1241,57 +1353,44 @@ export default function AdminSection() {
             )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Week From</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Week</label>
                 <input
                   type="number"
                   min="1"
-                  value={pricingForm.weekFrom}
-                  onChange={(e) => setPricingForm({ ...pricingForm, weekFrom: e.target.value })}
+                  value={pricingForm.week}
+                  onChange={(e) => setPricingForm({ ...pricingForm, week: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
                   placeholder="e.g., 1"
                   required
                 />
-                <p className="text-xs text-gray-400 mt-1">Starting week number (Week 1, Week 2, etc.)</p>
+                <p className="text-xs text-gray-400 mt-1">Week number (Week 1, Week 2, etc.)</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Week To</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={pricingForm.weekTo}
-                  onChange={(e) => setPricingForm({ ...pricingForm, weekTo: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                  placeholder="e.g., 4"
-                  required
-                />
-                <p className="text-xs text-gray-400 mt-1">Ending week number (must be &gt;= Week From)</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Price Per Day (SEK)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Recommended Price (SEK) - Optional</label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingForm.pricePerDay}
-                  onChange={(e) => setPricingForm({ ...pricingForm, pricePerDay: e.target.value })}
+                  value={pricingForm.recommendedPrice}
+                  onChange={(e) => setPricingForm({ ...pricingForm, recommendedPrice: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                  required
+                  placeholder="e.g., 300"
                 />
+                <p className="text-xs text-gray-400 mt-1">Suggested price for this week (can be changed later)</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Model Type (optional)</label>
-                <select
-                  value={pricingForm.modelType}
-                  onChange={(e) => setPricingForm({ ...pricingForm, modelType: e.target.value })}
+                <label className="block text-sm font-medium text-gray-300 mb-1">Actual Price (SEK)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pricingForm.actualPrice}
+                  onChange={(e) => setPricingForm({ ...pricingForm, actualPrice: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                >
-                  <option value="">All Models</option>
-                  <option value="Small">Small</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Large">Large</option>
-                  <option value="XLarge">XLarge</option>
-                </select>
-                <p className="text-xs text-gray-400 mt-1">Leave empty to apply to all box models</p>
+                  placeholder="e.g., 300"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">Price customers will pay for this week</p>
               </div>
             </div>
             <div className="flex justify-end gap-4 mt-6">
@@ -1299,7 +1398,7 @@ export default function AdminSection() {
                 onClick={() => {
                   setShowPricingModal(false);
                   setEditingPricing(null);
-                  setPricingForm({ weekFrom: '', weekTo: '', pricePerDay: '', modelType: '' });
+                  setPricingForm({ week: '', recommendedPrice: '', actualPrice: '' });
                 }}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >

@@ -31,6 +31,18 @@ export interface BoxInventoryItem {
   revenue?: number;
 }
 
+export interface BookingExtension {
+  id: string;
+  previousEndDate: string;
+  newEndDate: string;
+  previousLockPin: number;
+  newLockPin: number;
+  additionalDays: number;
+  additionalCost: number;
+  createdAt: string;
+  boxStatusAtExtension?: string;
+}
+
 export interface BookingInventoryItem {
   bookingId: string;
   bookingDisplayId: string | null;
@@ -60,6 +72,11 @@ export interface BookingInventoryItem {
   closedStandLock?: string | null;
   boxReturnStatus?: boolean | null;
   boxReturnDate?: Date | null;
+  reportedProblems?: Array<{ type: string; description?: string }> | null;
+  extensionCount?: number;
+  originalEndDate?: string;
+  isExtended?: boolean;
+  extensions?: BookingExtension[];
 }
 
 export interface StandsOverview {
@@ -388,7 +405,24 @@ export class DashboardStatisticsService extends BaseService {
                 },
               },
             },
-            box_returns: true,
+            box_returns: {
+              select: {
+                id: true,
+                booking_id: true,
+                confirmed_good_status: true,
+                box_front_view: true,
+                box_back_view: true,
+                closed_stand_lock: true,
+                created_at: true,
+                // Note: reported_problems is not included in select until database migration is run
+                // It will be accessed via type assertion below
+              },
+            },
+            extensions: {
+              orderBy: {
+                created_at: 'desc',
+              },
+            },
           },
           orderBy: {
             start_date: 'desc',
@@ -562,6 +596,24 @@ export class DashboardStatisticsService extends BaseService {
             closedStandLock,
             boxReturnStatus: booking.box_returns?.confirmed_good_status ?? null,
             boxReturnDate: booking.box_returns?.created_at || null,
+            // Access reported_problems from box_returns
+            // TODO: After running migration to add reported_problems column, update the select above
+            // to include reported_problems: true, and then access it here
+            reportedProblems: null, // Will be populated after database migration
+            extensionCount: booking.extension_count || 0,
+            originalEndDate: booking.original_end_date ? new Date(booking.original_end_date).toLocaleDateString() : undefined,
+            isExtended: booking.is_extended || false,
+            extensions: booking.extensions?.map((ext) => ({
+              id: ext.id,
+              previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),
+              newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
+              previousLockPin: ext.previous_lock_pin,
+              newLockPin: ext.new_lock_pin,
+              additionalDays: ext.additional_days,
+              additionalCost: Number(ext.additional_cost),
+              createdAt: new Date(ext.created_at).toLocaleDateString(),
+              boxStatusAtExtension: ext.box_status_at_extension || undefined,
+            })) || [],
           };
         }));
 

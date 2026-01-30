@@ -410,20 +410,45 @@ model admins {
 }
 
 model bookings {
-  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  box_id      String         @db.Uuid
-  payment_id  String         @unique @db.Uuid
-  start_date  DateTime       @db.Timestamp(6)
-  end_date    DateTime       @db.Timestamp(6)
-  lock_pin    Int
-  created_at  DateTime       @default(now()) @db.Timestamp(6)
-  status      BookingStatus? @default(Pending)
-  returned_at DateTime?      @db.Timestamp(6)
-  display_id  String         @unique
-  boxes       boxes          @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payments    payments       @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  box_returns box_returns?
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  box_id           String                @db.Uuid
+  payment_id       String                @unique @db.Uuid
+  start_date       DateTime              @db.Timestamp(6)
+  end_date         DateTime              @db.Timestamp(6)
+  lock_pin         Int
+  created_at       DateTime              @default(now()) @db.Timestamp(6)
+  status           BookingStatus?        @default(Pending)
+  returned_at      DateTime?             @db.Timestamp(6)
+  display_id       String                @unique
+  extension_count  Int                   @default(0)
+  original_end_date DateTime?            @db.Timestamp(6)
+  is_extended      Boolean               @default(false)
+  boxes            boxes                 @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments         payments              @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  box_returns      box_returns?
+  extensions       booking_extensions[]
 
+  @@schema("public")
+}
+
+model booking_extensions {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking_id              String    @db.Uuid
+  previous_end_date       DateTime  @db.Timestamp(6)
+  new_end_date            DateTime  @db.Timestamp(6)
+  previous_lock_pin       Int
+  new_lock_pin            Int
+  additional_days         Int
+  additional_cost         Decimal   @db.Decimal
+  payment_id              String?   @db.Uuid
+  box_status_at_extension boxStatus?
+  created_at              DateTime  @default(now()) @db.Timestamp(6)
+  
+  bookings                bookings  @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payments                payments? @relation(fields: [payment_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  
+  @@index([booking_id])
+  @@index([created_at])
   @@schema("public")
 }
 
@@ -431,7 +456,7 @@ model boxes {
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stand_id    String     @db.Uuid
   model       boxmodel
-  display_id  String     @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
+  display_id  String     @unique @db.VarChar(12)
   compartment Int?
   status      boxStatus? @default(Active)
   score       BigInt?    @default(0)
@@ -510,7 +535,7 @@ model distributors {
   contract_type             ContractType             @default(Leasing)
   active                    Boolean?                 @default(true)
   created_at                DateTime?                @default(now()) @db.Timestamp(6)
-  display_id                String                   @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
+  display_id                String                   @unique @db.VarChar(10)
   contracts                 contracts[]
   distributor_financials    distributor_financials[]
   users                     public_users             @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -528,14 +553,30 @@ model locations {
   coordinates    Json?
   created_at     DateTime?    @default(now()) @db.Timestamp(6)
   updated_at     DateTime?    @default(now()) @db.Timestamp(6)
-  display_id     String       @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
+  display_id     String       @unique @db.VarChar(10)
   status         status?      @default(Available)
   image          String?
   Region         String?
   distributors   distributors @relation(fields: [distributor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reviews        reviews[]
   stands         stands[]
+  location_pricing location_pricing[]
 
+  @@schema("public")
+}
+
+model location_pricing {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_id      String    @db.Uuid
+  week             Int
+  recommended_price Decimal? @db.Decimal(10, 2)
+  actual_price     Decimal   @db.Decimal(10, 2)
+  
+  locations        locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@unique([location_id, week])
+  @@index([location_id])
+  @@index([week])
   @@schema("public")
 }
 
@@ -581,16 +622,17 @@ model payment_methods {
 }
 
 model payments {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id           String?            @db.Uuid
-  amount            Decimal            @db.Decimal
-  currency          String?            @default("SEK")
-  completed_at      DateTime?          @db.Timestamp(6)
-  charge_id         String             @unique(map: "payments_payment_id_key")
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String?               @db.Uuid
+  amount            Decimal               @db.Decimal
+  currency          String?               @default("SEK")
+  completed_at      DateTime?             @db.Timestamp(6)
+  charge_id         String                @unique(map: "payments_payment_id_key")
   status            PaymentStatus?
   bookings          bookings?
   contract_payments contract_payments?
-  users             public_users?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  booking_extensions booking_extensions[]
+  users             public_users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([user_id])
   @@schema("public")
@@ -654,15 +696,15 @@ model stands {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model public_users {
-  id              String            @id @db.Uuid
+  id              String                @id @db.Uuid
   full_name       String
-  email           String            @unique
+  email           String                @unique
   phone           String?
   address         Json?
-  role            Role              @default(Guest)
-  created_at      DateTime?         @default(now()) @db.Timestamp(6)
-  updated_at      DateTime?         @default(now()) @db.Timestamp(6)
-  display_id      String            @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
+  role            Role                  @default(Guest)
+  created_at      DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?             @default(now()) @db.Timestamp(6)
+  display_id      String                @unique @default(dbgenerated("substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6)")) @db.Char(6)
   admins          admins?
   customers       customers?
   distributors    distributors?
@@ -670,7 +712,7 @@ model public_users {
   payment_methods payment_methods[]
   payments        payments[]
   reviews         reviews[]
-  users           auth_users        @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_auth_user")
+  users           auth_users            @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_auth_user")
 
   @@map("users")
   @@schema("public")
@@ -683,6 +725,7 @@ model box_returns {
   box_front_view        String?   @db.VarChar(500)
   box_back_view         String?   @db.VarChar(500)
   closed_stand_lock     String?   @db.VarChar(500)
+  reported_problems     Json?     @db.Json
   created_at            DateTime? @default(now()) @db.Timestamp(6)
   bookings              bookings  @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_box_returns_booking")
 

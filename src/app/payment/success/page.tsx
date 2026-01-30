@@ -43,6 +43,8 @@ function PaymentSuccessContent() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [extensionCompleted, setExtensionCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Track if we've already processed this payment intent to prevent duplicate calls
   const processedPaymentIntents = useRef<Set<string>>(new Set());
@@ -215,10 +217,15 @@ function PaymentSuccessContent() {
 
         const data = await response.json();
         
+        // Check if this is an extension payment
+        const isExtensionPayment = data.paymentIntent?.metadata?.type === 'booking_extension';
+        const bookingId = data.paymentIntent?.metadata?.bookingId;
+        
         console.log('Payment data received:', {
           paymentIntentStatus: data.paymentIntent?.status,
           bookingExists: data.bookingExists,
           hasBooking: !!data.booking,
+          isExtensionPayment,
         });
         
         // CRITICAL: Verify payment actually succeeded before showing success page
@@ -241,10 +248,140 @@ function PaymentSuccessContent() {
           id: data.paymentIntent.id,
           status: data.paymentIntent.status,
         });
+        
+        // Handle extension payment completion
+        if (isExtensionPayment && data.paymentIntent.status === 'succeeded' && bookingId) {
+          // Prevent duplicate processing
+          if (processedPaymentIntents.current.has(paymentIntentId + '_extension')) {
+            console.log('Extension already processed');
+            setExtensionCompleted(true);
+          } else {
+            processedPaymentIntents.current.add(paymentIntentId + '_extension');
+            try {
+              const authToken = localStorage.getItem("auth-token");
+              const headers: HeadersInit = { 'Content-Type': 'application/json' };
+              if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+              }
 
-        // Create booking if payment succeeded and booking doesn't exist yet
+              const extensionResponse = await fetch(`/api/bookings/${bookingId}/extend/complete`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  paymentIntentId: paymentIntentId,
+                  newEndDate: data.paymentIntent.metadata.newEndDate,
+                  newEndTime: data.paymentIntent.metadata.newEndTime,
+                }),
+              });
+
+              if (extensionResponse.ok) {
+                let extensionResult;
+                try {
+                  extensionResult = await extensionResponse.json();
+                } catch (jsonError) {
+                  console.error('Failed to parse extension response:', jsonError);
+                  extensionResult = null;
+                }
+                
+                console.log('Extension completed successfully:', extensionResult);
+                setExtensionCompleted(true);
+                
+                // Use booking data from extension response if available
+                if (extensionResult && extensionResult.booking && typeof extensionResult.booking === 'object') {
+                  const updatedBooking = extensionResult.booking;
+                  console.log('Updated booking from extension response:', updatedBooking);
+                  
+                  // Set new lock PIN
+                  const newPinValue = updatedBooking.lockPin || updatedBooking.lock_pin;
+                  if (newPinValue) {
+                    setLockPin({
+                      pin: String(newPinValue),
+                      pinCode: String(newPinValue),
+                    });
+                    console.log('New lock PIN set from extension response:', newPinValue);
+                  }
+                  
+                  // Set updated booking details
+                  if (updatedBooking.startDate || updatedBooking.start_date) {
+                    const startDate = updatedBooking.startDate || updatedBooking.start_date;
+                    const endDate = updatedBooking.endDate || updatedBooking.end_date;
+                    
+                    setBookingDetails({
+                      standId: updatedBooking.standId || bookingDetails?.standId,
+                      standName: updatedBooking.standName || bookingDetails?.standName,
+                      startDate: startDate,
+                      endDate: endDate,
+                      startTime: bookingDetails?.startTime,
+                      endTime: bookingDetails?.endTime,
+                      location: updatedBooking.location || bookingDetails?.location,
+                    });
+                    console.log('Updated booking details set from extension response');
+                  }
+                } else {
+                  // Fallback: Fetch updated booking data from customer bookings API
+                  console.log('No booking data in extension response, fetching from customer bookings API');
+                  try {
+                    const updatedBookingResponse = await fetch(`/api/customer/bookings`, {
+                      headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+                      cache: 'no-store',
+                    });
+                    
+                    if (updatedBookingResponse.ok) {
+                      const bookingsData = await updatedBookingResponse.json();
+                      const updatedBooking = bookingsData.bookings?.find((b: { id: string }) => b.id === bookingId);
+                      
+                      if (updatedBooking) {
+                        console.log('Updated booking found in customer bookings:', updatedBooking);
+                        
+                        // Set new lock PIN
+                        const newPinValue = updatedBooking.lockPin || updatedBooking.lock_pin;
+                        if (newPinValue) {
+                          setLockPin({
+                            pin: String(newPinValue),
+                            pinCode: String(newPinValue),
+                          });
+                          console.log('New lock PIN set from customer bookings:', newPinValue);
+                        }
+                        
+                        // Set updated booking details
+                        if (updatedBooking.startDate && updatedBooking.endDate) {
+                          setBookingDetails({
+                            standId: updatedBooking.standId || bookingDetails?.standId,
+                            standName: updatedBooking.standName || bookingDetails?.standName,
+                            startDate: updatedBooking.startDate,
+                            endDate: updatedBooking.endDate,
+                            startTime: updatedBooking.startTime || bookingDetails?.startTime,
+                            endTime: updatedBooking.endTime || bookingDetails?.endTime,
+                            location: updatedBooking.location || bookingDetails?.location,
+                          });
+                          console.log('Updated booking details set from customer bookings');
+                        }
+                      } else {
+                        console.warn('Updated booking not found in bookings list');
+                      }
+                    } else {
+                      console.warn('Failed to fetch updated bookings:', updatedBookingResponse.status);
+                    }
+                  } catch (fetchError) {
+                    console.error('Error fetching updated booking:', fetchError);
+                    // Don't fail the extension, just log the error
+                  }
+                }
+              } else {
+                const extensionData = await extensionResponse.json();
+                console.error('Failed to complete extension:', extensionData);
+                setError(extensionData.error || extensionData.message || 'Failed to complete extension');
+              }
+            } catch (extensionError) {
+              console.error('Error completing extension:', extensionError);
+              setError('Failed to complete extension. Please contact support.');
+            }
+          }
+        }
+        
+        // Create booking if payment succeeded and booking doesn't exist yet (regular booking)
         let bookingWasCreated = false;
-        if (data.paymentIntent.status === 'succeeded' && !data.bookingExists) {
+        if (!isExtensionPayment && data.paymentIntent.status === 'succeeded' && !data.bookingExists) {
           // CRITICAL: Prevent duplicate calls - check if already processed OR currently processing
           if (processedPaymentIntents.current.has(paymentIntentId)) {
             console.log('[Success Page] Payment intent already processed, skipping duplicate call:', paymentIntentId);
@@ -350,8 +487,8 @@ function PaymentSuccessContent() {
                 body: JSON.stringify(requestBody),
                 cache: 'no-store',
               });
-            
-            if (createBookingResponse.ok) {
+              
+              if (createBookingResponse.ok) {
               const bookingData = await createBookingResponse.json();
               console.log('Booking creation response:', {
                 bookingId: bookingData.booking?.id,
@@ -417,19 +554,19 @@ function PaymentSuccessContent() {
               } else {
                 console.warn('Booking creation returned success=false:', bookingData);
               }
-            } else {
-              const errorData = await createBookingResponse.json().catch(() => ({}));
-              console.error('Failed to create booking - API error:', {
-                status: createBookingResponse.status,
-                statusText: createBookingResponse.statusText,
-                error: errorData,
-              });
-              // Remove from processing set
-              processingPaymentIntents.current.delete(paymentIntentId);
-              // Don't mark as processed if it failed - allow retry or webhook
-              // Continue - webhook may still create it
-            }
-          } catch (bookingError) {
+              } else {
+                const errorData = await createBookingResponse.json().catch(() => ({}));
+                console.error('Failed to create booking - API error:', {
+                  status: createBookingResponse.status,
+                  statusText: createBookingResponse.statusText,
+                  error: errorData,
+                });
+                // Remove from processing set
+                processingPaymentIntents.current.delete(paymentIntentId);
+                // Don't mark as processed if it failed - allow retry or webhook
+                // Continue - webhook may still create it
+              }
+            } catch (bookingError) {
             console.error('Error creating booking - exception:', {
               error: bookingError,
               message: bookingError instanceof Error ? bookingError.message : String(bookingError),
@@ -596,12 +733,20 @@ function PaymentSuccessContent() {
           </div>
           
           <h1 className="text-2xl font-bold text-white mb-2">
-            Payment Successful!
+            {extensionCompleted ? 'Booking Extended Successfully!' : 'Payment Successful!'}
           </h1>
           
           <p className="text-sm text-gray-300 mb-6 max-w-2xl mx-auto">
-            Thank you for your payment. Your booking has been confirmed and you will receive a confirmation email shortly.
+            {extensionCompleted 
+              ? 'Your booking has been extended successfully. Your new lock PIN is shown below. You will receive a confirmation email shortly.'
+              : 'Thank you for your payment. Your booking has been confirmed and you will receive a confirmation email shortly.'}
           </p>
+          
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
 
           {/* Booking Confirmation & Payment Details */}
           {bookingDetails && (

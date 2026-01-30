@@ -112,11 +112,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { locationId, weekFrom, weekTo, pricePerDay, modelType } = body;
+    const { locationId, week, recommendedPrice, actualPrice } = body;
 
-    if (!locationId || weekFrom === undefined || weekTo === undefined || !pricePerDay) {
+    if (!locationId || week === undefined || actualPrice === undefined) {
       return NextResponse.json(
-        { error: 'locationId, weekFrom, weekTo, and pricePerDay are required' },
+        { error: 'locationId, week, and actualPrice are required' },
         { status: 400 }
       );
     }
@@ -138,10 +138,9 @@ export async function POST(request: NextRequest) {
     const service = new LocationPricingService();
     const pricing = await service.createLocationPricing({
       locationId,
-      weekFrom: parseInt(weekFrom),
-      weekTo: parseInt(weekTo),
-      pricePerDay: parseFloat(pricePerDay),
-      modelType: modelType || null,
+      week: parseInt(week),
+      recommendedPrice: recommendedPrice !== undefined ? parseFloat(recommendedPrice) : null,
+      actualPrice: parseFloat(actualPrice),
     });
 
     return NextResponse.json({ success: true, data: pricing });

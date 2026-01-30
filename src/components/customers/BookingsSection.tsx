@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import BoxProblemSelector from '@/components/bookings/BoxProblemSelector';
 import type { Booking } from './DashboardSection';
 
 interface BookingsSectionProps {
@@ -13,6 +14,8 @@ interface BookingsSectionProps {
   setCancellingBookingId: (id: string | null) => void;
   returningBookingId: string | null;
   setReturningBookingId: (id: string | null) => void;
+  extendingBookingId: string | null;
+  setExtendingBookingId: (id: string | null) => void;
   cancelError: string | null;
   setCancelError: (error: string | null) => void;
   setShowCancelModal: (show: boolean) => void;
@@ -30,6 +33,8 @@ export default function BookingsSection({
   setCancellingBookingId,
   returningBookingId: _returningBookingId,
   setReturningBookingId,
+  extendingBookingId,
+  setExtendingBookingId,
   cancelError,
   setCancelError,
   setShowCancelModal,
@@ -146,38 +151,96 @@ export default function BookingsSection({
                 
                 {/* Action Buttons Bar */}
                 <div className="px-6 pb-6">
-                  <div className="border-t border-white/10 pt-4">
-                    {(statusLower === 'upcoming' || statusLower === 'confirmed') && (
+                  <div className="border-t border-white/10 pt-4 space-y-2">
+                    {(statusLower === 'upcoming' || statusLower === 'confirmed' || statusLower === 'active') && (
+                      <div className="flex gap-2">
+                        {(statusLower === 'upcoming' || statusLower === 'confirmed') && (
+                          <button
+                            onClick={() => {
+                              setCancellingBookingId(booking.id);
+                              setCancelError(null);
+                              setShowCancelModal(true);
+                            }}
+                            className="flex-1 py-3 px-5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                          >
+                            <span>Cancel Booking</span>
+                          </button>
+                        )}
+                        
+                      </div>
+                    )}
+                    
+                    {/* Report Problem Button - Show for active, confirmed, and upcoming bookings */}
+                    {(statusLower === 'active' || statusLower === 'confirmed' || statusLower === 'upcoming') && !isExpanded && (
                       <button
                         onClick={() => {
-                          setCancellingBookingId(booking.id);
-                          setCancelError(null);
-                          setShowCancelModal(true);
+                          setExpandedBookingId(booking.id);
+                          // Scroll to problem selector after expansion
+                          setTimeout(() => {
+                            const problemSection = document.getElementById(`problem-selector-${booking.id}`);
+                            if (problemSection) {
+                              problemSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 100);
                         }}
-                        className="w-full py-3 px-5 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                        className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-yellow-600/80 hover:bg-yellow-600 active:bg-yellow-700 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                       >
-                        <span>Cancel Booking</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Report Box Problem</span>
                       </button>
                     )}
                     
                     {statusLower === 'active' && (
-                      <button
-                        onClick={() => {
-                          setReturningBookingId(booking.id);
-                          setReturnPhotos({
-                            boxFrontView: null,
-                            boxBackView: null,
-                            closedStandLock: null,
-                          });
-                          setReturnConfirmed(false);
-                        }}
-                        className="w-full py-3 px-5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Return Box</span>
-                      </button>
+                      <div className="relative w-full flex items-stretch overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                        {/* Return Box Button - Main with diagonal cut on right */}
+                        <button
+                          onClick={() => {
+                            setReturningBookingId(booking.id);
+                            setReturnPhotos({
+                              boxFrontView: null,
+                              boxBackView: null,
+                              closedStandLock: null,
+                            });
+                            setReturnConfirmed(false);
+                          }}
+                          className={`flex-1 py-3 px-5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 transition-all duration-200 flex items-center justify-center gap-2 ${
+                            (booking.isExtended || (booking.extensionCount && booking.extensionCount > 0)) 
+                              ? '' 
+                              : ''
+                          }`}
+                          style={{
+                            clipPath: (booking.isExtended || (booking.extensionCount && booking.extensionCount > 0))
+                              ? 'polygon(0 0, 100% 0, 100% 100%, 0 100%)'
+                              : 'polygon(0 0, calc(100% - 120px) 0, calc(100% - 160px) 100%, 0 100%)'
+                          }}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Return Box</span>
+                        </button>
+                        
+                        {/* Extend Button - Only show if booking is not already extended */}
+                        {/* Hide extend button if booking has been extended (check isExtended flag, extensionCount, or extensionAmount) */}
+                        {!booking.isExtended && (!booking.extensionCount || booking.extensionCount === 0) && (!booking.extensionAmount || booking.extensionAmount === 0) && (
+                          <button
+                            onClick={() => {
+                              setExtendingBookingId(booking.id);
+                            }}
+                            className="absolute right-0 top-0 bottom-0 w-40 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 transition-all duration-200 flex items-center justify-center gap-2 z-10"
+                            style={{
+                              clipPath: 'polygon(40px 0%, 100% 0%, 100% 100%, 0% 100%)'
+                            }}
+                          >
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            <span className="text-xs font-semibold text-white">Extend</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                     
                     {(statusLower === 'completed' || statusLower === 'cancelled') && (
@@ -212,6 +275,18 @@ export default function BookingsSection({
                           </div>
                           <p className="text-xs text-gray-500 mt-2">Use this PIN to access your box during the booking period.</p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Box Problem Reporting - Only show for active bookings */}
+                    {(statusLower === 'active' || statusLower === 'confirmed' || statusLower === 'upcoming') && (
+                      <div id={`problem-selector-${booking.id}`}>
+                        <BoxProblemSelector
+                          bookingId={booking.id}
+                          onProblemReported={(problems) => {
+                            console.log('Problems reported for booking:', booking.id, problems);
+                          }}
+                        />
                       </div>
                     )}
 
@@ -399,6 +474,18 @@ export default function BookingsSection({
                           <span className="text-sm text-gray-400">Days</span>
                           <span className="text-sm font-medium text-gray-200">{days}</span>
                         </div>
+                        {booking.extensionAmount && booking.extensionAmount > 0 && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-400">Original Booking</span>
+                              <span className="text-sm font-medium text-gray-200">SEK {(booking.originalAmount || booking.amount - (booking.extensionAmount || 0)).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-400">Extensions</span>
+                              <span className="text-sm font-medium text-green-400">+ SEK {booking.extensionAmount.toFixed(2)}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="border-t border-white/10 pt-3 flex justify-between">
                           <span className="text-sm font-medium text-gray-200">Total</span>
                           <span className="text-sm font-medium text-cyan-400">SEK {totalPrice.toFixed(2)}</span>

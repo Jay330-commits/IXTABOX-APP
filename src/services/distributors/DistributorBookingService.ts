@@ -2,6 +2,18 @@ import 'server-only';
 import { BookingStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 
+export interface BookingExtension {
+  id: string;
+  previousEndDate: string;
+  newEndDate: string;
+  previousLockPin: number;
+  newLockPin: number;
+  additionalDays: number;
+  additionalCost: number;
+  createdAt: string;
+  boxStatusAtExtension?: string;
+}
+
 export interface DistributorBooking {
   id: string;
   boxId: string;
@@ -14,6 +26,9 @@ export interface DistributorBooking {
   endDate: string;
   status: string;
   revenue: number;
+  extensionCount?: number;
+  originalEndDate?: string;
+  extensions?: BookingExtension[];
 }
 
 /**
@@ -103,6 +118,11 @@ export class DistributorBookingService extends BaseService {
                 },
               },
             },
+            extensions: {
+              orderBy: {
+                created_at: 'desc',
+              },
+            },
           },
           orderBy: {
             start_date: 'desc',
@@ -121,6 +141,19 @@ export class DistributorBookingService extends BaseService {
           endDate: new Date(booking.end_date).toLocaleDateString(),
           status: booking.status || 'unknown',
           revenue: booking.payments?.amount ? Number(booking.payments.amount) : 0,
+          extensionCount: booking.extension_count || 0,
+          originalEndDate: booking.original_end_date ? new Date(booking.original_end_date).toLocaleDateString() : undefined,
+          extensions: booking.extensions?.map((ext) => ({
+            id: ext.id,
+            previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),
+            newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
+            previousLockPin: ext.previous_lock_pin,
+            newLockPin: ext.new_lock_pin,
+            additionalDays: ext.additional_days,
+            additionalCost: Number(ext.additional_cost),
+            createdAt: new Date(ext.created_at).toLocaleDateString(),
+            boxStatusAtExtension: ext.box_status_at_extension || undefined,
+          })) || [],
         }));
       },
       'DistributorBookingService.getBookingsByDistributor',
@@ -206,6 +239,11 @@ export class DistributorBookingService extends BaseService {
                 },
               },
             },
+            extensions: {
+              orderBy: {
+                created_at: 'desc',
+              },
+            },
           },
           orderBy: {
             start_date: 'desc',
@@ -224,6 +262,19 @@ export class DistributorBookingService extends BaseService {
           endDate: new Date(booking.end_date).toLocaleDateString(),
           status: booking.status || 'unknown',
           revenue: booking.payments?.amount ? Number(booking.payments.amount) : 0,
+          extensionCount: booking.extension_count || 0,
+          originalEndDate: booking.original_end_date ? new Date(booking.original_end_date).toLocaleDateString() : undefined,
+          extensions: booking.extensions?.map((ext) => ({
+            id: ext.id,
+            previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),
+            newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
+            previousLockPin: ext.previous_lock_pin,
+            newLockPin: ext.new_lock_pin,
+            additionalDays: ext.additional_days,
+            additionalCost: Number(ext.additional_cost),
+            createdAt: new Date(ext.created_at).toLocaleDateString(),
+            boxStatusAtExtension: ext.box_status_at_extension || undefined,
+          })) || [],
         }));
       },
       'DistributorBookingService.getBookingsByStand',

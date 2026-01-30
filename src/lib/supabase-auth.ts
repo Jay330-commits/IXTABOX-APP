@@ -311,9 +311,6 @@ function createServerAuthClient(): SupabaseClient {
 // Login user with Supabase Auth
 export async function loginWithSupabase(email: string, password: string): Promise<AuthResult> {
   try {
-    console.log('Attempting login with email:', email);
-    console.log('Supabase client created with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    
     // Use server-side client for authentication
     const authClient = createServerAuthClient();
     const { data, error } = await authClient.auth.signInWithPassword({
@@ -321,20 +318,9 @@ export async function loginWithSupabase(email: string, password: string): Promis
       password
     });
 
-    console.log('Supabase signInWithPassword response:', { data, error });
-
     if (error) {
-      console.error('Supabase login error details:', {
-        message: error.message,
-        status: error.status,
-        name: error.name
-      });
-      
       // Handle email not confirmed error specifically
       if (error.message === 'Email not confirmed') {
-        console.log('Email not confirmed - attempting to resend confirmation or bypass');
-        // For now, we'll return a more user-friendly message
-        // In production, you might want to implement email resend functionality
         return {
           success: false,
           message: 'Please check your email and click the confirmation link, or contact support if you need assistance.'
@@ -347,20 +333,16 @@ export async function loginWithSupabase(email: string, password: string): Promis
       };
     }
 
-    console.log('Login successful, user data:', {
-      id: data.user?.id,
-      email: data.user?.email,
-      email_confirmed_at: data.user?.email_confirmed_at,
-      created_at: data.user?.created_at
-    });
-
     return {
       success: true,
       user: data.user as SupabaseUser,
       session: data.session as SupabaseSession | null
     };
   } catch (error) {
-    console.error('Supabase login error:', error);
+    // Only log errors, not debug info
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Supabase login error:', error);
+    }
     return {
       success: false,
       message: 'Login failed. Please try again.'

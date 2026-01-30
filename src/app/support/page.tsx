@@ -4,7 +4,8 @@ import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import LiveChat, { LiveChatHandle } from "@/components/customers/LiveChat";
 
 const FAQ_ITEMS = [
   {
@@ -67,6 +68,7 @@ const CONTACT_METHODS = [
 
 export default function SupportPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const liveChatRef = useRef<LiveChatHandle>(null);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -108,16 +110,23 @@ export default function SupportPage() {
             <h2 className="text-3xl font-bold text-center mb-12">Get in Touch</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {CONTACT_METHODS.map((method, index) => (
-                <a
+                <div
                   key={index}
-                  href={method.action}
-                  className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors text-center"
+                  className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors text-center cursor-pointer"
+                  onClick={() => {
+                    if (method.title === 'Live Chat') {
+                      // Open the live chat directly
+                      liveChatRef.current?.openChat();
+                    } else {
+                      window.location.href = method.action;
+                    }
+                  }}
                 >
                   <div className="text-4xl mb-4">{method.icon}</div>
                   <h3 className="text-xl font-semibold mb-2">{method.title}</h3>
                   <p className="text-gray-300/80 text-sm mb-3">{method.description}</p>
                   <p className="text-cyan-300 font-medium">{method.contact}</p>
-                </a>
+                </div>
               ))}
             </div>
           </section>
@@ -187,6 +196,7 @@ export default function SupportPage() {
         </FadeInSection>
       </main>
       <Footer />
+      <LiveChat ref={liveChatRef} />
     </div>
   );
 }

@@ -38,6 +38,18 @@ interface DashboardStats {
   };
 }
 
+interface BookingExtension {
+  id: string;
+  previousEndDate: string;
+  newEndDate: string;
+  previousLockPin: number;
+  newLockPin: number;
+  additionalDays: number;
+  additionalCost: number;
+  createdAt: string;
+  boxStatusAtExtension?: string;
+}
+
 interface BookingInventoryItem {
   bookingId: string;
   boxId: string;
@@ -66,6 +78,11 @@ interface BookingInventoryItem {
   closedStandLock?: string | null;
   boxReturnStatus?: boolean | null;
   boxReturnDate?: string | null;
+  reportedProblems?: Array<{ type: string; description?: string }> | null;
+  extensionCount?: number;
+  originalEndDate?: string;
+  isExtended?: boolean;
+  extensions?: BookingExtension[];
 }
 
 export default function DistributerDashboard() {

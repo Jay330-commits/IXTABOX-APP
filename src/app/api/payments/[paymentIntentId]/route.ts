@@ -152,6 +152,7 @@ export async function GET(
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
         clientSecret: paymentIntent.client_secret,
+        metadata: paymentIntent.metadata, // Include metadata for extension payments
       },
       booking: booking,
       bookingExists: !!payment?.bookings, // Flag to indicate if booking exists in DB

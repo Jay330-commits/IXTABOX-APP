@@ -50,10 +50,9 @@ export async function PATCH(
     }
 
     const updateData: UpdateLocationPricingData = {};
-    if (body.weekFrom !== undefined) updateData.weekFrom = parseInt(body.weekFrom);
-    if (body.weekTo !== undefined) updateData.weekTo = parseInt(body.weekTo);
-    if (body.pricePerDay !== undefined) updateData.pricePerDay = parseFloat(body.pricePerDay);
-    if (body.modelType !== undefined) updateData.modelType = body.modelType;
+    if (body.week !== undefined) updateData.week = parseInt(body.week);
+    if (body.recommendedPrice !== undefined) updateData.recommendedPrice = body.recommendedPrice !== null ? parseFloat(body.recommendedPrice) : null;
+    if (body.actualPrice !== undefined) updateData.actualPrice = parseFloat(body.actualPrice);
 
     const service = new LocationPricingService();
     const updated = await service.updateLocationPricing(id, updateData);

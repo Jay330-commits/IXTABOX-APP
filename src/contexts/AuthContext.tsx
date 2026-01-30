@@ -106,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('[AuthContext] Starting login request for:', email);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -115,26 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('[AuthContext] Login API response status:', response.status);
       const data = await response.json();
-      console.log('[AuthContext] Login API response data:', data);
-      console.log('[AuthContext] Redirect path from API:', data.redirectPath);
 
       if (data.success) {
-        console.log('Login successful, setting user:', data.user);
-        console.log('User role from API:', data.user?.role, 'Type:', typeof data.user?.role);
         setUser(data.user);
         setToken(data.token);
         localStorage.setItem('auth-token', data.token);
-        console.log('User set in context, returning redirectPath:', data.redirectPath);
         return { success: true, redirectPath: data.redirectPath };
       } else {
         return { success: false, message: data.message };
       }
     } catch (error) {
-      console.error('[AuthContext] Login error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[AuthContext] Error details:', { errorMessage, error });
       
       // Provide more specific error messages
       if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
