@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase-auth';
 import { prisma } from '@/lib/prisma/prisma';
-import { LocationPricingService, UpdateLocationPricingData } from '@/services/pricing/LocationPricingService';
+import { LocationPricingService, UpdateLocationPricingData } from '@/services/locations/LocationPricingService';
 
 export async function PATCH(
   request: NextRequest,

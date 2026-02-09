@@ -105,7 +105,7 @@ export class BookingValidationService extends BaseService {
     // If location pricing is available, use dynamic pricing
     if (locationId && startDate && endDate) {
       try {
-        const { LocationPricingService } = await import('@/services/pricing/LocationPricingService');
+        const { LocationPricingService } = await import('@/services/locations/LocationPricingService');
         const pricingService = new LocationPricingService();
         const pricingResult = await pricingService.calculateTotalPrice(
           locationId,

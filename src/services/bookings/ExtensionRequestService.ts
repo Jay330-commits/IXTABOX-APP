@@ -146,7 +146,7 @@ export class ExtensionRequestService extends BaseService {
     // Try to get location-specific pricing
     if (booking.boxes.stands?.locations?.id) {
       try {
-        const { LocationPricingService } = await import('../pricing/LocationPricingService');
+        const { LocationPricingService } = await import('../locations/LocationPricingService');
         const pricingService = new LocationPricingService();
         // Calculate week number for the extension period
         const weekNumber = pricingService.getWeekNumber(newEndDate, booking.start_date);
@@ -414,21 +414,12 @@ export class ExtensionRequestService extends BaseService {
         },
       });
 
-      // Determine if this is the first extension (to store original_end_date)
-      const isFirstExtension = booking.extension_count === 0;
-      const originalEndDate = isFirstExtension ? previousEndDate : booking.original_end_date;
-
-      // Update the current booking's end date, lock PIN, extension count, and mark as extended
+      // Update booking end date and lock PIN only; extension count / original end come from joins
       const updatedBooking = await tx.bookings.update({
         where: { id: bookingId },
         data: {
           end_date: requestedEndDate,
           lock_pin: newLockPin,
-          extension_count: {
-            increment: 1,
-          },
-          original_end_date: originalEndDate || previousEndDate,
-          is_extended: true,
         },
       });
 
@@ -446,7 +437,6 @@ export class ExtensionRequestService extends BaseService {
         bookingId,
         newEndDate: requestedEndDate.toISOString(),
         newLockPin,
-        extensionCount: updatedBooking.extension_count,
       });
 
       // Create notification for the extending customer

@@ -410,23 +410,20 @@ model admins {
 }
 
 model bookings {
-  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  box_id           String                @db.Uuid
-  payment_id       String                @unique @db.Uuid
-  start_date       DateTime              @db.Timestamp(6)
-  end_date         DateTime              @db.Timestamp(6)
-  lock_pin         Int
-  created_at       DateTime              @default(now()) @db.Timestamp(6)
-  status           BookingStatus?        @default(Pending)
-  returned_at      DateTime?             @db.Timestamp(6)
-  display_id       String                @unique
-  extension_count  Int                   @default(0)
-  original_end_date DateTime?            @db.Timestamp(6)
-  is_extended      Boolean               @default(false)
-  boxes            boxes                 @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payments         payments              @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  box_returns      box_returns?
-  extensions       booking_extensions[]
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  box_id             String           @db.Uuid
+  payment_id         String           @unique @db.Uuid
+  start_date         DateTime         @db.Timestamp(6)
+  end_date           DateTime         @db.Timestamp(6)
+  lock_pin           Int
+  created_at         DateTime         @default(now()) @db.Timestamp(6)
+  status             BookingStatus?   @default(Pending)
+  display_id         String           @unique
+  reported_problems  Json?            @db.Json
+  boxes              boxes            @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments           payments         @relation(fields: [payment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  box_returns        box_returns?
+  extensions         booking_extensions[]
 
   @@schema("public")
 }
@@ -725,7 +722,7 @@ model box_returns {
   box_front_view        String?   @db.VarChar(500)
   box_back_view         String?   @db.VarChar(500)
   closed_stand_lock     String?   @db.VarChar(500)
-  reported_problems     Json?     @db.Json
+  returned_at           DateTime? @db.Timestamp(6)
   created_at            DateTime? @default(now()) @db.Timestamp(6)
   bookings              bookings  @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_box_returns_booking")
 

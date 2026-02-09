@@ -107,7 +107,7 @@ export class BookingStatusService extends BaseService {
   async syncUserBookingStatuses(userId: string): Promise<{ updated: number }> {
     console.log(`[BookingStatusService] Syncing booking statuses for user: ${userId}`);
 
-    // Get user's bookings
+    // Get user's bookings with box_returns for derived returnedAt
     const user = await this.prisma.public_users.findUnique({
       where: { id: userId },
       include: {
@@ -124,6 +124,7 @@ export class BookingStatusService extends BaseService {
                   ],
                 },
               },
+              include: { box_returns: true },
             },
           },
         },
@@ -138,15 +139,16 @@ export class BookingStatusService extends BaseService {
     const now = new Date();
     const updates: Array<{ bookingId: string; newStatus: BookingStatus }> = [];
 
-    // Collect all bookings that need status updates
+    // Collect all bookings that need status updates (returnedAt from box_returns join)
     user.payments.forEach((payment) => {
       if (payment.bookings) {
         const booking = payment.bookings;
+        const returnedAt = booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null;
         const calculatedStatus = this.calculateBookingStatus(
           booking.start_date,
           booking.end_date,
           now,
-          booking.returned_at
+          returnedAt
         );
 
         if (calculatedStatus !== booking.status) {
@@ -184,9 +186,7 @@ export class BookingStatusService extends BaseService {
 
     const bookings = await this.prisma.bookings.findMany({
       where: {
-        id: {
-          in: bookingIds,
-        },
+        id: { in: bookingIds },
         status: {
           in: [
             BookingStatus.Upcoming,
@@ -201,7 +201,7 @@ export class BookingStatusService extends BaseService {
         start_date: true,
         end_date: true,
         status: true,
-        returned_at: true,
+        box_returns: { select: { returned_at: true, created_at: true } },
       },
     });
 
@@ -213,11 +213,12 @@ export class BookingStatusService extends BaseService {
     const updates: Array<{ bookingId: string; newStatus: BookingStatus }> = [];
 
     bookings.forEach((booking) => {
+      const returnedAt = booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null;
       const calculatedStatus = this.calculateBookingStatus(
         booking.start_date,
         booking.end_date,
         now,
-        booking.returned_at
+        returnedAt
       );
 
       if (calculatedStatus !== booking.status) {
@@ -276,7 +277,7 @@ export class BookingStatusService extends BaseService {
             start_date: true,
             end_date: true,
             status: true,
-            returned_at: true,
+            box_returns: { select: { returned_at: true, created_at: true } },
           },
         });
 
@@ -288,11 +289,12 @@ export class BookingStatusService extends BaseService {
         const updates: Array<{ bookingId: string; newStatus: BookingStatus }> = [];
 
         bookings.forEach((booking) => {
+          const returnedAt = booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null;
           const calculatedStatus = this.calculateBookingStatus(
             booking.start_date,
             booking.end_date,
             now,
-            booking.returned_at
+            returnedAt
           );
 
           if (calculatedStatus !== booking.status) {

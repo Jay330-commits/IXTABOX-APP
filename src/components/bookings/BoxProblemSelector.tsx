@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 
-export type BoxProblemType = 'led_light' | 'hinge' | 'scratches' | 'lock' | 'other';
+export type BoxProblemType =
+  | 'interior_lights'
+  | 'exterior_lights'
+  | 'mounting_fixture'
+  | 'lid_damage'
+  | 'box_scratch'
+  | 'box_dent_major_damage'
+  | 'defect_rubber_sealing'
+  | 'stolen'
+  | 'other';
 
 interface BoxProblem {
   type: BoxProblemType;
@@ -16,11 +25,15 @@ interface BoxProblemSelectorProps {
 }
 
 const PROBLEM_OPTIONS: { value: BoxProblemType; label: string }[] = [
-  { value: 'led_light', label: 'LED Light Issue' },
-  { value: 'hinge', label: 'Hinge Problem' },
-  { value: 'scratches', label: 'Scratches/Damage' },
-  { value: 'lock', label: 'Lock Issue' },
-  { value: 'other', label: 'Other Issue' },
+  { value: 'interior_lights', label: 'Interior lights' },
+  { value: 'exterior_lights', label: 'Exterior lights' },
+  { value: 'mounting_fixture', label: 'Mounting fixture' },
+  { value: 'lid_damage', label: 'Lid damage' },
+  { value: 'box_scratch', label: 'Box scratch' },
+  { value: 'box_dent_major_damage', label: 'Box dent / major damage' },
+  { value: 'defect_rubber_sealing', label: 'Defect rubber sealing' },
+  { value: 'stolen', label: 'Stolen' },
+  { value: 'other', label: 'Other…' },
 ];
 
 export default function BoxProblemSelector({

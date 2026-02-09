@@ -120,3 +120,25 @@ body {
   height: auto !important;
   min-height: auto !important;
 }
+
+/* Thin, subtle scrollbar for admin sidebar and main content – size and color customizable below */
+.admin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251, 191, 36, 0.35) transparent; /* amber-400 ~35% */
+}
+.admin-scrollbar::-webkit-scrollbar {
+  width: 4px; /* smaller: 4px; default was ~15px */
+}
+.admin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.3); /* amber-400, subtle */
+  border-radius: 2px;
+}
+.admin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.5);
+}
+.admin-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(251, 191, 36, 0.6);
+}

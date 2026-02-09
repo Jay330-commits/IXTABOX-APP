@@ -413,9 +413,8 @@ export class DashboardStatisticsService extends BaseService {
                 box_front_view: true,
                 box_back_view: true,
                 closed_stand_lock: true,
+                returned_at: true,
                 created_at: true,
-                // Note: reported_problems is not included in select until database migration is run
-                // It will be accessed via type assertion below
               },
             },
             extensions: {
@@ -587,7 +586,7 @@ export class DashboardStatisticsService extends BaseService {
             paymentDate: booking.payments?.completed_at,
             paymentId: booking.payments?.id || null,
             chargeId: booking.payments?.charge_id || null,
-            returnedAt: booking.returned_at,
+            returnedAt: booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null,
             lockPin: booking.lock_pin,
             compartment: booking.boxes.compartment,
             daysRemaining,
@@ -595,14 +594,16 @@ export class DashboardStatisticsService extends BaseService {
             boxBackView,
             closedStandLock,
             boxReturnStatus: booking.box_returns?.confirmed_good_status ?? null,
-            boxReturnDate: booking.box_returns?.created_at || null,
-            // Access reported_problems from box_returns
-            // TODO: After running migration to add reported_problems column, update the select above
-            // to include reported_problems: true, and then access it here
-            reportedProblems: null, // Will be populated after database migration
-            extensionCount: booking.extension_count || 0,
-            originalEndDate: booking.original_end_date ? new Date(booking.original_end_date).toLocaleDateString() : undefined,
-            isExtended: booking.is_extended || false,
+            boxReturnDate: booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null,
+            reportedProblems: (booking.reported_problems as Array<{ type: string; description?: string }> | null) ?? null,
+            extensionCount: booking.extensions?.length ?? 0,
+            originalEndDate: (() => {
+              const exts = booking.extensions;
+              if (!exts?.length) return undefined;
+              const first = [...exts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+              return first ? new Date(first.previous_end_date).toLocaleDateString() : undefined;
+            })(),
+            isExtended: (booking.extensions?.length ?? 0) > 0,
             extensions: booking.extensions?.map((ext) => ({
               id: ext.id,
               previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),

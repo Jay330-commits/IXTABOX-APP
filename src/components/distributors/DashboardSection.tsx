@@ -1127,11 +1127,20 @@ export default function DashboardSection({
                                           <div className="flex flex-wrap gap-2">
                                             {booking.reportedProblems.map((problem: { type: string; description?: string }, index: number) => {
                                               const problemLabels: Record<string, string> = {
+                                                'interior_lights': 'Interior lights',
+                                                'exterior_lights': 'Exterior lights',
+                                                'mounting_fixture': 'Mounting fixture',
+                                                'lid_damage': 'Lid damage',
+                                                'box_scratch': 'Box scratch',
+                                                'box_dent_major_damage': 'Box dent / major damage',
+                                                'defect_rubber_sealing': 'Defect rubber sealing',
+                                                'stolen': 'Stolen',
+                                                'other': 'Other…',
+                                                // Legacy (pre-migration) labels for display
                                                 'led_light': 'LED Light Issue',
                                                 'hinge': 'Hinge Problem',
                                                 'scratches': 'Scratches/Damage',
                                                 'lock': 'Lock Issue',
-                                                'other': 'Other Issue',
                                               };
                                               
                                               const label = problemLabels[problem.type] || problem.type;

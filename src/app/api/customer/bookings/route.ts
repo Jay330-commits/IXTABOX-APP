@@ -427,34 +427,27 @@ export async function GET(request: NextRequest) {
       // Calculate original booking amount
       const originalAmount = parseFloat(booking.payments?.amount.toString() || '0');
       
-      // Calculate total extension amount (if extensions exist)
-      type BookingWithExtensions = typeof booking & {
-        extension_count?: number;
-        is_extended?: boolean;
-        extensions?: Array<{ additional_cost?: unknown }>;
-      };
-      const bookingWithExt = booking as BookingWithExtensions;
-      const extensions = bookingWithExt.extensions;
+      // Extensions and return time from joins (no redundant columns on bookings)
+      // Handle case where extensions might not be included in query (fallback scenario)
+      const extensions = (booking as typeof booking & { extensions?: Array<{ additional_cost?: unknown; previous_end_date?: Date; created_at?: Date }> }).extensions;
       const extensionAmount = extensions && Array.isArray(extensions)
         ? extensions.reduce((sum: number, ext: { additional_cost?: unknown }) => {
             return sum + Number(ext.additional_cost || 0);
           }, 0)
         : 0;
 
-      // Total amount = original booking + all extensions
       const totalAmount = originalAmount + extensionAmount;
 
-      // Check if booking has extensions (from booking_extensions table)
       const hasExtensions = extensions && Array.isArray(extensions) && extensions.length > 0;
-      const extensionCountFromDB = bookingWithExt.extension_count ?? 0;
-      const isExtendedFromDB = bookingWithExt.is_extended ?? false;
-
-      // A booking is extended if:
-      // 1. The is_extended flag is true in the database, OR
-      // 2. The extension_count > 0, OR
-      // 3. There are actual extension records in booking_extensions table
-      const isExtended = isExtendedFromDB || extensionCountFromDB > 0 || hasExtensions;
-      const extensionCount = hasExtensions ? extensions.length : extensionCountFromDB;
+      const extensionCount = hasExtensions ? extensions.length : 0;
+      const isExtended = hasExtensions;
+      const returnedAt = booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null;
+      const firstExtensionByDate = hasExtensions && extensions.length > 0
+        ? (extensions as Array<{ previous_end_date: Date; created_at: Date }>).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )[0]
+        : null;
+      const originalEndDate = firstExtensionByDate?.previous_end_date ?? null;
 
       const formattedBooking = {
         id: booking.id,
@@ -479,7 +472,7 @@ export async function GET(request: NextRequest) {
         paymentStatus: booking.payments?.status || null,
         chargeId: booking.payments?.charge_id || null,
         createdAt: booking.created_at ? booking.created_at.toISOString() : new Date().toISOString(),
-        returnedAt: booking.returned_at ? booking.returned_at.toISOString() : null,
+        returnedAt: returnedAt ? returnedAt.toISOString() : null,
         model: booking.boxes.model || 'Pro 175',
         pricePerDay: boxPrice,
         deposit: boxDeposit,

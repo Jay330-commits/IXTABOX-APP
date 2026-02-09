@@ -126,23 +126,12 @@ export class ReturnBoxService extends BaseService {
     }
 
     try {
-      // Update booking with return information, create box_returns record, and update box score
-      // Changing status to Completed means the booking has stopped (box returned)
+      // Update booking status, create/update box_returns with return timestamp and photos, update box score
+      // returned_at lives on box_returns (use join when reading)
       await this.executeTransaction(async (tx) => {
-        // Update booking status
         await tx.bookings.update({
           where: { id: params.bookingId },
-          data: {
-            status: BookingStatus.Completed,
-            returned_at: returnedAt,
-          },
-        });
-
-        // Create or update box_returns record with photo URLs
-        // Use upsert to preserve any reported_problems that were already saved
-        const existingReturn = await tx.box_returns.findUnique({
-          where: { booking_id: params.bookingId },
-          select: { reported_problems: true },
+          data: { status: BookingStatus.Completed },
         });
 
         await tx.box_returns.upsert({
@@ -152,10 +141,7 @@ export class ReturnBoxService extends BaseService {
             box_front_view: params.photos.boxFrontView,
             box_back_view: params.photos.boxBackView,
             closed_stand_lock: params.photos.closedStandLock,
-            // Preserve reported_problems if they were already reported
-            ...(existingReturn?.reported_problems && {
-              reported_problems: existingReturn.reported_problems,
-            }),
+            returned_at: returnedAt,
           },
           create: {
             booking_id: params.bookingId,
@@ -163,6 +149,7 @@ export class ReturnBoxService extends BaseService {
             box_front_view: params.photos.boxFrontView,
             box_back_view: params.photos.boxBackView,
             closed_stand_lock: params.photos.closedStandLock,
+            returned_at: returnedAt,
           },
         });
 

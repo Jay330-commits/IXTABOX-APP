@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ locationId: string }> }
 ) {
   try {
     await params; // Extract params to satisfy route signature
@@ -51,4 +51,3 @@ export async function GET(
     });
   }
 }
-

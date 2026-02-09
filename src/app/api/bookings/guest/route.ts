@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         chargeId: booking.payments?.charge_id || null,
         paymentStatus: booking.payments?.status || null,
         createdAt: booking.created_at?.toISOString() || null,
-        returnedAt: booking.returned_at?.toISOString() || null,
+        returnedAt: (booking.box_returns?.returned_at ?? booking.box_returns?.created_at)?.toISOString() ?? null,
         boxFrontView,
         boxBackView,
         closedStandLock,

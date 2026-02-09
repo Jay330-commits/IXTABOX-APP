@@ -173,7 +173,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     const fetchPricing = async () => {
       try {
         setLoadingPricing(true);
-        const response = await fetch(`/api/locations/${location.id}/pricing`);
+        const response = await fetch(`/api/pricing/locations/${location.id}`);
         if (response.ok) {
           const data = await response.json();
           setPricing(data.pricing);

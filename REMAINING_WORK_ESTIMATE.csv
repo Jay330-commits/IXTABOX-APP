@@ -1,0 +1,19 @@
+Category,Task ID,Task Heading,Description,Est. Hours,Priority,Status
+Main Admin Page,REM-001,Admin App Route & Layout,"Create /admin route, layout, and role guard so only Admin role can access. Wire middleware to protect /admin.",4,High,Remaining
+Main Admin Page,REM-002,Admin Dashboard Overview,"Build main admin dashboard: platform KPIs (total distributors, locations, bookings, revenue), recent activity, quick links to manage distributors and settings.",8,High,Remaining
+Main Admin Page,REM-003,Distributor Management (Admin),"Admin CRUD for distributors: list all distributors, view detail, approve/suspend/activate, edit company info, link to user. API routes and service layer.",12,High,Remaining
+Main Admin Page,REM-004,Platform Settings UI,"Admin UI to read/update platform_settings (key-value). Global config e.g. default currency, support email, feature flags. API and service.",6,High,Remaining
+Main Admin Page,REM-005,Admin Users / Admins Management,"Manage admins table: list admin users, add/remove admin, set access_level and permissions (JSON). Ensure only super-admin can manage other admins.",8,High,Remaining
+Main Admin Page,REM-006,System-Wide Analytics,"Admin-only analytics: bookings across all locations, revenue by distributor, customer signups, box utilization. Reuse/aggregate existing stats services.",10,Medium,Remaining
+Main Admin Page,REM-007,Admin Audit / Logs View,"View audit or important actions (e.g. admin actions, key booking/payment events). May require audit_log_entries or new audit table + API.",6,Medium,Remaining
+Main Admin Page,REM-008,Admin Notifications / Support,"Admin view of support requests or platform-wide notifications; optional: simple ticket list and status (if support model exists).",6,Medium,Remaining
+Auth & Security,REM-009,Enable Middleware Protection,"Re-enable middleware: protect /customer, /distributor, /admin; redirect unauthenticated to login; redirect by role (Admin -> /admin, etc.).",4,High,Remaining
+Auth & Security,REM-010,Admin Login & Session,"Ensure Admin role users can log in and are directed to /admin; session and token include role; admin-specific permissions check in API.",3,High,Remaining
+Bugfixes & UX (ideas.md),REM-011,Box Score & Ordering,"Add/use score column on boxes; implement fetch/order by booked order (start/return time); skip cancelled bookings.",5,Medium,Remaining
+Bugfixes & UX (ideas.md),REM-012,In Use Display Fix,"Fix 'In Use' displaying in two lines in UI.",1,Low,Remaining
+Bugfixes & UX (ideas.md),REM-013,Remove Box Icons Near Model,"Remove box icons near model in the relevant component.",1,Low,Remaining
+Bugfixes & UX (ideas.md),REM-014,Stars Section Responsive,"Apply customer stars section principles: icon placement and different view on small screens (upper part below header).",3,Low,Remaining
+Infrastructure,REM-015,Admin API Routes,"Create API routes under /api/admin for distributors, platform settings, admins, analytics (all admin-only).",8,High,Remaining
+Infrastructure,REM-016,Admin Service Layer,"Implement AdminService (or equivalent) for platform-level operations: list/update distributors, platform settings, admin users, aggregated stats.",10,High,Remaining
+Infrastructure,REM-017,Admin Header & Navigation,"Admin header/nav: links to Dashboard, Distributors, Platform Settings, Admins, Analytics, Logs. Consistent with existing app layout.",4,High,Remaining
+TOTAL,,,,109,
