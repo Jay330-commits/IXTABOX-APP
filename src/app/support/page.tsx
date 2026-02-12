@@ -74,8 +74,50 @@ export default function SupportPage() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
+  // FAQ Schema for rich snippets in Google search results
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      "name": item.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": item.answer
+      }
+    }))
+  };
+
+  // Breadcrumb schema for better navigation understanding
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://ixtabox.com"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Support",
+        "item": "https://ixtabox.com/support"
+      }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       <GuestHeader />
       <main>
         {/* Hero Section */}

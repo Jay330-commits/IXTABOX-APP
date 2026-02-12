@@ -4,15 +4,19 @@ import GuestHome from "./guest/page";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
 
 export const metadata: Metadata = {
-  title: "IXTAbox Rent - Roof Boxes & Extra Car Storage | Sweden",
+  title: "IXTAbox Rent (ixtarent) - Roof Boxes & Extra Car Storage | Sweden",
   description:
     "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic design for improved efficiency and smoother driving. Perfect for travel, camping, and everyday storage needs. Available across Sweden and the Nordics. Book online, mount in minutes.",
   keywords: [
     "IXTAbox",
+    "ixtarent",
+    "IXTArent",
+    "ixtarent rental",
+    "ixtarent Sweden",
     "roof box rental",
     "roof boxes",
     "cargo box rental",
-    "extra car storage",
+    "extra car storage",  
     "car storage rental",
     "roof cargo box",
     "car roof box",
@@ -27,8 +31,8 @@ export const metadata: Metadata = {
     "Stockholm",
   ],
   openGraph: {
-    title: "IXTAbox Rent - Roof Boxes & Extra Car Storage",
-    description: "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic design for improved efficiency and smoother driving.",
+    title: "IXTAbox Rent (ixtarent) - Roof Boxes & Extra Car Storage",
+    description: "Rent IXTAbox (ixtarent) - Roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic design for improved efficiency and smoother driving.",
     url: siteUrl,
     images: [
       {
