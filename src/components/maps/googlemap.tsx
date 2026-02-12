@@ -56,13 +56,15 @@ export type MapProps = {
     boxModel?: string;
   };
   onFullscreenChange?: (isFullscreen: boolean) => void;
+  /** When true, map container uses full viewport height (minus header). Use on guest/landing page. */
+  fillViewport?: boolean;
 };
 
 type DirectionsResult = google.maps.DirectionsResult;
 
 const DEFAULT_CENTER = { lat: 59.3293, lng: 18.0686 };
 
-export default function Map({ locations, filterForm, filterValues, onFullscreenChange }: MapProps) {
+export default function Map({ locations, filterForm, filterValues, onFullscreenChange, fillViewport = false }: MapProps) {
   const [interactionEnabled, setInteractionEnabled] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<MapProps["locations"][number] | null>(null);
@@ -143,6 +145,24 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     onFullscreenChange?.(fullscreen);
   }, [fullscreen, onFullscreenChange]);
 
+  // When entering fullscreen, force map to use full viewport size (not container) and redraw
+  useEffect(() => {
+    if (!fullscreen || !mapRef.current) return;
+    const resizeMap = () => {
+      if (window.google?.maps?.event && mapRef.current) {
+        window.google.maps.event.trigger(mapRef.current, "resize");
+        if (computedBounds) mapRef.current.fitBounds(computedBounds, 32);
+      }
+    };
+    resizeMap();
+    const t1 = setTimeout(resizeMap, 100);
+    const t2 = setTimeout(resizeMap, 350);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [fullscreen, computedBounds]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -155,18 +175,18 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     });
   }, [interactionEnabled]);
 
+  // When fullscreen, lock body scroll so the section below never scrolls over the map
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
-    if (fullscreen && interactionEnabled) {
+    if (fullscreen) {
       document.body.style.overflow = "hidden";
-      // Don't scroll - let the "Book IXTAbox" button handle scrolling
     } else {
       document.body.style.overflow = originalOverflow || "";
     }
     return () => {
       document.body.style.overflow = originalOverflow || "";
     };
-  }, [fullscreen, interactionEnabled]);
+  }, [fullscreen]);
 
   useEffect(() => {
     if (!fullscreen) {
@@ -199,7 +219,13 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     if (computedBounds) {
       map.fitBounds(computedBounds, 32);
     }
-  }, [computedBounds]);
+    if (fullscreen && window.google?.maps?.event) {
+      setTimeout(() => {
+        window.google.maps.event.trigger(map, "resize");
+        if (computedBounds) map.fitBounds(computedBounds, 32);
+      }, 50);
+    }
+  }, [computedBounds, fullscreen]);
 
   const handleMapUnmount = useCallback(() => {
     mapRef.current = null;
@@ -375,16 +401,25 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   }, [acquireLocation, getNearestLocation, handleDirections, isLoaded, locations]);
 
   const computedContainerStyle = useMemo<CSSProperties>(
-    () => ({
-      width: fullscreen ? "100vw" : "100%",
-      height: fullscreen ? "calc(100vh - 80px)" : "500px",
-      position: fullscreen ? "fixed" : "relative",
-      top: fullscreen ? "80px" : undefined,
-      left: fullscreen ? 0 : undefined,
-      right: fullscreen ? 0 : undefined,
-      zIndex: fullscreen ? 999 : 0,
-    }),
-    [fullscreen],
+    () =>
+      fullscreen
+        ? {
+            width: "100%",
+            height: "100%",
+            position: "relative" as const,
+            margin: 0,
+            padding: 0,
+            overflow: "hidden",
+          }
+        : {
+            width: "100%",
+            height: fillViewport ? "calc(100vh - 80px)" : "100%",
+            position: "relative" as const,
+            margin: 0,
+            padding: 0,
+            overflow: "hidden",
+          },
+    [fullscreen, fillViewport],
   );
 
   const handleBookLocation = useCallback(
@@ -500,8 +535,31 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     return <div className="flex h-full items-center justify-center text-gray-300">Loading map…</div>;
   }
 
-  return (
-    <div className="h-full w-full" style={{ position: "relative", minHeight: fullscreen ? undefined : 500 }}>
+  const fullscreenWrapperStyle: CSSProperties = {
+    position: "fixed",
+    top: "80px",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100vw",
+    height: "calc(100vh - 80px)",
+    zIndex: 9999,
+    overflow: "hidden",
+    margin: 0,
+    padding: 0,
+  };
+
+  const mapContent = (
+    <div
+      className={`h-full w-full ${fillViewport ? "m-0 p-0" : ""}`}
+      style={{
+        position: "relative",
+        minHeight: fullscreen ? undefined : 0,
+        transform: fullscreen ? "none" : "translateZ(0)",
+        contain: fullscreen ? "none" : "layout paint",
+        ...(fullscreen ? { width: "100%", height: "100%" } : fillViewport ? { margin: 0, padding: 0 } : {}),
+      }}
+    >
       {/* Filter Form Overlay */}
       {filterForm && (
         <div className="absolute top-0 left-0 z-[1001] pointer-events-none" style={{ width: '100%', maxWidth: '28rem' }}>
@@ -632,7 +690,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       )}
 
       {fullscreen && (
-        <div className="fixed right-4 z-[1002] flex flex-col gap-2" style={{ top: "100px", bottom: "20px" }}>
+        <div className="fixed right-4 z-[10000] flex flex-col gap-2" style={{ top: "100px", bottom: "20px" }}>
           <button
             type="button"
             onClick={handleLocate}
@@ -651,8 +709,8 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         </div>
       )}
 
-      {fullscreen && exitHintVisible && (
-        <div className="pointer-events-none fixed inset-x-0 top-[96px] z-[1001] flex justify-center">
+      {fullscreen && exitHintVisible && !isMobile && (
+        <div className="pointer-events-none fixed inset-x-0 top-[96px] z-[10000] flex justify-center">
           <div className="rounded-full border border-white/20 bg-black/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.3em] text-white/80 shadow-lg">
             Press Esc or tap Close to leave the map
           </div>
@@ -728,7 +786,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         <button
           type="button"
           onClick={() => setRoutePanelOpen((open) => !open)}
-          className="fixed z-[1001] bg-black/70 text-white border border-white/20 rounded-l px-2 py-1"
+          className="fixed z-[10000] bg-black/70 text-white border border-white/20 rounded-l px-2 py-1"
           style={{
             right: routePanelOpen ? 320 : 0,
             top: "50%",
@@ -744,7 +802,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {fullscreen && (
         <div
           ref={routePanelRef}
-          className="fixed bg-black/80 text-white border-l border-white/10 p-4 overflow-auto z-[1000]"
+          className="fixed bg-black/80 text-white border-l border-white/10 p-4 overflow-auto z-[10000]"
           style={{
             top: "88px",
             bottom: "20px",
@@ -758,6 +816,16 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       )}
     </div>
   );
+
+  if (fullscreen && typeof document !== "undefined") {
+    return createPortal(
+      <div style={fullscreenWrapperStyle} aria-hidden={false}>
+        {mapContent}
+      </div>,
+      document.body
+    );
+  }
+  return mapContent;
 }
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {

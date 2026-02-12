@@ -51,12 +51,18 @@ export default function AnimatedCounter({
 
     let animationFrame: number;
     const start = performance.now();
+    let lastUpdate = 0;
+    const UPDATE_INTERVAL_MS = 50; // Throttle setState to ~20fps for smoother UI
 
     const animate = (timestamp: number) => {
       const progress = Math.min(1, (timestamp - start) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       const nextValue = value * eased;
-      setDisplayValue(nextValue);
+
+      if (timestamp - lastUpdate >= UPDATE_INTERVAL_MS || progress >= 1) {
+        lastUpdate = timestamp;
+        setDisplayValue(nextValue);
+      }
 
       if (progress < 1) {
         animationFrame = requestAnimationFrame(animate);
@@ -64,7 +70,6 @@ export default function AnimatedCounter({
     };
 
     animationFrame = requestAnimationFrame(animate);
-
     return () => cancelAnimationFrame(animationFrame);
   }, [hasAnimated, duration, value]);
 

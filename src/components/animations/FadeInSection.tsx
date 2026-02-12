@@ -42,7 +42,10 @@ export default function FadeInSection({
   return (
     <div
       ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
+      style={{
+        transitionDelay: `${delay}ms`,
+        willChange: isVisible ? "auto" : "transform, opacity",
+      }}
       className={`transform transition-all duration-[750ms] ease-out ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
       } ${className}`}

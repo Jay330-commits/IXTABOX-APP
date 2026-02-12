@@ -1,24 +1,15 @@
+const HEADER_OFFSET_PX = 80;
+
 /**
- * Exact same functionality as the header "Book IXTAbox" button
- * This is the EXACT code from the header button onClick handler:
- * 
- * if (item.href.startsWith("#")) {
- *   e.preventDefault();
- *   const el = document.querySelector(item.href);
- *   if (el) {
- *     (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
- *   }
- *   setActiveHash(item.href);
- * }
+ * Scroll to #map so the map sits below the sticky header (nothing hidden under it).
  */
 export function scrollToMap(e?: React.MouseEvent): void {
-  // Exact same logic as header button (item.href is "#map")
   if (e) {
     e.preventDefault();
   }
-  const el = document.querySelector("#map");
-  if (el) {
-    (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  const el = document.querySelector("#map") as HTMLElement | null;
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET_PX;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
 }
 

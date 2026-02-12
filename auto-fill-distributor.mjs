@@ -374,3 +374,5 @@ async function autoFillForm() {
 // Run the script
 autoFillForm().catch(console.error);
 
+// Depoloyment 20 has all the info wee need about parteners
+

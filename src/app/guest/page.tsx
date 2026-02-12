@@ -4,12 +4,13 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { MapProps } from "../../components/maps/googlemap";
 import GuestHeader from "@/components/layouts/GuestHeader";
-import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import AnimatedCounter from "@/components/animations/AnimatedCounter";
 // import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { scrollToMap } from "@/utils/scrollToMap";
+
+const Footer = dynamic(() => import("@/components/layouts/Footer"), { ssr: true });
 
 const STAT_METRICS = [
   {
@@ -108,7 +109,7 @@ const TESTIMONIALS = [
 const Map = dynamic<MapProps>(() => import("../../components/maps/googlemap"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[500px] w-full items-center justify-center text-gray-300 animate-pulse">
+    <div className="flex h-full min-h-[300px] w-full items-center justify-center text-gray-300 animate-pulse">
       <div className="text-center">
         <div className="relative inline-block mb-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-500/20 border-t-cyan-500"></div>
@@ -143,6 +144,7 @@ export default function GuestHome() {
   const [metricProgress, setMetricProgress] = useState(0);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(0);
+  const [heroVisibleLayer, setHeroVisibleLayer] = useState(0); // 0 or 1 for crossfade
   // const [showFilterForm, setShowFilterForm] = useState(false);
   // const [bookingFilter, setBookingFilter] = useState<BookingFilter>({
   //   startDate: '',
@@ -225,6 +227,8 @@ export default function GuestHome() {
 
     let animationFrame: number;
     const duration = 7000;
+    let lastProgressUpdate = 0;
+    const PROGRESS_UPDATE_INTERVAL_MS = 80; // Throttle setState to ~12fps for progress bar
 
     const tick = (timestamp: number) => {
       if (autoplayStartRef.current === null) {
@@ -233,7 +237,11 @@ export default function GuestHome() {
 
       const elapsed = timestamp - autoplayStartRef.current;
       const progress = Math.min(1, elapsed / duration);
-      setTestimonialProgress(progress * 100);
+
+      if (timestamp - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
+        lastProgressUpdate = timestamp;
+        setTestimonialProgress(progress * 100);
+      }
 
       if (elapsed >= duration) {
         setActiveTestimonial((prev) => (prev + 1) % testimonialCount);
@@ -252,49 +260,59 @@ export default function GuestHome() {
     };
   }, [testimonialCount]);
 
-  // Rotate metrics on mobile
+  // Rotate metrics on mobile — throttle progress updates to reduce re-renders
   useEffect(() => {
-    const metricCount: number = STAT_METRICS.length;
-
+    const metricCount = STAT_METRICS.length;
     let animationFrame: number;
-    const duration = 3000; // 3 seconds per metric
-
+    const duration = 3000;
     let startTime: number | null = null;
+    let lastProgressUpdate = 0;
+    const PROGRESS_UPDATE_INTERVAL_MS = 80;
 
     const tick = (timestamp: number) => {
-      if (startTime === null) {
-        startTime = timestamp;
-      }
-
+      if (startTime === null) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const progress = Math.min(1, elapsed / duration);
-      setMetricProgress(progress * 100);
+
+      if (timestamp - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
+        lastProgressUpdate = timestamp;
+        setMetricProgress(progress * 100);
+      }
 
       if (elapsed >= duration) {
         setActiveMetric((prev) => (prev + 1) % metricCount);
         startTime = timestamp;
         setMetricProgress(0);
       }
-
       animationFrame = requestAnimationFrame(tick);
     };
-
     animationFrame = requestAnimationFrame(tick);
-
     return () => {
       startTime = null;
       cancelAnimationFrame(animationFrame);
     };
   }, []);
 
-  // Rotate hero background images
+  const heroCount = HERO_BACKGROUNDS.length;
+  const nextBgIndex = (currentBackgroundIndex + 1) % heroCount;
+  const nextNextBgIndex = (currentBackgroundIndex + 2) % heroCount;
+
+  // Preload next and next+1 hero images for smooth crossfade
+  useEffect(() => {
+    const img1 = new window.Image();
+    img1.src = HERO_BACKGROUNDS[nextBgIndex];
+    const img2 = new window.Image();
+    img2.src = HERO_BACKGROUNDS[nextNextBgIndex];
+  }, [nextBgIndex, nextNextBgIndex]);
+
+  // Rotate hero background with crossfade
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentBackgroundIndex((prev) => (prev + 1) % HERO_BACKGROUNDS.length);
-    }, 8000); // Change background every 8 seconds
-
+      setCurrentBackgroundIndex((prev) => (prev + 1) % heroCount);
+      setHeroVisibleLayer((v) => 1 - v);
+    }, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [heroCount]);
 
   const handleSelectTestimonial = (index: number) => {
     setActiveTestimonial(index);
@@ -341,61 +359,45 @@ export default function GuestHome() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
 
   // Structured data for SEO
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "IXTAbox",
-    "url": siteUrl,
-    "logo": `${siteUrl}/images/logo/titleicon.webp`,
-    "description": "Aerodynamic roof boxes, cargo boxes, and extra car storage rental service across Sweden and the Nordics",
-    "sameAs": [
-      // Add social media links if available
-    ],
-  };
-
-  const serviceSchema = {
-    "@context": "https://schema.org",
-    "@type": "Service",
-    "serviceType": "Roof Box Rental, Cargo Box Rental, Car Storage Rental",
-    "provider": {
+  const organizationSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
       "@type": "Organization",
       "name": "IXTAbox",
-    },
-    "areaServed": {
-      "@type": "Country",
-      "name": ["Sweden", "Norway", "Denmark", "Finland"],
-    },
-    "description": "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic back-mounted design reduces drag and improves fuel efficiency. Perfect for travel, camping, and everyday storage needs.",
-    "offers": {
-      "@type": "Offer",
-      "availability": "https://schema.org/InStock",
-      "priceCurrency": "SEK",
-    },
-  };
+      "url": siteUrl,
+      "logo": `${siteUrl}/images/logo/titleicon.webp`,
+      "description": "Aerodynamic roof boxes, cargo boxes, and extra car storage rental service across Sweden and the Nordics",
+      "sameAs": [],
+    }),
+    [siteUrl]
+  );
 
-  const productSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": "IXTAbox Cargo Box - Roof Box & Extra Car Storage",
-    "description": "Aerodynamic back-mounted cargo box and roof box engineered for reduced drag, better range, and quieter rides. Provides extra car storage for travel, camping, and everyday use.",
-    "brand": {
-      "@type": "Brand",
-      "name": "IXTAbox",
-    },
-    "category": "Vehicle Storage, Roof Box, Car Storage",
-    "additionalProperty": [
-      {
-        "@type": "PropertyValue",
-        "name": "Type",
-        "value": "Roof Box, Cargo Box, Car Storage"
-      }
-    ],
-    "offers": {
-      "@type": "Offer",
-      "availability": "https://schema.org/InStock",
-      "priceCurrency": "SEK",
-    },
-  };
+  const serviceSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": "Roof Box Rental, Cargo Box Rental, Car Storage Rental",
+      "provider": { "@type": "Organization", "name": "IXTAbox" },
+      "areaServed": { "@type": "Country", "name": ["Sweden", "Norway", "Denmark", "Finland"] },
+      "description": "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic back-mounted design reduces drag and improves fuel efficiency. Perfect for travel, camping, and everyday storage needs.",
+      "offers": { "@type": "Offer", "availability": "https://schema.org/InStock", "priceCurrency": "SEK" },
+    }),
+    []
+  );
+
+  const productSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "IXTAbox Cargo Box - Roof Box & Extra Car Storage",
+      "description": "Aerodynamic back-mounted cargo box and roof box engineered for reduced drag, better range, and quieter rides. Provides extra car storage for travel, camping, and everyday use.",
+      "brand": { "@type": "Brand", "name": "IXTAbox" },
+      "category": "Vehicle Storage, Roof Box, Car Storage",
+      "additionalProperty": [{ "@type": "PropertyValue", "name": "Type", "value": "Roof Box, Cargo Box, Car Storage" }],
+      "offers": { "@type": "Offer", "availability": "https://schema.org/InStock", "priceCurrency": "SEK" },
+    }),
+    []
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -419,19 +421,25 @@ export default function GuestHome() {
           className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
           style={{ minHeight: 560 }}
         >
-          {/* Background images with fade transition */}
-          {HERO_BACKGROUNDS.map((bg, index) => (
-            <div
-              key={bg}
-              className="absolute inset-0 bg-center bg-cover transition-opacity ease-in-out"
-              style={{
-                backgroundImage: `url(${bg})`,
-                opacity: index === currentBackgroundIndex ? 1 : 0,
-                zIndex: index === currentBackgroundIndex ? 1 : 0,
-                transitionDuration: '2s',
-              }}
-            />
-          ))}
+          {/* Two layers with crossfade — only 2 images in DOM for fast load */}
+          <div
+            className="absolute inset-0 bg-center bg-cover transition-opacity duration-[2s] ease-in-out"
+            style={{
+              backgroundImage: `url(${HERO_BACKGROUNDS[heroVisibleLayer === 0 ? currentBackgroundIndex : nextBgIndex]})`,
+              opacity: heroVisibleLayer === 0 ? 1 : 0,
+              zIndex: heroVisibleLayer === 0 ? 1 : 0,
+            }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-center bg-cover transition-opacity duration-[2s] ease-in-out"
+            style={{
+              backgroundImage: `url(${HERO_BACKGROUNDS[heroVisibleLayer === 1 ? currentBackgroundIndex : nextBgIndex]})`,
+              opacity: heroVisibleLayer === 1 ? 1 : 0,
+              zIndex: heroVisibleLayer === 1 ? 1 : 0,
+            }}
+            aria-hidden
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80 z-10" />
           <div className="absolute inset-0 z-10">
             <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
@@ -540,35 +548,33 @@ export default function GuestHome() {
           </section>
         </FadeInSection>
 
-        {/* Map section – relative z-10 so Benefits never overlays the map */}
-        <FadeInSection className="relative z-10">
-        <section id="map" ref={mapSectionRef} className="px-6 py-12">
+        {/* Map section – when fullscreen, no transform on wrappers so map position:fixed is relative to viewport */}
+        <FadeInSection
+          className={`relative z-10 m-0 p-0 h-[calc(100vh-80px)] min-h-[calc(100vh-80px)] ${isMapFullscreen ? "!transform-none" : ""}`}
+        >
+        <section
+          id="map"
+          ref={mapSectionRef}
+          className="relative w-full h-full min-h-0 m-0 p-0 flex flex-col block"
+          style={{
+            height: "calc(100vh - 80px)",
+            minHeight: "calc(100vh - 80px)",
+            scrollMarginTop: "80px",
+          }}
+        >
           {!isMapFullscreen && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-3xl font-bold">Find Our Locations</h2>
-            {/* {!showFilterForm && (
-              <button
-                onClick={() => {
-                  setShowFilterForm(true);
-                  setTimeout(() => {
-                    const mapElement = document.getElementById('map');
-                    if (mapElement) {
-                      mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }, 100);
-                }}
-                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/60 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition-all hover:-translate-y-[1px] hover:bg-cyan-500/20 hover:text-white"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Filter Locations
-              </button>
-             )} */}
+            <div className="absolute top-2 left-2 z-[2] pointer-events-none shrink-0">
+              <h2 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">Find Our Locations</h2>
             </div>
-            )}
-          
-          <div className={`w-full relative rounded-lg ${!isMapFullscreen ? "overflow-hidden" : ""}`} style={{ height: 500 }} suppressHydrationWarning>
+          )}
+          <div
+            className={`w-full flex-1 min-h-0 relative m-0 p-0 ${!isMapFullscreen ? "overflow-hidden" : ""}`}
+            style={{
+              transform: isMapFullscreen ? "none" : "translateZ(0)",
+              contain: isMapFullscreen ? "none" : "layout paint",
+            }}
+            suppressHydrationWarning
+          >
             {locationsError ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
                 {locationsError}
@@ -580,9 +586,10 @@ export default function GuestHome() {
                 No locations available right now. Please check back soon.
               </div>
             ) : mounted ? (
-              <Map 
-                locations={locations} 
+              <Map
+                locations={locations}
                 onFullscreenChange={setIsMapFullscreen}
+                fillViewport
                 // filterForm={
                 //   showFilterForm ? (
                 //     <BookingFilterForm
@@ -603,8 +610,8 @@ export default function GuestHome() {
         </section>
         </FadeInSection>
 
-        {/* Three pillars */}
-        <FadeInSection>
+        {/* Three pillars – z-0 so this section never overlaps the map above */}
+        <FadeInSection className="relative z-0">
         <section id="benefits" className="mx-auto max-w-7xl px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors">
