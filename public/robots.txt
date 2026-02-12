@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and private pages
+Disallow: /admin/
+Disallow: /customer/
+Disallow: /distributor/
+Disallow: /auth/
+Disallow: /payment/
+Disallow: /api/
+
+# Allow public pages
+Allow: /
+Allow: /guest/
+
+# Sitemap
+Sitemap: https://ixtabox.com/sitemap.xml

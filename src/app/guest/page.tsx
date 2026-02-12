@@ -338,8 +338,80 @@ export default function GuestHome() {
 
   const activeStory = TESTIMONIALS[activeTestimonial] ?? TESTIMONIALS[0];
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
+
+  // Structured data for SEO
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "IXTAbox",
+    "url": siteUrl,
+    "logo": `${siteUrl}/images/logo/titleicon.webp`,
+    "description": "Aerodynamic roof boxes, cargo boxes, and extra car storage rental service across Sweden and the Nordics",
+    "sameAs": [
+      // Add social media links if available
+    ],
+  };
+
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Roof Box Rental, Cargo Box Rental, Car Storage Rental",
+    "provider": {
+      "@type": "Organization",
+      "name": "IXTAbox",
+    },
+    "areaServed": {
+      "@type": "Country",
+      "name": ["Sweden", "Norway", "Denmark", "Finland"],
+    },
+    "description": "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic back-mounted design reduces drag and improves fuel efficiency. Perfect for travel, camping, and everyday storage needs.",
+    "offers": {
+      "@type": "Offer",
+      "availability": "https://schema.org/InStock",
+      "priceCurrency": "SEK",
+    },
+  };
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "IXTAbox Cargo Box - Roof Box & Extra Car Storage",
+    "description": "Aerodynamic back-mounted cargo box and roof box engineered for reduced drag, better range, and quieter rides. Provides extra car storage for travel, camping, and everyday use.",
+    "brand": {
+      "@type": "Brand",
+      "name": "IXTAbox",
+    },
+    "category": "Vehicle Storage, Roof Box, Car Storage",
+    "additionalProperty": [
+      {
+        "@type": "PropertyValue",
+        "name": "Type",
+        "value": "Roof Box, Cargo Box, Car Storage"
+      }
+    ],
+    "offers": {
+      "@type": "Offer",
+      "availability": "https://schema.org/InStock",
+      "priceCurrency": "SEK",
+    },
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
       <GuestHeader />
       <main className="">
         {/* Hero with background image */}
@@ -468,8 +540,8 @@ export default function GuestHome() {
           </section>
         </FadeInSection>
 
-        {/* Map section (moved just below hero) */}
-        <FadeInSection>
+        {/* Map section – relative z-10 so Benefits never overlays the map */}
+        <FadeInSection className="relative z-10">
         <section id="map" ref={mapSectionRef} className="px-6 py-12">
           {!isMapFullscreen && (
           <div className="flex items-center justify-between mb-4">
@@ -496,7 +568,7 @@ export default function GuestHome() {
             </div>
             )}
           
-          <div className="w-full relative" style={{ minHeight: 500 }} suppressHydrationWarning>
+          <div className={`w-full relative rounded-lg ${!isMapFullscreen ? "overflow-hidden" : ""}`} style={{ height: 500 }} suppressHydrationWarning>
             {locationsError ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
                 {locationsError}

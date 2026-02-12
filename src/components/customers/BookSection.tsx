@@ -36,7 +36,7 @@ export default function BookSection({
   onFullscreenChange,
 }: BookSectionProps) {
   return (
-    <section id="map" className="px-6 py-12">
+    <section id="map" className="relative z-10 px-6 py-12">
       <div className="mx-auto max-w-7xl">
         <h2 className="text-3xl font-bold mb-4">Book a Box</h2>
         <p className="text-gray-300 mb-6">Find and book available IXTAbox boxes in Stockholm</p>
@@ -44,7 +44,7 @@ export default function BookSection({
           <div className="flex items-center justify-between mb-4">
           </div>
         )}
-        <div className="w-full relative" style={{ minHeight: 500 }} suppressHydrationWarning>
+        <div className={`w-full relative rounded-lg ${!isMapFullscreen ? "overflow-hidden" : ""}`} style={{ height: 500 }} suppressHydrationWarning>
           {locationsError ? (
             <div className="flex h-full items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-200">
               {locationsError}

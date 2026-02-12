@@ -142,3 +142,30 @@ body {
 .admin-scrollbar::-webkit-scrollbar-thumb:active {
   background: rgba(251, 191, 36, 0.6);
 }
+
+/* Time picker select dropdown styling - dark theme */
+select.time-picker-field-dark,
+.time-picker-field-dark select {
+  background-color: rgb(30 41 59) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+select.time-picker-field-dark option,
+.time-picker-field-dark select option {
+  background-color: rgb(30 41 59) !important;
+  color: white !important;
+}
+
+select.time-picker-field-dark:focus,
+.time-picker-field-dark select:focus {
+  border-color: rgb(34, 211, 238) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5) !important;
+}
+
+select.time-picker-field-dark:hover,
+.time-picker-field-dark select:hover {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+

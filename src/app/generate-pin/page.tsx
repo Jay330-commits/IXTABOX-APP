@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import GuestHeader from '@/components/layouts/GuestHeader';
 import Footer from '@/components/layouts/Footer';
+import { TimePickerField } from '@/components/ui/TimePickerField';
 
 interface PinResponse {
   pin?: string;
@@ -145,22 +146,20 @@ export default function GeneratePinPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Start Time
                 </label>
-                <input
-                  type="time"
+                <TimePickerField
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  onChange={(v) => setStartTime(v ?? '09:00')}
+                  className="time-picker-field-dark w-full"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   End Time
                 </label>
-                <input
-                  type="time"
+                <TimePickerField
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                  onChange={(v) => setEndTime(v ?? '17:00')}
+                  className="time-picker-field-dark w-full"
                 />
               </div>
             </div>

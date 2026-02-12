@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import type React from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -500,7 +501,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className="h-full w-full" style={{ position: "relative", minHeight: fullscreen ? undefined : 500 }}>
       {/* Filter Form Overlay */}
       {filterForm && (
         <div className="absolute top-0 left-0 z-[1001] pointer-events-none" style={{ width: '100%', maxWidth: '28rem' }}>
@@ -511,50 +512,51 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       )}
       
       {isLoadingLocation && <LoadingSpinner text="Finding your location..." />}
-      {selectedLocation && (
-        <>
-          {/* Backdrop for mobile */}
-          {isMobile && (
+      {selectedLocation &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex" aria-modal="true" role="dialog" style={{ minHeight: "100vh" }}>
+            {/* Full-viewport backdrop – portal ensures this is above Benefits and any stacking context */}
             <div
-              className="fixed inset-0 bg-black/50 z-[10000]"
+              className="absolute inset-0 bg-black/50"
               onClick={() => setSelectedLocation(null)}
+              aria-hidden
             />
-          )}
 
-          {/* Panel */}
-          <div
-            className={`
-              fixed z-[10001] bg-slate-800 shadow-2xl
-              flex flex-col
-              ${isMobile 
-                ? 'left-0 right-0 bottom-0 rounded-t-xl border-t border-x border-slate-600/30 max-h-[calc(100vh-80px)]'
-                : 'left-0 top-[80px] w-1/2 max-w-[600px] border-r border border-slate-600/30 h-[calc(100vh-80px)]'
-              }
-            `}
-            style={{
-              ...(isMobile ? {
-                display: 'flex',
-                flexDirection: 'column',
-                transform: 'translate3d(0, 0, 0)',
-                animation: 'slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              } : {
-                transform: 'translate3d(0, 0, 0)',
-              }),
-              transition: 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-              willChange: 'transform',
-            }}
-          >
-            {isMobile ? (
-              <div className="mobile-panel-content" style={{ display: 'flex', flexDirection: 'column' }}>
-                <LocationDetails
+            {/* Panel: above backdrop, full height on desktop so no empty space below */}
+            <div
+              className={`
+                absolute bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
+                ${fullscreen
+                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x max-h-[calc(100vh-80px)]" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
+                  : isMobile
+                    ? "absolute left-2 right-2 bottom-2 top-auto max-h-[85%] rounded-xl border border-slate-600/30"
+                    : "absolute left-0 top-[80px] right-auto w-full max-w-[420px] border-r border rounded-r-xl bottom-0"}
+              `}
+              style={{
+                ...(isMobile
+                  ? {
+                      display: "flex",
+                      flexDirection: "column",
+                      animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }
+                  : !fullscreen && !isMobile
+                    ? { top: 80, bottom: 0, height: "calc(100vh - 80px)", minHeight: "calc(100vh - 80px)" }
+                    : fullscreen && !isMobile
+                      ? { height: "calc(100vh - 80px)" }
+                      : {}),
+                transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+                willChange: "transform",
+              }}
+            >
+              {isMobile ? (
+                <div className="mobile-panel-content" style={{ display: "flex", flexDirection: "column" }}>
+                  <LocationDetails
                     location={{
                       id: selectedLocation.id,
                       name: selectedLocation.name,
                       address: selectedLocation.address,
-                        coordinates: {
-                        lat: selectedLocation.lat,
-                        lng: selectedLocation.lng,
-                        },
+                      coordinates: { lat: selectedLocation.lat, lng: selectedLocation.lng },
                       status: selectedLocation.status,
                       availableBoxes: selectedLocation.availableBoxes,
                       isFullyBooked: selectedLocation.isFullyBooked,
@@ -564,40 +566,38 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
                     }}
                     initialStartDate={filterValues?.startDate}
                     initialEndDate={filterValues?.endDate}
-                    initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
+                    initialModelId={filterValues?.boxModel && filterValues.boxModel !== "all" ? filterValues.boxModel : undefined}
                     onBook={handleBookLocation}
                     onClose={() => setSelectedLocation(null)}
                   />
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0 h-full" style={{ display: 'flex', flexDirection: 'column' }}>
-                <LocationDetails
-                  location={{
-                    id: selectedLocation.id,
-                    name: selectedLocation.name,
-                    address: selectedLocation.address,
-                      coordinates: {
-                      lat: selectedLocation.lat,
-                      lng: selectedLocation.lng,
-                      },
-                    status: selectedLocation.status,
-                    availableBoxes: selectedLocation.availableBoxes,
-                    isFullyBooked: selectedLocation.isFullyBooked,
-                    earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
-                    modelAvailability: selectedLocation.modelAvailability,
-                    image: selectedLocation.image || null,
-                  }}
-                  initialStartDate={filterValues?.startDate}
-                  initialEndDate={filterValues?.endDate}
-                  initialModelId={filterValues?.boxModel && filterValues.boxModel !== 'all' ? filterValues.boxModel : undefined}
-                  onBook={handleBookLocation}
-                  onClose={() => setSelectedLocation(null)}
-                />
-              </div>
-            )}
-          </div>
-        </>
-      )}
+                </div>
+              ) : (
+                <div className="flex-1 min-h-0 flex flex-col" style={{ minHeight: 0 }}>
+                  <LocationDetails
+                    location={{
+                      id: selectedLocation.id,
+                      name: selectedLocation.name,
+                      address: selectedLocation.address,
+                      coordinates: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+                      status: selectedLocation.status,
+                      availableBoxes: selectedLocation.availableBoxes,
+                      isFullyBooked: selectedLocation.isFullyBooked,
+                      earliestNextAvailableDate: selectedLocation.earliestNextAvailableDate,
+                      modelAvailability: selectedLocation.modelAvailability,
+                      image: selectedLocation.image || null,
+                    }}
+                    initialStartDate={filterValues?.startDate}
+                    initialEndDate={filterValues?.endDate}
+                    initialModelId={filterValues?.boxModel && filterValues.boxModel !== "all" ? filterValues.boxModel : undefined}
+                    onBook={handleBookLocation}
+                    onClose={() => setSelectedLocation(null)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       {!interactionEnabled && !fullscreen && (
         <div

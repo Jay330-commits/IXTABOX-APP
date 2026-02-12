@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { logger } from '@/utils/logger';
+import { TimePickerField } from '@/components/ui/TimePickerField';
 
 // Helper functions for date handling
 const isValidDateString = (dateStr: string | undefined): boolean => {
@@ -138,6 +139,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
     pro: { pricePerDay: number };
   } | null>(null);
   const [, setLoadingPricing] = useState(false);
+
+  // Refs for time picker fields to focus after date selection
+  const startTimeRef = useRef<HTMLSelectElement>(null);
+  const endTimeRef = useRef<HTMLSelectElement>(null);
 
   // Update state when initial values change
   useEffect(() => {
@@ -496,7 +501,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 overflow-auto">
       {/* Header Section - Always visible */}
       <div className="bg-gradient-to-br from-slate-700 to-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full shadow-xl backdrop-blur-sm" style={{ position: 'relative', zIndex: 1000 }}>
         <div className="p-3">
@@ -548,12 +553,18 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             )}
           </button>
           <button
-            onClick={() => setActiveTab('model')}
-            disabled={!startDate || !endDate}
+            onClick={() => {
+              if (!startTime || !endTime) {
+                alert('Please select both start and end times before proceeding.');
+                return;
+              }
+              setActiveTab('model');
+            }}
+            disabled={!startDate || !endDate || !startTime || !endTime}
             className={`flex-1 px-3 py-2 text-sm font-medium transition-all duration-200 relative ${
               activeTab === 'model'
                 ? 'text-cyan-400 bg-slate-700/40'
-                : (!startDate || !endDate)
+                : (!startDate || !endDate || !startTime || !endTime)
                 ? 'text-gray-600 cursor-not-allowed opacity-50'
                 : 'text-gray-300 hover:text-white hover:bg-slate-700/20'
             }`}
@@ -586,11 +597,11 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         )}
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="flex-1 flex flex-col min-h-0 overflow-auto" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-        {/* Location Image with Overlay */}
-        <div className="relative flex-shrink-0">
-          <div className="w-full aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
+        {/* Location Image with Overlay – flex-1 so it expands to fill panel height */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          <div className="w-full flex-1 min-h-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
             {location.image ? (
               <img
                 src={location.image}
@@ -614,54 +625,100 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             {activeTab === 'dates' && (
               <div className="absolute top-0 left-0 right-0 bottom-8 flex items-center justify-center p-4 z-10">
                 <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-3">
-                  <div className="bg-black/35 rounded-lg p-3 border border-white/10">
+                  <div className="bg-black/35 rounded-lg p-3 border border-white/10 space-y-2">
                     <label className="block text-xs font-medium text-white mb-1.5">Start</label>
                     <input
-                      type="datetime-local"
-                      value={startDate && startTime ? `${startDate}T${startTime}` : ''}
+                      type="date"
+                      value={startDate}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (value) {
-                          const [date, time] = value.split('T');
-                          setStartDate(date || '');
-                          setStartTime(time || getDefaultStartTime());
-                        } else {
-                          setStartDate('');
-                          setStartTime('');
+                        const dateValue = e.target.value;
+                        setStartDate(dateValue);
+                        // Automatically open time picker dropdown after date selection
+                        if (dateValue && startTimeRef.current) {
+                          setTimeout(() => {
+                            startTimeRef.current?.focus();
+                            // Try to open the dropdown by clicking on it
+                            startTimeRef.current?.click();
+                          }, 150);
                         }
                       }}
-                      min={getMinDateTimeFromNow()}
-                      className="block w-full px-3 py-2 text-sm border border-white/20 rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 placeholder:text-gray-400"
+                      min={getMinDateTimeFromNow().split('T')[0]}
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                        startDate && !startTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
+                      }`}
                     />
+                    <div>
+                      <TimePickerField
+                        ref={startTimeRef}
+                        value={startTime || null}
+                        onChange={(v) => setStartTime(v ?? getDefaultStartTime())}
+                        className={`time-picker-field-dark w-full ${
+                          startDate && !startTime ? 'ring-2 ring-yellow-500/50' : ''
+                        }`}
+                      />
+                      {startDate && !startTime && (
+                        <p className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>Please select a start time</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-black/35 rounded-lg p-3 border border-white/10">
+                  <div className="bg-black/35 rounded-lg p-3 border border-white/10 space-y-2">
                     <label className="block text-xs font-medium text-white mb-1.5">End</label>
                     <input
-                      type="datetime-local"
-                      value={endDate && endTime ? `${endDate}T${endTime}` : ''}
+                      type="date"
+                      value={endDate}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (value) {
-                          const [date, time] = value.split('T');
-                          const selectedDateTime = new Date(`${date}T${time || getDefaultEndTime()}`);
-                          const startDateTime = startDate && startTime ? new Date(`${startDate}T${startTime}`) : null;
-                          
-                          // Ensure end is after start
-                          if (startDateTime && selectedDateTime <= startDateTime) {
+                        const date = e.target.value;
+                        setEndDate(date);
+                        if (date && startDate && startTime && endTime) {
+                          const startDateTime = new Date(`${startDate}T${startTime}`);
+                          const endDateTime = new Date(`${date}T${endTime}`);
+                          if (endDateTime <= startDateTime) {
                             alert('End date and time must be after start date and time.');
-                            return;
                           }
-                          
-                          setEndDate(date || '');
-                          setEndTime(time || getDefaultEndTime());
-                        } else {
-                          setEndDate('');
-                          setEndTime('');
+                        }
+                        // Automatically open time picker dropdown after date selection
+                        if (date && endTimeRef.current) {
+                          setTimeout(() => {
+                            endTimeRef.current?.focus();
+                            // Try to open the dropdown by clicking on it
+                            endTimeRef.current?.click();
+                          }, 150);
                         }
                       }}
-                      min={startDate && startTime ? `${startDate}T${startTime}` : getMinDateTimeFromNow()}
-                      className="block w-full px-3 py-2 text-sm border border-white/20 rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 placeholder:text-gray-400"
+                      min={startDate || getMinDateTimeFromNow().split('T')[0]}
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                        endDate && !endTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
+                      }`}
                     />
+                    <div>
+                      <TimePickerField
+                        ref={endTimeRef}
+                        value={endTime || null}
+                        onChange={(v) => {
+                          const time = v ?? getDefaultEndTime();
+                          setEndTime(time);
+                          if (startDate && endDate && startTime && time) {
+                            const startDateTime = new Date(`${startDate}T${startTime}`);
+                            const endDateTime = new Date(`${endDate}T${time}`);
+                            if (endDateTime <= startDateTime) {
+                              alert('End date and time must be after start date and time.');
+                            }
+                          }
+                        }}
+                        className={`time-picker-field-dark w-full ${
+                          endDate && !endTime ? 'ring-2 ring-yellow-500/50' : ''
+                        }`}
+                      />
+                      {endDate && !endTime && (
+                        <p className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>Please select an end time</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

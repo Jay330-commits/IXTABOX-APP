@@ -1,10 +1,47 @@
 import type { Metadata } from "next";
 import GuestHome from "./guest/page";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
+
 export const metadata: Metadata = {
-  title: "Back-Mounted Cargo Box Rentals",
+  title: "IXTAbox Rent - Roof Boxes & Extra Car Storage | Sweden",
   description:
-    "Rent an aerodynamic rear cargo box designed for improved efficiency and smoother driving.",
+    "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic design for improved efficiency and smoother driving. Perfect for travel, camping, and everyday storage needs. Available across Sweden and the Nordics. Book online, mount in minutes.",
+  keywords: [
+    "IXTAbox",
+    "roof box rental",
+    "roof boxes",
+    "cargo box rental",
+    "extra car storage",
+    "car storage rental",
+    "roof cargo box",
+    "car roof box",
+    "vehicle storage",
+    "car luggage box",
+    "towbar cargo box",
+    "aerodynamic cargo box",
+    "car storage box",
+    "roof box hire",
+    "Sweden",
+    "Nordics",
+    "Stockholm",
+  ],
+  openGraph: {
+    title: "IXTAbox Rent - Roof Boxes & Extra Car Storage",
+    description: "Rent roof boxes, cargo boxes, and extra car storage solutions. Aerodynamic design for improved efficiency and smoother driving.",
+    url: siteUrl,
+    images: [
+      {
+        url: `${siteUrl}/images/background/IXTAbox_Hero_Shot_Summer_2025.jpg`,
+        width: 1200,
+        height: 630,
+        alt: "IXTAbox cargo box on car",
+      },
+    ],
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
 };
 
 export default function Page() {

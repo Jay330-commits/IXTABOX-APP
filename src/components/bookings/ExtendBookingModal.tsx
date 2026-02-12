@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { TimePickerField } from "@/components/ui/TimePickerField";
 
 interface ExtendBookingModalProps {
   bookingId: string;
@@ -292,14 +293,13 @@ export default function ExtendBookingModal({
               <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 New End Time
               </label>
-              <input
-                type="time"
+              <TimePickerField
                 value={newEndTime}
-                onChange={(e) => {
-                  setNewEndTime(e.target.value);
+                onChange={(v) => {
+                  setNewEndTime(v ?? "17:00");
                   setHasUserSelectedDate(true);
                 }}
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="time-picker-field-dark w-full"
               />
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import PriceBreakdown from './PriceBreakdown';
+import { TimePickerField } from '@/components/ui/TimePickerField';
 
 // Helper functions for date handling
 const isValidDateString = (dateStr: string | undefined): boolean => {
@@ -131,6 +132,10 @@ const StandDetails: React.FC<StandDetailsProps> = ({
   const [endDate, setEndDate] = React.useState<string>(getInitialEndDate());
   const [startTime, setStartTime] = React.useState<string>(getInitialStartTime());
   const [endTime, setEndTime] = React.useState<string>(getInitialEndTime());
+
+  // Refs for time picker fields to focus after date selection
+  const startTimeRef = React.useRef<HTMLSelectElement>(null);
+  const endTimeRef = React.useRef<HTMLSelectElement>(null);
 
   // Update state when initial values change
   React.useEffect(() => {
@@ -352,54 +357,62 @@ const StandDetails: React.FC<StandDetailsProps> = ({
           {activeTab === 'dates' && (
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
                   <input
-                    type="datetime-local"
-                    value={startDate && startTime ? `${startDate}T${startTime}` : ''}
+                    type="date"
+                    value={startDate}
                     onChange={(e) => {
-                      const value = e.target.value;
-                      if (value) {
-                        const [date, time] = value.split('T');
-                        setStartDate(date || '');
-                        setStartTime(time || getDefaultStartTime());
-                      } else {
-                        setStartDate('');
-                        setStartTime('');
+                      const dateValue = e.target.value;
+                      setStartDate(dateValue);
+                      // Automatically open time picker dropdown after date selection
+                      if (dateValue && startTimeRef.current) {
+                        setTimeout(() => {
+                          startTimeRef.current?.focus();
+                          // Try to open the dropdown by clicking on it
+                          startTimeRef.current?.click();
+                        }, 150);
                       }
                     }}
                     min={
                       stand.status === 'booked' && stand.nextAvailableDate
-                        ? formatDateForInput(stand.nextAvailableDate)
-                        : new Date().toISOString().slice(0, 16)
+                        ? formatDateForInput(stand.nextAvailableDate).split('T')[0]
+                        : new Date().toISOString().slice(0, 10)
                     }
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
-                               focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+                  />
+                  <TimePickerField
+                    ref={startTimeRef}
+                    value={startTime || null}
+                    onChange={(v) => setStartTime(v ?? getDefaultStartTime())}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">End Date & Time</label>
                   <input
-                    type="datetime-local"
-                    value={endDate && endTime ? `${endDate}T${endTime}` : ''}
+                    type="date"
+                    value={endDate}
                     onChange={(e) => {
-                      const value = e.target.value;
-                      if (value) {
-                        const [date, time] = value.split('T');
-                        setEndDate(date || '');
-                        setEndTime(time || getDefaultEndTime());
-                      } else {
-                        setEndDate('');
-                        setEndTime('');
+                      const dateValue = e.target.value;
+                      setEndDate(dateValue);
+                      // Automatically open time picker dropdown after date selection
+                      if (dateValue && endTimeRef.current) {
+                        setTimeout(() => {
+                          endTimeRef.current?.focus();
+                          // Try to open the dropdown by clicking on it
+                          endTimeRef.current?.click();
+                        }, 150);
                       }
                     }}
-                    min={
-                      startDate && startTime
-                        ? `${startDate}T${startTime}`
-                        : new Date().toISOString().slice(0, 16)
-                    }
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
-                               focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+                    min={startDate || new Date().toISOString().slice(0, 10)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm text-gray-900 bg-white"
+                  />
+                  <TimePickerField
+                    ref={endTimeRef}
+                    value={endTime || null}
+                    onChange={(v) => setEndTime(v ?? getDefaultEndTime())}
+                    className="w-full"
                   />
                 </div>
               </div>
