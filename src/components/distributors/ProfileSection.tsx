@@ -39,9 +39,9 @@ export default function DistributorProfileSection({
             {user?.fullName?.charAt(0).toUpperCase() || 'D'}
           </div>
           <div>
-            <h2 className="text-2xl font-semibold">{user?.fullName || 'Distributor'}</h2>
+            <h2 className="text-2xl font-semibold">{user?.fullName || 'Partner'}</h2>
             <p className="text-gray-400">{user?.email}</p>
-            <p className="text-sm text-gray-500 mt-1">Distributor Account</p>
+            <p className="text-sm text-gray-500 mt-1">Partner Account</p>
           </div>
         </div>
 
@@ -67,7 +67,7 @@ export default function DistributorProfileSection({
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">Account Type</label>
             <div className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-200 capitalize">
-              {user?.role || 'Distributor'}
+              {user?.role || 'Partner'}
             </div>
           </div>
         </div>

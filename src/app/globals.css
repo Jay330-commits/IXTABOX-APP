@@ -115,10 +115,9 @@ body {
   font-size: 14px !important;
 }
 
-/* Override h-full for LocationDetails in mobile panel to allow content-based sizing */
-.mobile-panel-content > div[class*="h-full"] {
-  height: auto !important;
-  min-height: auto !important;
+/* Mobile panel: ensure flex layout so LocationDetails scrolls inside, Book Now stays visible */
+.mobile-panel-content {
+  min-height: 0;
 }
 
 /* Thin, subtle scrollbar for admin sidebar and main content – size and color customizable below */

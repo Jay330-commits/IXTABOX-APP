@@ -416,10 +416,9 @@ export default function GuestHome() {
       />
       <GuestHeader />
       <main className="">
-        {/* Hero with background image */}
+        {/* Hero with background image - full viewport height on all screens */}
         <section
-          className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
-          style={{ minHeight: 560 }}
+          className="relative flex items-center justify-center overflow-hidden animate-fadeIn min-h-screen"
         >
           {/* Two layers with crossfade — only 2 images in DOM for fast load */}
           <div

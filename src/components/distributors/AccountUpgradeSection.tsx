@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface CurrentAccountInfo {
-  type: 'Leasing' | 'Owning';
+  type: 'Leasing' | 'Owning' | 'Ixtabox Owner';
   since: string;
   activeStands: number;
 }
@@ -20,15 +20,23 @@ const upgradeOptions = [
     title: 'Leasing',
     description: 'Pay per rental cycle with minimal upfront costs. Ideal for testing new markets or seasonal operations.',
     features: ['Low initial cost', 'No maintenance fees', 'Flexible contracts', 'Up to 3 stands'],
-    price: '$199/month',
+    price: '10,000 SEK/month',
     recommended: true,
   },
   {
     id: 'owning',
     title: 'Owning',
-    description: 'Full ownership of your stands. Maximize long-term returns and have complete control over your assets.',
+    description: 'Full ownership of your Ixtabox. Purchase for 40,000 SEK and maximize long-term returns.',
     features: ['Full ownership', 'Maximum ROI', 'Asset appreciation', 'Unlimited stands'],
-    price: '$499/month',
+    price: '40,000 SEK',
+    recommended: false,
+  },
+  {
+    id: 'ixtabox-owner',
+    title: 'Ixtabox Owner',
+    description: 'People who own their Ixtaboxes and want to rent them out. Peer-to-peer rental.',
+    features: ['List your own boxes', 'Earn from rentals', 'Peer-to-peer', 'You own the asset'],
+    price: 'No monthly fee',
     recommended: false,
   },
 ];
@@ -41,7 +49,7 @@ export default function AccountUpgradeSection() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold mb-2">Current Account</h2>
-            <p className="text-gray-300">Manage your distributorship plan and stands</p>
+            <p className="text-gray-300">Manage your partnership plan and stands</p>
           </div>
           <span className="px-4 py-2 bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 text-sm font-semibold rounded-full">
             {currentAccount.type}
@@ -268,7 +276,7 @@ export default function AccountUpgradeSection() {
                   <p className="text-sm font-semibold text-blue-300 mb-1">Requirements</p>
                   <p className="text-sm text-gray-300">
                     Your current account type allows up to{' '}
-                    {currentAccount.type === 'Owning' ? 'unlimited' : '3'}{' '}
+                    {currentAccount.type === 'Owning' || currentAccount.type === 'Ixtabox Owner' ? 'unlimited' : '3'}{' '}
                     stands. You have {currentAccount.activeStands} active stand(s).
                   </p>
                 </div>
