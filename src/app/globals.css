@@ -117,7 +117,9 @@ body {
 
 /* Mobile panel: ensure flex layout so LocationDetails scrolls inside, Book Now stays visible */
 .mobile-panel-content {
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Thin, subtle scrollbar for admin sidebar and main content – size and color customizable below */

@@ -501,7 +501,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header Section - Always visible */}
       <div className="bg-gradient-to-br from-slate-700 to-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full shadow-xl backdrop-blur-sm" style={{ position: 'relative', zIndex: 1000 }}>
         <div className="p-3">
@@ -814,9 +814,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 
         {/* Box Selection - Hidden, runs in background */}
         {/* Availability checking and box selection happens automatically in the background */}
+      </div>
 
-        {/* Action Section - Always visible */}
-        <div className="px-3 py-2.5 border-t border-slate-700/20 flex-shrink-0 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm sticky bottom-0 z-20 relative">
+      {/* Action Section - Always visible, outside scroll area */}
+      <div className="px-3 py-2.5 border-t border-slate-700/20 flex-shrink-0 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20">
           {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
             <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">
@@ -946,7 +947,6 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               : 'Book Now'}
           </button>
         </div>
-      </div>
     </div>
   );
 };
