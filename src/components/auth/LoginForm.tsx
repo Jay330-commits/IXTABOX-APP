@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { resendEmailConfirmation } from "@/lib/supabase-auth";
+// Removed direct import of server-only function - using API route instead
 
 interface LoginFormProps {
   onSubmit?: (data: { email: string; password: string }) => void;
@@ -70,7 +70,7 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
           setShowResendConfirmation(true);
         }
       }
-    } catch (error) {
+    } catch {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -81,7 +81,16 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
     
     setIsResending(true);
     try {
-      const result = await resendEmailConfirmation(email);
+      const response = await fetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const result = await response.json();
+      
       if (result.success) {
         setError("Confirmation email sent! Please check your inbox.");
         setShowResendConfirmation(false);

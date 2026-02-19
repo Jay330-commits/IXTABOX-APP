@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, address, status: locationStatus } = body;
+    const { name, address, coordinates, status: locationStatus } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       distributorId: user.distributors.id,
       name,
       address: address || null,
+      coordinates: coordinates || null,
       status: locationStatus ? (locationStatus as status) : status.Available,
     });
 

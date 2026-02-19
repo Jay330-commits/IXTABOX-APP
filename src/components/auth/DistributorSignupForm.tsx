@@ -1,9 +1,20 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useJsApiLoader } from "@react-google-maps/api";
+
+interface BusinessLocation {
+  id: string; // temporary ID for form management
+  name: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  image: File | null;
+  imagePreview: string | null;
+  imageUrl: string | null; // URL after upload
+}
 
 interface FormData {
   contractType: 'Leasing' | 'Owning' | 'IxtaboxOwner' | '';
@@ -26,6 +37,8 @@ interface FormData {
   validatedAddress: string;
   addressLat: number | null;
   addressLng: number | null;
+  /** Business locations with images */
+  locations: BusinessLocation[];
 }
 
 interface DistributorStep {
@@ -61,10 +74,13 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     validatedAddress: "",
     addressLat: null,
     addressLng: null,
+    locations: [],
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const locationAutocompleteRefs = useRef<Map<string, google.maps.places.Autocomplete>>(new Map());
+  const locationInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
@@ -99,6 +115,11 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     },
     {
       id: 4,
+      title: "Business Locations",
+      description: "Add your business locations and images"
+    },
+    {
+      id: 5,
       title: "Review & Submit",
       description: "Review your information",
     }
@@ -151,6 +172,70 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     };
   }, [isMapsLoaded, formData.contractType, currentStep]);
 
+  const updateLocation = useCallback((locationId: string, updates: Partial<BusinessLocation>) => {
+    setFormData((prev) => ({
+      ...prev,
+      locations: prev.locations.map(loc =>
+        loc.id === locationId ? { ...loc, ...updates } : loc
+      ),
+    }));
+  }, []);
+
+  // Attach Google Places Autocomplete to location address inputs on step 4
+  useEffect(() => {
+    if (
+      !isMapsLoaded ||
+      currentStep !== 4 ||
+      !window.google?.maps?.places ||
+      formData.locations.length === 0
+    ) {
+      return;
+    }
+
+    const locations = formData.locations;
+    const autocompleteRefs = locationAutocompleteRefs.current;
+
+    locations.forEach((location) => {
+      const input = locationInputRefs.current.get(location.id);
+      if (!input) return;
+
+      // Clean up existing autocomplete if any
+      const existingAutocomplete = autocompleteRefs.get(location.id);
+      if (existingAutocomplete) {
+        google.maps.event.clearInstanceListeners(existingAutocomplete);
+      }
+
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        types: ["address"],
+        fields: ["formatted_address", "geometry"],
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (place.formatted_address && place.geometry?.location) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          updateLocation(location.id, {
+            address: place.formatted_address!,
+            lat,
+            lng,
+          });
+        }
+      });
+
+      autocompleteRefs.set(location.id, autocomplete);
+    });
+
+    return () => {
+      // Cleanup on unmount or step change
+      const refsToClean = new Map(autocompleteRefs);
+      refsToClean.forEach((autocomplete) => {
+        google.maps.event.clearInstanceListeners(autocomplete);
+      });
+      autocompleteRefs.clear();
+    };
+  }, [isMapsLoaded, currentStep, formData.locations, updateLocation]);
+
   const validateStepFields = (step: number) => {
     const missingFields: string[] = [];
 
@@ -187,6 +272,21 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         missingFields.push("Expected monthly bookings");
     }
 
+    if (step === 4) {
+      // Locations are optional, but if added, they must be complete
+      formData.locations.forEach((loc, index) => {
+        if (!hasValue(loc.name)) {
+          missingFields.push(`Location ${index + 1} name`);
+        }
+        if (!hasValue(loc.address)) {
+          missingFields.push(`Location ${index + 1} address`);
+        }
+        if (loc.lat == null || loc.lng == null) {
+          missingFields.push(`Location ${index + 1} address (select from suggestions)`);
+        }
+      });
+    }
+
     if (missingFields.length > 0) {
       setError(`Please complete: ${missingFields.join(", ")}`);
       return false;
@@ -196,7 +296,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   };
 
   const validateAllSteps = () => {
-    for (let step = 0; step <= 3; step++) {
+    for (let step = 0; step <= 4; step++) {
       if (!validateStepFields(step)) {
         if (currentStep !== step) {
           setCurrentStep(step);
@@ -217,6 +317,56 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       ? currentChannels.filter(c => c !== channel)
       : [...currentChannels, channel];
     handleChange("marketingChannels", updatedChannels);
+  };
+
+  const addLocation = () => {
+    const newLocation: BusinessLocation = {
+      id: `loc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: "",
+      address: "",
+      lat: null,
+      lng: null,
+      image: null,
+      imagePreview: null,
+      imageUrl: null,
+    };
+    setFormData({
+      ...formData,
+      locations: [...formData.locations, newLocation],
+    });
+  };
+
+  const removeLocation = (locationId: string) => {
+    // Clean up autocomplete listeners
+    const autocomplete = locationAutocompleteRefs.current.get(locationId);
+    if (autocomplete) {
+      google.maps.event.clearInstanceListeners(autocomplete);
+      locationAutocompleteRefs.current.delete(locationId);
+    }
+    locationInputRefs.current.delete(locationId);
+
+    setFormData({
+      ...formData,
+      locations: formData.locations.filter(loc => loc.id !== locationId),
+    });
+  };
+
+  const handleLocationImageChange = (locationId: string, file: File | null) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateLocation(locationId, {
+          image: file,
+          imagePreview: reader.result as string,
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      updateLocation(locationId, {
+        image: null,
+        imagePreview: null,
+      });
+    }
   };
 
   const nextStep = () => {
@@ -292,6 +442,31 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         payload.addressLat = formData.addressLat;
         payload.addressLng = formData.addressLng;
       }
+      
+      // Add locations data (without images - images will be uploaded separately after registration)
+      if (formData.locations.length > 0) {
+        payload.locations = formData.locations.map(loc => ({
+          name: loc.name,
+          address: loc.address,
+          lat: loc.lat,
+          lng: loc.lng,
+          hasImage: !!loc.image, // Flag to indicate image needs to be uploaded
+        }));
+        
+        // Store images temporarily for upload after registration
+        // We'll need to upload them after the user is authenticated
+        const locationImages = formData.locations
+          .filter(loc => loc.image)
+          .map((loc, index) => ({
+            locationIndex: index,
+            image: loc.imagePreview, // Base64 for now, will be converted to File
+            fileName: loc.image?.name || `location-${index}.jpg`,
+          }));
+        
+        if (locationImages.length > 0) {
+          payload.locationImages = locationImages;
+        }
+      }
 
       const response = await fetch('/api/auth/register/distributor', {
         method: 'POST',
@@ -307,6 +482,9 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         setError(data.message || 'Registration failed. Please try again.');
         return;
       }
+
+      // Locations are now created server-side during registration
+      // Images will need to be uploaded separately after login from the dashboard
 
       setSuccess(true);
       // Optionally redirect after successful registration
@@ -725,7 +903,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
           </div>
         );
       
-      case 4:
+      case 5:
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
@@ -805,6 +983,39 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                 )}
               </div>
             </div>
+
+            {/* Locations Review */}
+            {formData.locations.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                <h3 className="text-base font-semibold text-white mb-3">Business Locations ({formData.locations.length})</h3>
+                <div className="space-y-3">
+                  {formData.locations.map((location, index) => (
+                    <div key={location.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-white font-medium">{location.name || `Location ${index + 1}`}</p>
+                          <p className="text-gray-300 text-sm mt-1">{location.address || "—"}</p>
+                          {location.lat && location.lng && (
+                            <p className="text-green-400/90 text-xs mt-1">✓ Address verified</p>
+                          )}
+                        </div>
+                        {location.imagePreview && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={location.imagePreview}
+                            alt="Location preview"
+                            className="w-16 h-16 object-cover rounded-lg border border-white/20 ml-3"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-gray-400 text-xs mt-2">
+                  Note: Location images will need to be uploaded after registration from your dashboard.
+                </p>
+              </div>
+            )}
             
             <div className="space-y-4">
               <label className="flex flex-col gap-2 text-gray-200">
@@ -844,6 +1055,136 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                 and agree to the partner agreement.
               </span>
             </label>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1">Business Locations</h2>
+              <p className="text-gray-300 text-sm">
+                Add your business locations where IXTAboxes will be available. You can add locations later if needed.
+              </p>
+            </div>
+
+            {formData.locations.length === 0 && (
+              <div className="text-center py-8 border-2 border-dashed border-white/20 rounded-lg">
+                <p className="text-gray-400 mb-4">No locations added yet</p>
+                <button
+                  type="button"
+                  onClick={addLocation}
+                  className="px-4 py-2 bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 rounded-lg hover:bg-cyan-500/30 transition-colors"
+                >
+                  + Add Location
+                </button>
+              </div>
+            )}
+
+            {formData.locations.map((location, index) => (
+              <div key={location.id} className="border border-white/10 rounded-lg p-4 bg-white/5">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-white">Location {index + 1}</h3>
+                  <button
+                    type="button"
+                    onClick={() => removeLocation(location.id)}
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="flex flex-col gap-2 text-gray-200">
+                    <span className="font-medium">Location Name*</span>
+                    <input
+                      className={inputClass}
+                      value={location.name}
+                      onChange={(e) => updateLocation(location.id, { name: e.target.value })}
+                      placeholder="e.g., Main Store, Warehouse A"
+                      required
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-gray-200">
+                    <span className="font-medium">Address*</span>
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          locationInputRefs.current.set(location.id, el);
+                        } else {
+                          locationInputRefs.current.delete(location.id);
+                        }
+                      }}
+                      className={inputClass}
+                      value={location.address}
+                      onChange={(e) => updateLocation(location.id, { address: e.target.value })}
+                      placeholder="Start typing address and select from suggestions"
+                      required
+                      autoComplete="off"
+                    />
+                    {location.lat != null && location.lng != null && (
+                      <p className="text-green-400/90 text-xs">✓ Address verified</p>
+                    )}
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-gray-200">
+                    <span className="font-medium">Location Image (Optional)</span>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          handleLocationImageChange(location.id, file);
+                        }}
+                        className="hidden"
+                        id={`location-image-${location.id}`}
+                      />
+                      <label
+                        htmlFor={`location-image-${location.id}`}
+                        className="px-4 py-2 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 cursor-pointer transition-colors"
+                      >
+                        {location.imagePreview ? "Change Image" : "Upload Image"}
+                      </label>
+                      {location.imagePreview && (
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={location.imagePreview}
+                            alt="Location preview"
+                            className="w-20 h-20 object-cover rounded-lg border border-white/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleLocationImageChange(location.id, null)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-xs">Upload a photo of this location (max 5MB)</p>
+                  </label>
+                </div>
+              </div>
+            ))}
+
+            {formData.locations.length > 0 && (
+              <button
+                type="button"
+                onClick={addLocation}
+                className="w-full py-3 border-2 border-dashed border-cyan-400/40 text-cyan-300 rounded-lg hover:bg-cyan-500/10 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Another Location
+              </button>
+            )}
           </div>
         );
       

@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@stripe/stripe-js', '@stripe/react-stripe-js'],
   },
 
+  // Webpack configuration to prevent server-only code from being bundled for client
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Exclude server-only modules from client bundle
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'server-only': false,
+      };
+    }
+    return config;
+  },
+
   // Security headers and caching
   async headers() {
     return [

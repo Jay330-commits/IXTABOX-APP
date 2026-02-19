@@ -105,11 +105,11 @@ const LiveChat = forwardRef<LiveChatHandle, LiveChatProps>(({ initialOpen = fals
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-5 right-4 sm:right-6 z-[10001] w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group"
+        className="fixed bottom-24 right-6 sm:right-8 z-[10001] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group"
         aria-label="Open live chat"
       >
         <svg
-          className="w-6 h-6 sm:w-7 sm:h-7 transition-transform group-hover:rotate-12 duration-300"
+          className="w-7 h-7 sm:w-8 sm:h-8 transition-transform group-hover:rotate-12 duration-300"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -127,7 +127,7 @@ const LiveChat = forwardRef<LiveChatHandle, LiveChatProps>(({ initialOpen = fals
   }
 
   return (
-    <div className="fixed bottom-5 right-4 sm:right-6 z-[10001] w-[calc(100vw-2rem)] sm:w-80 h-[380px] max-h-[calc(100vh-6rem)] bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-24 right-6 sm:right-8 z-[10001] w-[calc(100vw-3rem)] sm:w-96 h-[600px] max-h-[calc(100vh-3rem)] bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-b border-white/10 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">

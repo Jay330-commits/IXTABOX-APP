@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registerWithSupabase, SupabaseSession } from '@/lib/supabase-auth';
 import { UserService } from '../../../../../services/user/UserService';
 import { DistributorService } from '@/services/distributors/DistributorService';
+import { LocationService } from '@/services/locations/LocationService';
 import { ContractType } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
       marketingChannels,
       businessDescription,
       contractType,
+      locations, // Array of location objects with name, address, lat, lng
     } = body;
 
     const normalizedContractType = typeof contractType === 'string' ? contractType.trim() : '';
@@ -170,6 +172,34 @@ export async function POST(request: NextRequest) {
         contractType: resolvedContractType,
       });
 
+      // Create locations if provided
+      const createdLocations = [];
+      if (locations && Array.isArray(locations) && locations.length > 0) {
+        const locationService = new LocationService();
+        for (const location of locations) {
+          if (location.name && location.address) {
+            try {
+              const createdLocation = await locationService.createLocation({
+                distributorId: distributor.id,
+                name: location.name.trim(),
+                address: location.address.trim(),
+                coordinates: location.lat && location.lng 
+                  ? { lat: location.lat, lng: location.lng }
+                  : null,
+              });
+              createdLocations.push({
+                id: createdLocation.id,
+                name: createdLocation.name,
+                displayId: createdLocation.display_id,
+              });
+            } catch (locationError) {
+              console.error('Error creating location during registration:', locationError);
+              // Continue with other locations even if one fails
+            }
+          }
+        }
+      }
+
       return NextResponse.json({
         success: true,
         user: {
@@ -184,6 +214,7 @@ export async function POST(request: NextRequest) {
           companyName: distributor.company_name,
           contractType: distributor.contract_type,
         },
+        locations: createdLocations,
         token: (authResult.session as SupabaseSession)?.access_token || 'temp-token',
         message: 'Distributor registered successfully. Your application is under review.',
       });
