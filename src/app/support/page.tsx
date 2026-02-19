@@ -120,11 +120,11 @@ export default function SupportPage() {
       />
       <GuestHeader />
       <main>
-        {/* Hero Section */}
-        <section className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: 400 }}>
-          {/* Background image */}
+        {/* Hero Section - full viewport height, padding for sticky header */}
+        <section className="relative flex items-center justify-center overflow-hidden pt-20 min-h-screen">
+          {/* Background image - covers full section */}
           <div
-            className="absolute inset-0 bg-center bg-cover"
+            className="absolute inset-0 bg-center bg-cover bg-no-repeat"
             style={{
               backgroundImage: "url(/images/background/back.jpg)",
             }}

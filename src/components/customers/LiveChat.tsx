@@ -1,6 +1,7 @@
   'use client';
 
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import styles from './LiveChat.module.css';
 
 interface Message {
   id: string;
@@ -105,7 +106,7 @@ const LiveChat = forwardRef<LiveChatHandle, LiveChatProps>(({ initialOpen = fals
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 sm:right-8 z-[10001] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group"
+        className="fixed bottom-24 right-6 sm:right-8 z-[9999] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group"
         aria-label="Open live chat"
       >
         <svg
@@ -127,7 +128,7 @@ const LiveChat = forwardRef<LiveChatHandle, LiveChatProps>(({ initialOpen = fals
   }
 
   return (
-    <div className="fixed bottom-24 right-6 sm:right-8 z-[10001] w-[calc(100vw-3rem)] sm:w-96 h-[600px] max-h-[calc(100vh-3rem)] bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed top-24 bottom-24 right-6 sm:right-8 z-[9999] w-[calc(100vw-3rem)] sm:w-96 h-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-b border-white/10 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -156,7 +157,7 @@ const LiveChat = forwardRef<LiveChatHandle, LiveChatProps>(({ initialOpen = fals
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-900/50">
+      <div className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-900/50 ${styles.messages}`}>
         {messages.map((message, index) => (
           <div
             key={message.id}
