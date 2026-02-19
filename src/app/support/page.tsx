@@ -4,7 +4,7 @@ import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import LiveChat, { LiveChatHandle } from "@/components/customers/LiveChat";
 
 const FAQ_ITEMS = [
@@ -69,6 +69,11 @@ const CONTACT_METHODS = [
 export default function SupportPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const liveChatRef = useRef<LiveChatHandle>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-hide-scrollbar", "true");
+    return () => document.documentElement.removeAttribute("data-hide-scrollbar");
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);

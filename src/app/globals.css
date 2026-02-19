@@ -26,12 +26,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Hide scrollbar on home page only – content still scrollable */
-html[data-page="home"] {
+/* Hide scrollbar on home and support pages – content still scrollable */
+html[data-hide-scrollbar="true"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-html[data-page="home"]::-webkit-scrollbar {
+html[data-hide-scrollbar="true"]::-webkit-scrollbar {
   display: none;
 }
 
