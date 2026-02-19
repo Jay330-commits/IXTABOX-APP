@@ -86,7 +86,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
     googleMapsApiKey,
     libraries: ["places"],
-    id: "google-map-signup",
+    id: "google-map-script",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
