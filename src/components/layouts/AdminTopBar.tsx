@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoutConfirmationModal from "./LogoutConfirmationModal";
 
-const LOGO_PATH = "/images/logo/test.png";
+const LOGO_PATH = "/images/logo/new.png";
 
 interface AdminTopBarProps {
   activeSection: string;

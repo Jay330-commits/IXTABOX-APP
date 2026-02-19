@@ -37,7 +37,7 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
   const { logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const logoPath = "/images/logo/test.png";
+  const logoPath = "/images/logo/new.png";
   
   // Handle navigation - if not on customer page, navigate there; otherwise change section
   const handleNavClick = (section: string) => {

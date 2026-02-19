@@ -89,7 +89,7 @@ export default function GuestHeader(): JSX.Element {
     return base !== "/" && base.length > 0 && pathname.startsWith(base);
   };
 
-  const logoPath = "/images/logo/test.png";
+  const logoPath = "/images/logo/new.png";
 
   return (
     <>

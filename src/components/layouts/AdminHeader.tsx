@@ -48,7 +48,7 @@ export default function AdminHeader({ activeSection, onSectionChange, mobileMenu
   const { logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const logoPath = "/images/logo/test.png";
+  const logoPath = "/images/logo/new.png";
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

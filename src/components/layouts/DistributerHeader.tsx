@@ -36,7 +36,7 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { logout } = useAuth();
   const router = useRouter();
-  const logoPath = "/images/logo/test.png";
+  const logoPath = "/images/logo/new.png";
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
