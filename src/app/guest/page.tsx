@@ -156,6 +156,12 @@ export default function GuestHome() {
   const testimonialCount = Number(TESTIMONIALS.length);
   const mapSectionRef = useRef<HTMLDivElement | null>(null);
 
+  // Mark home page for scrollbar-hiding CSS
+  useEffect(() => {
+    document.documentElement.setAttribute("data-page", "home");
+    return () => document.documentElement.removeAttribute("data-page");
+  }, []);
+
   // Intersection Observer to lazy load map when user scrolls near it
   useEffect(() => {
     setMounted(true);
