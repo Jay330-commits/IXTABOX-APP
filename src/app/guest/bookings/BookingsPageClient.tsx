@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import GuestHeader from '@/components/layouts/GuestHeader';
+import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
 import Footer from '@/components/layouts/Footer';
 
 type Booking = {
@@ -478,10 +479,8 @@ export default function BookingsPageClient() {
                     const isExpanded = expandedBookingId === booking.id;
                     const startDate = booking.startDate ? new Date(booking.startDate) : new Date();
                     const endDate = booking.endDate ? new Date(booking.endDate) : new Date();
-                    const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-                    
-                    // Calculate model info
-                    const modelName = typeof booking.model === 'string' 
+                    const days = calculateBookingDays(booking.startDate, booking.endDate);
+                    const modelName = typeof booking.model === 'string'
                       ? (booking.model === 'Pro 190' || booking.model === 'Pro' ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175')
                       : booking.model.name;
                     const modelDescription = typeof booking.model === 'string'
@@ -489,8 +488,7 @@ export default function BookingsPageClient() {
                       : (booking.model.description || 'Storage box');
                     const basePricePerDay = booking.pricePerDay;
                     const deposit = booking.deposit || 0;
-                    const subtotal = days * basePricePerDay;
-                    const totalPrice = booking.amount || (subtotal + deposit);
+                    const totalPrice = booking.amount ?? calculateBookingTotal(basePricePerDay, days, deposit);
 
                     return (
                       <div 

@@ -64,7 +64,7 @@ export default function StandsOverview({ onSelectStand }: StandsOverviewProps) {
         if (data.success) {
           setLocationsData(data.data);
           if (data.data.currency) {
-            setCurrency(data.data.currency);
+            setCurrency(data.data.currency || 'SEK');
           }
         } else {
           throw new Error(data.error || 'Failed to fetch locations data');

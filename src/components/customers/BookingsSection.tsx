@@ -2,6 +2,7 @@
 
 import React from 'react';
 import BoxProblemSelector from '@/components/bookings/BoxProblemSelector';
+import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
 import type { Booking } from './DashboardSection';
 
 interface BookingsSectionProps {
@@ -69,14 +70,15 @@ export default function BookingsSection({
               'gray';
             
             const isExpanded = expandedBookingId === booking.id;
-            const startDate = booking.startDate ? new Date(booking.startDate) : new Date(booking.date);
-            const endDate = booking.endDate ? new Date(booking.endDate) : new Date(booking.date);
-            const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-            
+            const startStr = booking.startDate || booking.date;
+            const endStr = booking.endDate || booking.date;
+            const startDate = startStr ? new Date(startStr) : new Date();
+            const endDate = endStr ? new Date(endStr) : new Date();
+            const days = calculateBookingDays(startStr, endStr);
             const modelName = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'IXTAbox Pro 190' : 'IXTAbox Pro 175';
             const modelDescription = booking.model === 'Pro 190' || booking.model === 'Pro' ? 'Premium storage box with enhanced features' : 'Standard storage box';
-            const pricePerDay = booking.pricePerDay || (booking.amount / days);
-            const totalPrice = booking.amount || (days * pricePerDay);
+            const pricePerDay = booking.pricePerDay || (days > 0 ? (booking.amount || 0) / days : 0);
+            const totalPrice = booking.amount ?? calculateBookingTotal(pricePerDay, days, booking.deposit || 0);
 
             return (
               <div 

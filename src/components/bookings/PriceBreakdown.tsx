@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculateBookingTotal } from '@/utils/bookingPrice';
 
 export interface PriceBreakdownProps {
   pricePerDay: number;
@@ -9,6 +10,8 @@ export interface PriceBreakdownProps {
   className?: string;
   showDeposit?: boolean;
   variant?: 'light' | 'dark';
+  /** When provided, use this for Total instead of calculating (single source of truth) */
+  totalAmount?: number;
 }
 
 /**
@@ -24,9 +27,10 @@ const PriceBreakdown: React.FC<PriceBreakdownProps> = ({
   className = '',
   showDeposit = true,
   variant = 'light',
+  totalAmount,
 }) => {
   const subtotal = pricePerDay * days;
-  const total = subtotal + deposit;
+  const total = totalAmount !== undefined ? totalAmount : calculateBookingTotal(pricePerDay, days, deposit);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('sv-SE', {

@@ -1,5 +1,6 @@
 import React from 'react';
 import PriceBreakdown, { PriceBreakdownProps } from './PriceBreakdown';
+import { calculateBookingDays } from '@/utils/bookingPrice';
 
 export interface BookingDetailsSummaryProps {
   locationName?: string;
@@ -15,6 +16,8 @@ export interface BookingDetailsSummaryProps {
   deposit?: number;
   currency?: string;
   className?: string;
+  /** When provided, use this for Total instead of calculating (single source of truth, e.g. from payment intent) */
+  totalAmount?: number;
 }
 
 /**
@@ -36,22 +39,11 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
   deposit = 0,
   currency = 'SEK',
   className = '',
+  totalAmount,
 }) => {
-  // Calculate days
-  const calculateDays = (): number => {
-    if (!startDate || !endDate) return 0;
-    try {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-      const ms = end.getTime() - start.getTime();
-      return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-    } catch {
-      return 0;
-    }
-  };
-
-  const days = calculateDays();
+  const days = startDate && endDate
+    ? calculateBookingDays(startDate, endDate, startTime, endTime)
+    : 0;
 
   const formatDateTime = (dateStr?: string, timeStr?: string): string => {
     if (!dateStr) return '—';
@@ -144,6 +136,7 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
             showDeposit={deposit > 0}
             variant="dark"
             className="bg-transparent p-0"
+            totalAmount={totalAmount}
           />
         </div>
       )}

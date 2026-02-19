@@ -2,6 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import PriceBreakdown from './PriceBreakdown';
 import { TimePickerField } from '@/components/ui/TimePickerField';
+import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
 
 // Helper functions for date handling
 const isValidDateString = (dateStr: string | undefined): boolean => {
@@ -439,9 +440,7 @@ const StandDetails: React.FC<StandDetailsProps> = ({
               {startDate && endDate && startTime && endTime && isTimeOrderValid && (
                 <div className="mt-4">
                   {(() => {
-                    const start = new Date(`${startDate}T${startTime}`);
-                    const end = new Date(`${endDate}T${endTime}`);
-                    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    const days = calculateBookingDays(startDate, endDate, startTime, endTime);
                     const selectedModelData = selectedModel 
                       ? stand.availableModels?.find(m => m.id === selectedModel)
                       : null;
@@ -471,9 +470,8 @@ const StandDetails: React.FC<StandDetailsProps> = ({
               if (onBook) {
                 onBook(stand.id, selectedModel, startDate, endDate);
               }
-              // Calculate total price based on days
-              const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-              const totalPrice = stand.pricePerDay * days;
+              const days = calculateBookingDays(startDate, endDate, startTime, endTime);
+              const totalPrice = calculateBookingTotal(stand.pricePerDay, days, 0);
               
               // Redirect to payment page with stand details
               window.location.href = `/payment?amount=${totalPrice}&currency=sek&standId=${stand.id}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}${selectedModel ? `&modelId=${selectedModel}` : ''}`;

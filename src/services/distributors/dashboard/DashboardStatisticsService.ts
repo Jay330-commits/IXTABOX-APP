@@ -255,10 +255,8 @@ export class DashboardStatisticsService extends BaseService {
             ? ((currentMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100
             : 0;
 
-        // Get currency from payments (default to SEK if not found)
-        const currencyPayment = currentMonthPayments.find(p => p.currency) || 
-                                lastMonthPayments.find(p => p.currency);
-        const currency = currencyPayment?.currency || 'SEK';
+        // Always use SEK
+        const currency = 'SEK';
 
         // Get contract status
         const activeContract = distributor.contracts[0];
@@ -582,7 +580,7 @@ export class DashboardStatisticsService extends BaseService {
             bookingStatus: booking.status || BookingStatus.Pending,
             paymentStatus: booking.payments?.status || 'Pending',
             amount: booking.payments ? Number(booking.payments.amount) : 0,
-            currency: booking.payments?.currency || 'SEK',
+            currency: 'SEK',
             paymentDate: booking.payments?.completed_at,
             paymentId: booking.payments?.id || null,
             chargeId: booking.payments?.charge_id || null,
@@ -1110,11 +1108,8 @@ export class DashboardStatisticsService extends BaseService {
               )
             : 0;
 
-        // Get currency from payments (default to SEK if not found)
-        const currencyPayment = locations
-          .flatMap(loc => loc.stands.flatMap(stand => stand.boxes.flatMap(box => box.bookings)))
-          .find(b => b.payments?.currency)?.payments;
-        const currency = currencyPayment?.currency || 'SEK';
+        // Always use SEK
+        const currency = 'SEK';
 
         return {
           totalLocations: locationsData.length,
@@ -1253,11 +1248,8 @@ export class DashboardStatisticsService extends BaseService {
               )
             : 0;
 
-        // Get currency from payments (default to SEK if not found)
-        const currencyPayment = locations
-          .flatMap(loc => loc.stands.flatMap(stand => stand.boxes.flatMap(box => box.bookings)))
-          .find(b => b.payments?.currency)?.payments;
-        const currency = currencyPayment?.currency || 'SEK';
+        // Always use SEK
+        const currency = 'SEK';
 
         return {
           totalStands: standsData.length,
@@ -1409,9 +1401,8 @@ export class DashboardStatisticsService extends BaseService {
           0
         );
 
-        // Get currency from payments (default to SEK if not found)
-        const currencyPayment = payments.find(p => p.currency);
-        const currency = currencyPayment?.currency || 'SEK';
+        // Always use SEK
+        const currency = 'SEK';
 
         return { totalRevenue, currency };
       },

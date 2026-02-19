@@ -58,7 +58,7 @@ export async function GET() {
         id: payment.id,
         charge_id: payment.charge_id,
         amount: payment.amount.toString(),
-        currency: payment.currency,
+        currency: payment.currency || 'SEK',
         completed_at: payment.completed_at,
         hasBooking: !!payment.bookings,
         booking: payment.bookings ? {
@@ -71,7 +71,7 @@ export async function GET() {
       recentPayments: recentPayments.map(p => ({
         charge_id: p.charge_id,
         amount: p.amount.toString(),
-        currency: p.currency,
+        currency: p.currency || 'SEK',
         completed_at: p.completed_at,
         hasBooking: !!p.bookings,
         bookingStatus: p.bookings?.status,

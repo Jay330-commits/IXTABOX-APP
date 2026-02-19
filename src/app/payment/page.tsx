@@ -141,7 +141,7 @@ function PaymentContent() {
         // Set payment details from server response
         setClientSecret(data.paymentIntent.clientSecret);
         setAmount(data.paymentIntent.amount / 100); // Convert from cents
-        setCurrency(data.paymentIntent.currency);
+        setCurrency(data.paymentIntent.currency || 'sek');
         setBookingDetails(data.booking);
         
         console.log('[Payment Page] Payment details loaded:', {
@@ -471,6 +471,7 @@ function PaymentContent() {
                   pricePerDay={bookingDetails.pricePerDay || 300}
                   deposit={bookingDetails.deposit || 0}
                   currency={currency}
+                  totalAmount={amount}
                 />
               )}
               {(!bookingDetails || !bookingDetails.pricePerDay) && (

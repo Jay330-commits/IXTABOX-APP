@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
         })),
         statusCounts,
         revenueSummary,
-        currency: revenueSummary.currency,
+        currency: revenueSummary.currency || 'SEK',
       },
     });
   } catch (error) {

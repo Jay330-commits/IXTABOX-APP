@@ -59,7 +59,7 @@ export default function PerformanceComparison() {
         if (standsResponse.ok) {
           const standsData = await standsResponse.json();
           if (standsData.success && standsData.data.currency) {
-            setCurrency(standsData.data.currency);
+            setCurrency(standsData.data.currency || 'SEK');
           }
         }
       } catch (err) {

@@ -183,7 +183,7 @@ export default function DistributerDashboard() {
         if (statsData.success) {
           setDashboardStats(statsData.data);
           if (statsData.data.currency) {
-            setCurrency(statsData.data.currency);
+            setCurrency(statsData.data.currency || 'SEK');
           }
         }
       }
@@ -219,7 +219,7 @@ export default function DistributerDashboard() {
             overdue: 0,
           });
           if (inventoryData.data.currency) {
-            setCurrency(inventoryData.data.currency);
+            setCurrency(inventoryData.data.currency || 'SEK');
           }
         }
       }
@@ -311,7 +311,7 @@ export default function DistributerDashboard() {
         if (statsData.success) {
           setDashboardStats(statsData.data);
           if (statsData.data.currency) {
-            setCurrency(statsData.data.currency);
+            setCurrency(statsData.data.currency || 'SEK');
           }
         }
 
@@ -350,9 +350,9 @@ export default function DistributerDashboard() {
           });
           if (inventoryData.data.revenueSummary) {
             setRevenueSummary(inventoryData.data.revenueSummary);
-            setCurrency(inventoryData.data.revenueSummary.currency);
+            setCurrency(inventoryData.data.revenueSummary.currency || 'SEK');
           } else if (inventoryData.data.currency) {
-            setCurrency(inventoryData.data.currency);
+            setCurrency(inventoryData.data.currency || 'SEK');
           }
         }
       } catch (err) {

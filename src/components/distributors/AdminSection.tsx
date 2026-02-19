@@ -1135,7 +1135,7 @@ export default function AdminSection() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{customer.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{customer.phone || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{customer.total_bookings}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{customer.currency} {customer.total_spent.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{customer.currency || 'SEK'} {customer.total_spent.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

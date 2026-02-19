@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
 import Image from 'next/image';
 import { logger } from '@/utils/logger';
 import { TimePickerField } from '@/components/ui/TimePickerField';
@@ -488,10 +489,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       ? (pricing?.pro.pricePerDay ?? 300)
       : (pricing?.classic.pricePerDay ?? 300);
   
-  const days = startDate && endDate 
-    ? Math.max(1, Math.ceil((new Date(`${endDate}T${endTime}`).getTime() - new Date(`${startDate}T${startTime}`).getTime()) / (1000 * 60 * 60 * 24)))
+  const days = startDate && endDate
+    ? calculateBookingDays(startDate, endDate, startTime, endTime)
     : 0;
-  const totalPrice = pricePerDay * days;
+  const totalPrice = calculateBookingTotal(pricePerDay, days, 0);
 
   const isBooked = location.isFullyBooked || false;
 

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       payment: {
         id: payment.id,
         amount: payment.amount.toString(),
-        currency: payment.currency,
+        currency: payment.currency || 'SEK',
         chargeId: payment.charge_id,
       },
     });

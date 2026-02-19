@@ -1,5 +1,6 @@
 import React from 'react';
 import PriceBreakdown from './PriceBreakdown';
+import { calculateBookingDays } from '@/utils/bookingPrice';
 
 interface BookingSummaryProps {
   booking: {
@@ -26,10 +27,7 @@ interface BookingSummaryProps {
 }
 
 const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
-  const ms = new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime();
-  const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  const subtotal = days * booking.pricePerDay;
-  const totalPrice = subtotal + (booking.deposit || 0);
+  const days = calculateBookingDays(booking.startDate, booking.endDate);
 
   return (
     <div className="space-y-4">
@@ -150,7 +148,7 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
             days={days}
             deposit={booking.deposit || 0}
             modelName={booking.model.name}
-            currency="USD"
+            currency="SEK"
             showDeposit={(booking.deposit || 0) > 0}
           />
         </div>

@@ -150,7 +150,7 @@ export async function GET(
         id: paymentIntent.id,
         status: paymentIntent.status,
         amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
+        currency: paymentIntent.currency || 'sek',
         clientSecret: paymentIntent.client_secret,
         metadata: paymentIntent.metadata, // Include metadata for extension payments
       },
@@ -160,7 +160,7 @@ export async function GET(
         payment: {
           id: payment.id,
           amount: payment.amount.toString(),
-          currency: payment.currency,
+          currency: payment.currency || 'SEK',
           chargeId: payment.charge_id,
         },
       } : {}), // Only include payment if it exists in database
