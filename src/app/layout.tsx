@@ -144,9 +144,9 @@ export default function RootLayout({
     "foundingDate": "2024",
     "contactPoint": {
       "@type": "ContactPoint",
-      "telephone": "+46-10-123-45-67",
+      "telephone": "+46-70-2223250",
       "contactType": "Customer Service",
-      "email": "support@ixtabox.com",
+      "email": "developerixtarent@gmail.com",
       "availableLanguage": ["en", "sv"]
     },
     "sameAs": [

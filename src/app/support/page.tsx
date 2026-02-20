@@ -4,8 +4,7 @@ import GuestHeader from "@/components/layouts/GuestHeader";
 import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
-import LiveChat, { LiveChatHandle } from "@/components/customers/LiveChat";
+import { useState, useEffect } from "react";
 
 const FAQ_ITEMS = [
   {
@@ -42,33 +41,35 @@ const FAQ_ITEMS = [
   },
 ] as const;
 
+const SUPPORT_EMAIL = "developerixtarent@gmail.com";
+const SUPPORT_PHONE = "+46-70-2223250";
+
 const CONTACT_METHODS = [
   {
     icon: "📧",
     title: "Email Support",
-    description: "Get help via email",
-    contact: "support@ixtabox.com",
-    action: "mailto:support@ixtabox.com",
+    description: "Get help via email – write your subject and message",
+    contact: SUPPORT_EMAIL,
+    action: `mailto:${SUPPORT_EMAIL}`,
   },
   {
     icon: "💬",
     title: "Live Chat",
-    description: "Chat with our team",
-    contact: "Available 9 AM - 6 PM CET",
-    action: "#",
+    description: "Email us – opens your email app to write subject and message",
+    contact: SUPPORT_EMAIL,
+    action: `mailto:${SUPPORT_EMAIL}`,
   },
   {
     icon: "📞",
     title: "Phone Support",
     description: "Speak directly with us",
-    contact: "+46 10 123 45 67",
-    action: "tel:+46101234567",
+    contact: SUPPORT_PHONE,
+    action: "tel:+46702223250",
   },
 ] as const;
 
 export default function SupportPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const liveChatRef = useRef<LiveChatHandle>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-hide-scrollbar", "true");
@@ -161,12 +162,7 @@ export default function SupportPage() {
                   key={index}
                   className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition-colors text-center cursor-pointer"
                   onClick={() => {
-                    if (method.title === 'Live Chat') {
-                      // Open the live chat directly
-                      liveChatRef.current?.openChat();
-                    } else {
-                      window.location.href = method.action;
-                    }
+                    window.location.href = method.action;
                   }}
                 >
                   <div className="text-4xl mb-4">{method.icon}</div>
@@ -226,7 +222,7 @@ export default function SupportPage() {
               </p>
               <div className="flex flex-wrap justify-center gap-4">
                 <a
-                  href="mailto:support@ixtabox.com"
+                  href="mailto:developerixtarent@gmail.com"
                   className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-base font-semibold text-white shadow-[0_0_30px_rgba(34,211,238,0.55)] transition-all hover:-translate-y-[1px] hover:bg-cyan-400"
                 >
                   Contact Support
@@ -243,7 +239,6 @@ export default function SupportPage() {
         </FadeInSection>
       </main>
       <Footer />
-      <LiveChat ref={liveChatRef} />
     </div>
   );
 }

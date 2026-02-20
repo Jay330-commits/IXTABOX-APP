@@ -48,9 +48,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li className="text-gray-300">+46-70-2223250</li>
               <li className="flex flex-col sm:flex-row sm:items-center gap-1">
-                <a href="mailto:info@ixtabox.com" className="hover:text-white transition-colors">info@ixtabox.com</a>
-                <span className="text-gray-500 hidden sm:inline"> | </span>
-                <a href="mailto:order@ixtabox.com" className="hover:text-white transition-colors">order@ixtabox.com</a>
+                <a href="mailto:developerixtarent@gmail.com" className="hover:text-white transition-colors">developerixtarent@gmail.com</a>
               </li>
               <li className="text-gray-400">Hudenevägen 34, 524 92 Herrljunga</li>
             </ul>
