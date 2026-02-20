@@ -502,7 +502,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
   return (
-    <div className="grid grid-rows-[auto_auto_1fr_auto] h-full min-h-0 min-w-0">
+    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-y-auto">
       {/* Header Section - Always visible */}
       <div className="bg-gradient-to-br from-slate-700 to-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full shadow-xl backdrop-blur-sm" style={{ position: 'relative', zIndex: 1000 }}>
         <div className="p-3">
@@ -598,8 +598,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         )}
       </div>
 
-      {/* Content area – fixed height (1fr), no scroll, image covers background */}
-      <div className="relative min-h-0 overflow-hidden">
+      {/* Content area – flex-1, image covers background */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         {/* Background image – covers full area, fixed regardless of content */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-slate-800"
@@ -811,8 +811,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       </div>
 
       {/* Box Selection - Hidden, runs in background */}
-      {/* Action Section - Pinned at bottom, always visible on any screen */}
-      <div className="row-start-4 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20 shrink-0">
+      {/* Action Section - Sticky at bottom, always visible regardless of viewport or content */}
+      <div className="sticky bottom-0 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20 shrink-0 mt-auto">
           {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
             <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">
