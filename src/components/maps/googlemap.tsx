@@ -586,9 +586,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               className={`
                 absolute bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
                 ${fullscreen
-                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x max-h-[calc(100vh-80px)]" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
+                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[calc(100vh-80px)] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
                   : isMobile
-                    ? "absolute left-2 right-2 bottom-2 top-auto max-h-[85%] rounded-xl border border-slate-600/30"
+                    ? "absolute left-2 right-2 bottom-2 top-auto h-[85vh] max-h-[85vh] min-h-0 rounded-xl border border-slate-600/30 overflow-hidden"
                     : "absolute left-0 top-[80px] right-auto w-full max-w-[420px] border-r border rounded-r-xl bottom-0"}
               `}
               style={{
@@ -608,7 +608,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               }}
             >
               {isMobile ? (
-                <div className="mobile-panel-content" style={{ display: "flex", flexDirection: "column" }}>
+                <div className="mobile-panel-content flex-1 min-h-0" style={{ display: "flex", flexDirection: "column" }}>
                   <LocationDetails
                     location={{
                       id: selectedLocation.id,
