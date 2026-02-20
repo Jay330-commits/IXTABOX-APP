@@ -502,7 +502,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="grid grid-rows-[auto_auto_1fr_auto] h-full min-h-0 min-w-0">
       {/* Header Section - Always visible */}
       <div className="bg-gradient-to-br from-slate-700 to-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full shadow-xl backdrop-blur-sm" style={{ position: 'relative', zIndex: 1000 }}>
         <div className="p-3">
@@ -598,34 +598,32 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         )}
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 overflow-auto" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-
-        {/* Location Image with Overlay – flex-1 so it expands to fill panel height */}
-        <div className="relative flex-1 min-h-0 flex flex-col">
-          <div className="w-full flex-1 min-h-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
-            {location.image ? (
-              <img
-                src={location.image}
-                alt={location.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-gray-500">
-                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-medium">No Image Available</span>
-              </div>
-            )}
+      {/* Content area – fixed height (1fr), no scroll, image covers background */}
+      <div className="relative min-h-0 overflow-hidden">
+        {/* Background image – covers full area, fixed regardless of content */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-slate-800"
+          style={
+            location.image
+              ? { backgroundImage: `url(${location.image})` }
+              : undefined
+          }
+          role="img"
+          aria-label={location.image ? location.name : undefined}
+        />
+        {!location.image && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-medium">No Image Available</span>
+          </div>
+        )}
             
             {/* Date Inputs Overlay */}
             {activeTab === 'dates' && (
-              <div className="absolute top-0 left-0 right-0 bottom-8 flex items-center justify-center p-4 z-10">
-                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-3">
+              <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-2">
                   <div className="bg-black/35 rounded-lg p-3 border border-white/10 space-y-2">
                     <label className="block text-xs font-medium text-white mb-1.5">Start</label>
                     <input
@@ -727,8 +725,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             
             {/* Model Selection Overlay */}
             {activeTab === 'model' && startDate && endDate && (
-              <div className="absolute top-0 left-0 right-0 bottom-8 flex items-center justify-center overflow-y-auto p-4 z-10">
-                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-3">
+              <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-2">
                   {[
                     { id: 'pro_175', name: 'IXTAbox Pro 175', dimension: '175 cm' },
                     { id: 'pro_190', name: 'IXTAbox Pro 190', dimension: '190 cm' },
@@ -801,24 +799,20 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               </div>
             )}
             
-            {/* Availability Details Overlay - Bottom of image - Always visible */}
-            <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1.5 text-center z-10">
-              <div className="flex items-center justify-center gap-3 text-[10px] text-white flex-wrap">
-                <span>Pro 175: <span className="font-bold">{location.availableBoxes.classic}</span></span>
-                <span>Pro 190: <span className="font-bold">{location.availableBoxes.pro}</span></span>
-                <span>Total: <span className="font-bold">{location.availableBoxes.total}</span></span>
-                <span>Available: <span className="font-bold text-emerald-400">{location.availableBoxes.total}</span></span>
-              </div>
-            </div>
+        {/* Availability Details Overlay - Bottom of content area */}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1.5 text-center z-10">
+          <div className="flex items-center justify-center gap-3 text-[10px] text-white flex-wrap">
+            <span>Pro 175: <span className="font-bold">{location.availableBoxes.classic}</span></span>
+            <span>Pro 190: <span className="font-bold">{location.availableBoxes.pro}</span></span>
+            <span>Total: <span className="font-bold">{location.availableBoxes.total}</span></span>
+            <span>Available: <span className="font-bold text-emerald-400">{location.availableBoxes.total}</span></span>
           </div>
         </div>
-
-        {/* Box Selection - Hidden, runs in background */}
-        {/* Availability checking and box selection happens automatically in the background */}
       </div>
 
-      {/* Action Section - Always visible, outside scroll area */}
-      <div className="px-3 py-2.5 border-t border-slate-700/20 flex-shrink-0 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20">
+      {/* Box Selection - Hidden, runs in background */}
+      {/* Action Section - Pinned at bottom, always visible on any screen */}
+      <div className="row-start-4 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20 shrink-0">
           {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
             <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">
