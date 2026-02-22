@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
 import Image from 'next/image';
