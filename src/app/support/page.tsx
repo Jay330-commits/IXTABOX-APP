@@ -115,7 +115,14 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen relative text-white">
+      {/* Fixed full-viewport background - fills entire screen (see globals.css .bg-image-fill-screen) */}
+      <div
+        className="fixed inset-0 -z-10 bg-image-fill-screen"
+        style={{ backgroundImage: "url(/images/background/back.jpg)" }}
+        aria-hidden
+      />
+      <div className="fixed inset-0 -z-[9] bg-black/75 pointer-events-none" aria-hidden />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -126,15 +133,8 @@ export default function SupportPage() {
       />
       <GuestHeader />
       <main>
-        {/* Hero Section - full viewport height, padding for sticky header */}
+        {/* Hero Section - full viewport height, padding for sticky header (background via fixed layer above) */}
         <section className="relative flex items-center justify-center overflow-hidden pt-20 min-h-screen">
-          {/* Background image - covers full section */}
-          <div
-            className="absolute inset-0 bg-center bg-cover bg-no-repeat"
-            style={{
-              backgroundImage: "url(/images/background/back.jpg)",
-            }}
-          />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80 z-10" />
           <div className="absolute inset-0 z-10">
             <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />

@@ -123,14 +123,26 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     return bounds;
   }, [locations, isLoaded]);
 
+  const MAX_ZOOM = 14;
+
+  const fitBoundsWithMaxZoom = useCallback((map: google.maps.Map, bounds: google.maps.LatLngBounds, padding = 32) => {
+    map.fitBounds(bounds, padding);
+    setTimeout(() => {
+      const z = map.getZoom();
+      if (z != null && z > MAX_ZOOM) {
+        map.setZoom(MAX_ZOOM);
+      }
+    }, 100);
+  }, []);
+
   useEffect(() => {
     if (mapRef.current && computedBounds) {
-      mapRef.current.fitBounds(computedBounds, 32);
+      fitBoundsWithMaxZoom(mapRef.current, computedBounds);
     } else if (locations.length) {
       setMapCenter({ lat: locations[0].lat, lng: locations[0].lng });
       setMapZoom(12);
     }
-  }, [computedBounds, locations]);
+  }, [computedBounds, locations, fitBoundsWithMaxZoom]);
 
   // Center map on selected location when a marker is clicked
   useEffect(() => {
@@ -151,7 +163,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     const resizeMap = () => {
       if (window.google?.maps?.event && mapRef.current) {
         window.google.maps.event.trigger(mapRef.current, "resize");
-        if (computedBounds) mapRef.current.fitBounds(computedBounds, 32);
+        if (computedBounds) fitBoundsWithMaxZoom(mapRef.current, computedBounds);
       }
     };
     resizeMap();
@@ -161,7 +173,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [fullscreen, computedBounds]);
+  }, [fullscreen, computedBounds, fitBoundsWithMaxZoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -217,15 +229,15 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const handleMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     if (computedBounds) {
-      map.fitBounds(computedBounds, 32);
+      fitBoundsWithMaxZoom(map, computedBounds);
     }
     if (fullscreen && window.google?.maps?.event) {
       setTimeout(() => {
         window.google.maps.event.trigger(map, "resize");
-        if (computedBounds) map.fitBounds(computedBounds, 32);
+        if (computedBounds) fitBoundsWithMaxZoom(map, computedBounds);
       }, 50);
     }
-  }, [computedBounds, fullscreen]);
+  }, [computedBounds, fullscreen, fitBoundsWithMaxZoom]);
 
   const handleMapUnmount = useCallback(() => {
     mapRef.current = null;
@@ -375,13 +387,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         });
         
         // Fit bounds with padding and max zoom to prevent zooming in too much
-        mapRef.current.fitBounds(bounds, 80); // Add padding so markers aren't at the edge
-        
-        // Ensure we don't zoom in too much - set a max zoom after fitting
-        const currentZoom = mapRef.current.getZoom();
-        if (currentZoom && currentZoom > 14) {
-          mapRef.current.setZoom(14);
-        }
+        fitBoundsWithMaxZoom(mapRef.current, bounds, 80);
       }
 
       // Optionally show directions (non-blocking)
@@ -398,7 +404,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     } finally {
       setIsLoadingLocation(false);
     }
-  }, [acquireLocation, getNearestLocation, handleDirections, isLoaded, locations]);
+  }, [acquireLocation, getNearestLocation, handleDirections, isLoaded, locations, fitBoundsWithMaxZoom]);
 
   const computedContainerStyle = useMemo<CSSProperties>(
     () =>
@@ -665,7 +671,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
             onFullscreenChange?.(true);
             setTimeout(() => {
               if (mapRef.current && computedBounds) {
-                mapRef.current.fitBounds(computedBounds, 32);
+                fitBoundsWithMaxZoom(mapRef.current, computedBounds);
               }
             }, 100);
           }}

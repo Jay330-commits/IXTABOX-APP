@@ -94,12 +94,12 @@ export default function GuestHeader(): JSX.Element {
   return (
     <>
       <header className={containerClasses}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            {/* Logo */}
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="flex h-20 items-center w-full">
+            {/* Logo - always at start */}
             <Link 
               href="/" 
-              className="group flex items-center transition-transform hover:scale-105 duration-200"
+              className="flex-shrink-0 group flex items-center transition-transform hover:scale-105 duration-200"
               onClick={(e) => {
                 if (pathname === "/") {
                   e.preventDefault();
@@ -120,8 +120,8 @@ export default function GuestHeader(): JSX.Element {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            {/* Desktop Navigation - centered in the middle */}
+            <nav className="hidden lg:flex flex-1 items-center justify-center gap-1">
               {navItems.map((item) => {
                 const active = isActive(item.href);
                 return (
@@ -179,8 +179,8 @@ export default function GuestHeader(): JSX.Element {
               })}
             </nav>
 
-            {/* Desktop Actions */}
-            <div className="hidden lg:flex items-center gap-3">
+            {/* Desktop Actions - always at end */}
+            <div className="hidden lg:flex flex-shrink-0 items-center gap-3">
               <Link
                 href="/auth/signup?role=distributor"
                 className="px-4 py-2 text-sm font-semibold text-cyan-200 hover:text-white transition-all duration-200 rounded-lg border border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/10"

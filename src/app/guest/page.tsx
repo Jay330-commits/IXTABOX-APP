@@ -422,14 +422,13 @@ export default function GuestHome() {
       />
       <GuestHeader />
       <main className="">
-        {/* Hero with background image */}
+        {/* Hero with background image - fills entire viewport */}
         <section
-          className="relative flex items-center justify-center overflow-hidden animate-fadeIn"
-          style={{ minHeight: 560 }}
+          className="relative flex items-center justify-center overflow-hidden animate-fadeIn min-h-screen"
         >
-          {/* Two layers with crossfade — only 2 images in DOM for fast load */}
+          {/* Two layers with crossfade — only 2 images in DOM for fast load. Use bg-image-fill-screen so background always fills viewport (see globals.css) */}
           <div
-            className="absolute inset-0 bg-center bg-cover transition-opacity duration-[2s] ease-in-out"
+            className="absolute inset-0 bg-image-fill-screen transition-opacity duration-[2s] ease-in-out"
             style={{
               backgroundImage: `url(${HERO_BACKGROUNDS[heroVisibleLayer === 0 ? currentBackgroundIndex : nextBgIndex]})`,
               opacity: heroVisibleLayer === 0 ? 1 : 0,
@@ -438,7 +437,7 @@ export default function GuestHome() {
             aria-hidden
           />
           <div
-            className="absolute inset-0 bg-center bg-cover transition-opacity duration-[2s] ease-in-out"
+            className="absolute inset-0 bg-image-fill-screen transition-opacity duration-[2s] ease-in-out"
             style={{
               backgroundImage: `url(${HERO_BACKGROUNDS[heroVisibleLayer === 1 ? currentBackgroundIndex : nextBgIndex]})`,
               opacity: heroVisibleLayer === 1 ? 1 : 0,
@@ -823,9 +822,9 @@ export default function GuestHome() {
           </section>
         </FadeInSection>
 
-        {/* Full-bleed background section */}
+        {/* Full-bleed background section - fills viewport (see globals.css .bg-image-fill-screen) */}
         <FadeInSection>
-        <section className="relative overflow-hidden" style={{ minHeight: 420 }}>
+        <section className="relative overflow-hidden min-h-screen min-h-[100dvh]">
           {/* Lazy loaded optimized background */}
           <Image
             src="/images/background/DSCF3859.jpg"

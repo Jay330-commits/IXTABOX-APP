@@ -105,6 +105,22 @@ html[data-hide-scrollbar="true"]::-webkit-scrollbar {
   scroll-behavior: smooth;
 }
 
+/* ==========================================================================
+   BACKGROUND IMAGE: ALWAYS FILL THE SCREEN - DO NOT REMOVE
+   Ensures every background picture covers the full viewport. Used by:
+   AuthLayout, Support page, Guest page hero, LocationDetails panel.
+   Use .bg-image-fill-screen on any container with a background image.
+   Keeps the background fixed to the viewport when scrolling.
+   ========================================================================== */
+.bg-image-fill-screen {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 /* Custom styles for map icons */
 .user-location-icon {
   width: 20px !important;

@@ -61,10 +61,10 @@ export default function Header() {
   return (
     <>
       <header className={containerClasses + " isolate"}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-full items-center justify-between gap-4">
-            {/* Left: Logo + mobile menu button */}
-            <div className="flex items-center gap-3">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="flex h-full items-center w-full gap-4">
+            {/* Left: Logo + mobile menu button - always at start */}
+            <div className="flex flex-shrink-0 items-center gap-3">
               <button
                 aria-label="Open menu"
                 className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
@@ -94,8 +94,8 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1.5">
+            {/* Desktop Navigation - centered in the middle */}
+            <nav className="hidden lg:flex flex-1 items-center justify-center gap-1.5">
               {navItems.map((item) => {
                 const active = isActive(item.href);
                 return (
@@ -163,8 +163,8 @@ export default function Header() {
             })}
           </nav>
 
-          {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center gap-2">
+          {/* Desktop Actions - always at end */}
+          <div className="hidden lg:flex flex-shrink-0 items-center gap-2">
             {/* Theme toggle */}
             <button
               onClick={() => setDarkMode((v) => !v)}

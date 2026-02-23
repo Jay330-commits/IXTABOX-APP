@@ -148,7 +148,7 @@ export default function Inventory() {
           data.data.forEach((loc: DistributorLocation) => {
             bounds.extend({ lat: loc.lat, lng: loc.lng });
           });
-          mapRef.current.fitBounds(bounds, 80);
+          fitBoundsWithMaxZoom(mapRef.current, bounds);
         }
 
         // Update selected location if it still exists
@@ -270,6 +270,17 @@ export default function Inventory() {
     };
   }, [isMobile, panelOpen]);
 
+  const MAX_ZOOM = 14;
+  const fitBoundsWithMaxZoom = useCallback((map: google.maps.Map, bounds: google.maps.LatLngBounds, padding = 80) => {
+    map.fitBounds(bounds, padding);
+    setTimeout(() => {
+      const z = map.getZoom();
+      if (z != null && z > MAX_ZOOM) {
+        map.setZoom(MAX_ZOOM);
+      }
+    }, 100);
+  }, []);
+
   const handleMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     if (locations.length > 0) {
@@ -277,9 +288,9 @@ export default function Inventory() {
       locations.forEach((loc) => {
         bounds.extend({ lat: loc.lat, lng: loc.lng });
       });
-      map.fitBounds(bounds, 80);
+      fitBoundsWithMaxZoom(map, bounds);
     }
-  }, [locations]);
+  }, [locations, fitBoundsWithMaxZoom]);
 
   // Update map bounds when locations change
   useEffect(() => {
@@ -288,9 +299,9 @@ export default function Inventory() {
       locations.forEach((loc) => {
         bounds.extend({ lat: loc.lat, lng: loc.lng });
       });
-      mapRef.current.fitBounds(bounds, 80);
+      fitBoundsWithMaxZoom(mapRef.current, bounds);
     }
-  }, [locations, isLoaded]);
+  }, [locations, isLoaded, fitBoundsWithMaxZoom]);
 
   const handleMarkerClick = useCallback((location: DistributorLocation) => {
     setSelectedLocation(location);

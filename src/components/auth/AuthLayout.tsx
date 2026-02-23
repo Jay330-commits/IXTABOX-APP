@@ -16,12 +16,9 @@ export default function AuthLayout({
     <>
       <GuestHeader />
       <main
-        className="min-h-screen flex items-center justify-center px-4 py-12 relative"
+        className="min-h-screen flex items-center justify-center px-4 py-12 relative bg-image-fill-screen"
         style={{
           backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
         }}
       >
         {/* Dark overlay */}

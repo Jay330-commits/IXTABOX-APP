@@ -105,9 +105,9 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
     <>
       {/* === Desktop Header === */}
       <header className={`${containerClasses} hidden lg:block h-20`}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between h-full">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex items-center h-full">
+          {/* Logo - always at start */}
+          <Link href="/" className="flex-shrink-0 flex items-center">
             <span className="relative inline-flex h-20 w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
               <Image
                 src={encodeURI(logoPath)}
@@ -120,8 +120,8 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
             </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="flex items-center gap-1">
+          {/* Desktop Nav - centered in the middle */}
+          <nav className="flex flex-1 items-center justify-center gap-1">
             {navItems.map((item) => {
               const active = activeSection === item.section;
               return (
@@ -151,8 +151,8 @@ export default function CustomerHeader({ activeSection, onSectionChange }: Custo
             })}
           </nav>
 
-          {/* Desktop Actions */}
-          <div className="flex items-center gap-2">
+          {/* Desktop Actions - always at end */}
+          <div className="flex flex-shrink-0 items-center gap-2">
             {/* Theme toggle */}
             <button
               onClick={() => setDarkMode((v) => !v)}
