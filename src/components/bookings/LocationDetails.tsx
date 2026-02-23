@@ -504,7 +504,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
   }, [location.isFullyBooked, isBooked, location.name, location.availableBoxes, location.earliestNextAvailableDate, location.modelAvailability, location.status]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 min-w-0 overflow-y-auto">
+    <div className="flex flex-col h-full min-h-0 min-w-0">
       {/* Header Section - Always visible */}
       <div className="bg-gradient-to-br from-slate-700 to-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full shadow-xl backdrop-blur-sm" style={{ position: 'relative', zIndex: 1000 }}>
         <div className="p-3">
@@ -600,7 +600,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         )}
       </div>
 
-      {/* Content area – flex-1, image covers background. Use bg-cover (NOT bg-image-fill-screen: that uses fixed which breaks in side panels) */}
+      {/* Content area – flex-1, no scroll; image/overlays fill space */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         {/* Background image – cover: fills entire area */}
         <div
@@ -818,8 +818,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       </div>
 
       {/* Box Selection - Hidden, runs in background */}
-      {/* Action Section - Sticky at bottom, always visible regardless of viewport or content */}
-      <div className="sticky bottom-0 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20 shrink-0 mt-auto">
+      {/* Action Section - Always visible at bottom, not part of scroll */}
+      <div className="flex-shrink-0 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20">
           {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
             <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">

@@ -592,9 +592,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               className={`
                 absolute bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
                 ${fullscreen
-                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[65svh] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
+                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[85svh] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
                   : isMobile
-                    ? "absolute left-0 right-0 bottom-4 top-auto h-[65vh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
+                    ? "absolute left-0 right-0 bottom-4 top-auto h-[85vh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
                     : "absolute left-0 top-[80px] right-auto w-1/2 max-w-[420px] border-r border rounded-r-xl bottom-0"}
               `}
               style={{
