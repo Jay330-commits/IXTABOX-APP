@@ -122,6 +122,14 @@ export const metadata: Metadata = {
   },
 };
 
+// Enables iOS safe-area insets (env(safe-area-inset-*)) so bottom buttons
+// aren't hidden behind the home indicator; helps with mobile + cache issues
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover' as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

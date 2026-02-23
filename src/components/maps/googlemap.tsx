@@ -74,7 +74,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [mapZoom, setMapZoom] = useState(12);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  );
   const router = useRouter();
   const [exitHintVisible, setExitHintVisible] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -579,7 +581,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {selectedLocation &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[99999] flex" aria-modal="true" role="dialog" style={{ minHeight: "100vh" }}>
+          <div className="fixed inset-0 z-[99999] flex min-h-[100dvh]" aria-modal="true" role="dialog">
             {/* Full-viewport backdrop – portal ensures this is above Benefits and any stacking context */}
             <div
               className="absolute inset-0 bg-black/50"
@@ -592,9 +594,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               className={`
                 absolute bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
                 ${fullscreen
-                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[85svh] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
+                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[85dvh] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
                   : isMobile
-                    ? "absolute left-0 right-0 bottom-4 top-auto h-[85vh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
+                    ? "absolute left-0 right-0 bottom-4 top-auto h-[85dvh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
                     : "absolute left-0 top-[80px] right-auto w-1/2 max-w-[420px] border-r border rounded-r-xl bottom-0"}
               `}
               style={{
@@ -602,7 +604,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
                   ? {
                       display: "flex",
                       flexDirection: "column",
-                      animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards",
                     }
                   : !fullscreen && !isMobile
                     ? { top: 80, bottom: 0, height: "calc(100vh - 80px)", minHeight: "calc(100vh - 80px)" }
