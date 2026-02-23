@@ -196,10 +196,10 @@ export default function GuestHeader(): JSX.Element {
               </Link>
             </div>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - on the right side, not near logo */}
             <button
               aria-label="Toggle menu"
-              className="lg:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+              className="lg:hidden ml-auto flex-shrink-0 p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
               onClick={() => setMobileOpen(true)}
             >
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

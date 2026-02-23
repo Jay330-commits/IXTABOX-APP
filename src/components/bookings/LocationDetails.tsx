@@ -600,14 +600,19 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
         )}
       </div>
 
-      {/* Content area – flex-1, image covers background. Use bg-image-fill-screen so background always fills viewport (see globals.css) */}
+      {/* Content area – flex-1, image covers background. Use bg-cover (NOT bg-image-fill-screen: that uses fixed which breaks in side panels) */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
-        {/* Background image – covers full area, fixed regardless of content */}
+        {/* Background image – cover: fills entire area */}
         <div
-          className="absolute inset-0 bg-image-fill-screen bg-slate-800"
+          className="absolute inset-0 bg-slate-800"
           style={
             location.image
-              ? { backgroundImage: `url(${location.image})` }
+              ? {
+                  backgroundImage: `url(${location.image})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                }
               : undefined
           }
           role="img"

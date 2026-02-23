@@ -270,7 +270,7 @@ export default function Inventory() {
     };
   }, [isMobile, panelOpen]);
 
-  const MAX_ZOOM = 14;
+  const MAX_ZOOM = 11;
   const fitBoundsWithMaxZoom = useCallback((map: google.maps.Map, bounds: google.maps.LatLngBounds, padding = 80) => {
     map.fitBounds(bounds, padding);
     setTimeout(() => {

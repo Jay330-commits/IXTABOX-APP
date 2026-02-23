@@ -63,23 +63,8 @@ export default function Header() {
       <header className={containerClasses + " isolate"}>
         <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="flex h-full items-center w-full gap-4">
-            {/* Left: Logo + mobile menu button - always at start */}
-            <div className="flex flex-shrink-0 items-center gap-3">
-              <button
-                aria-label="Open menu"
-                className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-                onClick={() => setMobileOpen(true)}
-              >
-                <svg
-                  className="h-6 w-6"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+            {/* Left: Logo - always at start */}
+            <div className="flex flex-shrink-0 items-center">
               <Link href="/" className="group flex items-center gap-3">
                 <span className="relative inline-flex h-14 w-32 sm:h-16 sm:w-36 md:h-20 md:w-40 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
                   <Image
@@ -93,6 +78,23 @@ export default function Header() {
                 </span>
               </Link>
             </div>
+
+            {/* Mobile Menu Button - on the right side, not near logo */}
+            <button
+              aria-label="Open menu"
+              className="lg:hidden flex-shrink-0 ml-auto inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+              onClick={() => setMobileOpen(true)}
+            >
+              <svg
+                className="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
 
             {/* Desktop Navigation - centered in the middle */}
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-1.5">

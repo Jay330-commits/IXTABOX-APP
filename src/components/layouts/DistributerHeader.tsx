@@ -267,17 +267,8 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
 
       {/* === Mobile Top Bar === */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-[10000] h-16 bg-gray-900/90 backdrop-blur-md border-b border-white/5 flex justify-between items-center px-4">
-        <div className="flex items-center gap-3">
-          <button
-            aria-label="Open menu"
-            className="inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-            onClick={() => setMobileOpen(true)}
-          >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <Link href="/" className="flex items-center">
+        {/* Logo - left side */}
+        <Link href="/" className="flex items-center flex-shrink-0">
             <span className="relative inline-flex h-10 w-20 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10 shadow-lg shadow-cyan-500/10">
               <Image
                 src={encodeURI(logoPath)}
@@ -289,10 +280,18 @@ export default function DistributerHeader({ activeSection, onSectionChange }: Di
               />
             </span>
           </Link>
-        </div>
 
-        {/* Mobile Actions */}
+        {/* Right side: menu button + mobile actions */}
         <div className="flex items-center gap-2">
+          <button
+            aria-label="Open menu"
+            className="inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+            onClick={() => setMobileOpen(true)}
+          >
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <button
             onClick={() => onSectionChange("upgrade")}
             className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-3 py-1 text-xs font-semibold text-white hover:bg-cyan-400 transition-colors"
