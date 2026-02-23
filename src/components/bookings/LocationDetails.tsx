@@ -739,7 +739,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                     { id: 'pro_190', name: 'IXTAbox Pro 190', dimension: '190 cm' },
                   ].map((model) => {
                     const is175cm = model.name.includes('175');
-                    const imageWidth = is175cm ? 60 : 75;
+                    const imageWidth = is175cm ? 85 : 100;
                     const modelBooked = isModelFullyBooked(model.id);
                     const modelAvailable = isModelAvailable(model.id);
                     const nextAvailableDate = getModelNextAvailableDate(model.id);
@@ -753,7 +753,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                           ${isSelected 
                             ? 'bg-black/50 border-2 border-cyan-400 shadow-lg shadow-cyan-500/40'
                             : modelBooked
-                            ? 'bg-black/35 opacity-60 cursor-not-allowed border border-white/10'
+                            ? 'bg-black/35 cursor-not-allowed border border-white/10'
                             : 'bg-black/35 border border-white/10 hover:bg-black/45 hover:ring-1 hover:ring-cyan-500/30'
                           }`}
                       >
@@ -767,21 +767,32 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                           }}
                           className="sr-only"
                         />
-                        <div className="flex justify-center items-center mb-2 h-16">
-                          <Image
-                            src={encodeURI("/images/boxes/Screenshot 2025-11-12 120924.png")}
-                            alt={`${model.name} box`}
-                            width={imageWidth}
-                            height={50}
-                            className="object-contain"
-                            style={{ width: `${imageWidth}px`, height: 'auto', maxHeight: '50px' }}
-                          />
+                        <div className="flex flex-col justify-center items-center mb-2 h-16">
+                          {/* Dimension: arrows + 175/190 cm */}
+                          <div className="flex items-center justify-center gap-1 mb-0 w-full">
+                            <svg className="w-4 h-4 text-cyan-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M19 12H5M5 12l4-4M5 12l4 4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <span className="text-xs font-bold text-cyan-300 tabular-nums">{is175cm ? '175' : '190'} cm</span>
+                            <svg className="w-4 h-4 text-cyan-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M5 12h14M19 12l-4-4M19 12l-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 flex justify-center items-center min-h-0 w-full -mt-0.5">
+                            <Image
+                              src={encodeURI("/images/boxes/Screenshot 2025-11-12 120924.png")}
+                              alt={`${model.name} box`}
+                              width={imageWidth}
+                              height={64}
+                              className="object-contain w-full max-w-full opacity-100"
+                              style={{ width: `${imageWidth}px`, height: 'auto', maxHeight: '52px', opacity: 1 }}
+                            />
+                          </div>
                         </div>
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-sm font-semibold text-center break-words text-white">
                             {model.name}
                           </span>
-                          <span className="text-xs font-medium text-gray-300 text-center">{model.dimension}</span>
                           {modelBooked && nextAvailableDate ? (
                             <span className="text-xs text-center font-medium leading-tight break-words px-1 text-yellow-400">
                               Available from: {formatDateForDisplay(nextAvailableDate)}
