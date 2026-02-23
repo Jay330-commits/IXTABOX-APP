@@ -83,3 +83,20 @@ export function calculateBoxScore(
   return BigInt(durationHours);
 }
 
+/**
+ * Calculate the score adjustment when a box is returned.
+ * At booking we ADD scheduled hours (end - start). On return we need to correct:
+ * adjust = actualHours - scheduledHours.
+ * Positive if returned late, negative if returned early.
+ */
+export function calculateReturnScoreAdjustment(
+  startDate: Date | string,
+  endDate: Date | string,
+  returnedAt: Date | string
+): bigint {
+  const scheduledHours = calculateRentalDurationHours(startDate, endDate);
+  const actualHours = calculateRentalDurationHours(startDate, endDate, returnedAt);
+  const delta = actualHours - scheduledHours;
+  return BigInt(delta);
+}
+

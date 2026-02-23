@@ -418,13 +418,13 @@ export class BookingService extends BaseService {
           },
         });
 
-        // Update box score based on rental duration
-        // Score represents the number of hours the box will be rented
-        // Lower scores mean shorter rental periods (better availability)
+        // Add rental duration hours to box score (cumulative)
+        // Score = total hours the box has been/will be rented
+        // Lower scores mean less usage (better availability for distribution)
         await tx.boxes.update({
           where: { id: boxId },
           data: {
-            score: boxScore,
+            score: { increment: boxScore },
           },
         });
 

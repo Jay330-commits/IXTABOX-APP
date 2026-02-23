@@ -4,7 +4,7 @@ import { BaseService } from '../BaseService';
 import { StripeService } from '../payments/StripeService';
 import { NotificationService } from '../notifications/NotificationService';
 import { BookingStatusService } from './BookingStatusService';
-import { calculateBoxScore } from './BoxScoreUtils';
+import { calculateRentalDurationHours } from './BoxScoreUtils';
 
 export interface CancellationResult {
   success: boolean;
@@ -381,27 +381,19 @@ export class CancelBookingService extends BaseService {
       console.log(`[CancelBookingService] Refund not eligible: ${refundCalc.reason}`);
     }
 
-    // Calculate box score based on actual duration (from start_date to cancellation time)
-    // When cancelled, the actual rental duration is shorter, so score should be reduced
-    let boxScore: bigint;
-    let durationHours: number;
+    // At booking we ADDED (end - start) hours. On cancel we must SUBTRACT them.
+    let hoursToSubtract: number;
     
     try {
-      // Use cancellation time as the end date since booking was cancelled before completion
-      // This reduces the score compared to the original end_date
-      boxScore = calculateBoxScore(
+      hoursToSubtract = calculateRentalDurationHours(
         booking.start_date,
-        booking.end_date,
-        cancellationTime
+        booking.end_date
       );
-      durationHours = Number(boxScore);
-      console.log(`[CancelBookingService] Calculating box score for cancelled booking: start_date=${booking.start_date.toISOString()}, cancelled_at=${cancellationTime.toISOString()}, duration=${durationHours} hours`);
+      console.log(`[CancelBookingService] Subtracting ${hoursToSubtract} hours from box score (scheduled hours added at booking)`);
     } catch (scoreError) {
-      console.error(`[CancelBookingService] Failed to calculate box score:`, scoreError);
-      // Use a default score of 1 hour if calculation fails
-      boxScore = BigInt(1);
-      durationHours = 1;
-      console.warn(`[CancelBookingService] Using default score of 1 hour due to calculation error`);
+      console.error(`[CancelBookingService] Failed to calculate hours to subtract:`, scoreError);
+      hoursToSubtract = 1;
+      console.warn(`[CancelBookingService] Using 1 hour due to calculation error`);
     }
 
     // Update booking status to Cancelled, mark payment as refunded, and update box score
@@ -427,9 +419,7 @@ export class CancelBookingService extends BaseService {
           console.log(`[CancelBookingService] Payment status updated to Refunded for booking: ${bookingId}${refundProcessed ? ' (refund processed)' : ' (no refund issued)'}`);
         }
 
-        // Update box score based on actual rental duration (reduced due to cancellation)
-        // Score represents the actual hours from start_date to cancellation time
-        // Lower scores mean shorter rental periods (better availability)
+        // Subtract the hours we added at booking
         const box = await tx.boxes.findUnique({
           where: { id: booking.box_id },
           select: { id: true },
@@ -439,10 +429,10 @@ export class CancelBookingService extends BaseService {
           await tx.boxes.update({
             where: { id: booking.box_id },
             data: {
-              Score: boxScore,
+              score: { increment: BigInt(-hoursToSubtract) },
             },
           });
-          console.log(`[CancelBookingService] Updated box score: box_id=${booking.box_id}, score=${durationHours} hours (reduced due to cancellation)`);
+          console.log(`[CancelBookingService] Subtracted ${hoursToSubtract} hours from box score: box_id=${booking.box_id}`);
         } else {
           console.warn(`[CancelBookingService] Box not found for booking: ${booking.box_id}`);
         }

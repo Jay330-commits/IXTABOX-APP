@@ -631,7 +631,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             {activeTab === 'dates' && (
               <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
                 <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-2">
-                  <div className="bg-black/35 rounded-lg p-3 border border-white/10 space-y-2">
+                  <div className="bg-slate-800/85 rounded-lg p-3 border border-white/10 space-y-2">
                     <label className="block text-xs font-medium text-white mb-1.5">Start</label>
                     <input
                       type="date"
@@ -649,7 +649,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         }
                       }}
                       min={getMinDateTimeFromNow().split('T')[0]}
-                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-slate-800/80 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
                         startDate && !startTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
                       }`}
                     />
@@ -670,7 +670,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="bg-black/35 rounded-lg p-3 border border-white/10 space-y-2">
+                  <div className="bg-slate-800/85 rounded-lg p-3 border border-white/10 space-y-2">
                     <label className="block text-xs font-medium text-white mb-1.5">End</label>
                     <input
                       type="date"
@@ -695,7 +695,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         }
                       }}
                       min={startDate || getMinDateTimeFromNow().split('T')[0]}
-                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-black/30 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-slate-800/80 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
                         endDate && !endTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
                       }`}
                     />
@@ -751,10 +751,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         key={model.id}
                         className={`relative flex flex-col p-3 rounded-lg transition-all duration-200 cursor-pointer
                           ${isSelected 
-                            ? 'bg-black/50 border-2 border-cyan-400 shadow-lg shadow-cyan-500/40'
+                            ? 'bg-slate-800/90 border-2 border-cyan-400 shadow-lg shadow-cyan-500/40'
                             : modelBooked
-                            ? 'bg-black/35 cursor-not-allowed border border-white/10'
-                            : 'bg-black/35 border border-white/10 hover:bg-black/45 hover:ring-1 hover:ring-cyan-500/30'
+                            ? 'bg-slate-800/85 cursor-not-allowed border border-white/10'
+                            : 'bg-slate-800/85 border border-white/10 hover:bg-slate-800/90 hover:ring-1 hover:ring-cyan-500/30'
                           }`}
                       >
                         <input
@@ -818,7 +818,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             )}
             
         {/* Availability Details Overlay - Bottom of content area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1.5 text-center z-10">
+        <div className="absolute bottom-0 left-0 right-0 bg-slate-800/88 px-2 py-1.5 text-center z-10">
           <div className="flex items-center justify-center gap-3 text-[10px] text-white flex-wrap">
             <span>Pro 175: <span className="font-bold">{location.availableBoxes.classic}</span></span>
             <span>Pro 190: <span className="font-bold">{location.availableBoxes.pro}</span></span>
@@ -833,7 +833,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       <div className="flex-shrink-0 px-3 py-2.5 border-t border-slate-700/20 bg-gradient-to-t from-slate-900 to-slate-800/90 backdrop-blur-sm z-20">
           {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
-            <div className="mb-2 text-center p-2 rounded-lg bg-slate-900/60">
+            <div className="mb-2 text-center p-2 rounded-lg bg-slate-800/85">
               <span className="text-xs font-medium text-gray-400">Total: </span>
               <span className="text-lg font-bold text-cyan-400">{formatPrice(totalPrice)}</span>
               {days > 0 && (

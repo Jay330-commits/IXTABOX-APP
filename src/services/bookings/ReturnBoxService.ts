@@ -3,7 +3,7 @@ import { BookingStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
 import { NotificationService } from '../notifications/NotificationService';
 import { EmailService } from '../notifications/emailService';
-import { calculateBoxScore } from './BoxScoreUtils';
+import { calculateReturnScoreAdjustment } from './BoxScoreUtils';
 
 export interface ReturnBoxPhotos {
   boxFrontView: string; // URL of photo: Box front view
@@ -104,25 +104,24 @@ export class ReturnBoxService extends BaseService {
 
     const returnedAt = new Date();
 
-    // Calculate box score based on rental duration (in hours)
-    // Uses returned_at since the box is being returned now
-    let boxScore: bigint;
-    let durationHours: number;
+    // Calculate score adjustment: (actual hours) - (scheduled hours)
+    // We ADDED scheduled hours at booking; on return we correct with this delta
+    let scoreAdjustment: bigint;
+    let adjustmentHours: number;
     
     try {
-      boxScore = calculateBoxScore(
+      scoreAdjustment = calculateReturnScoreAdjustment(
         booking.start_date,
         booking.end_date,
         returnedAt
       );
-      durationHours = Number(boxScore);
-      console.log(`[ReturnBoxService] Calculating box score: start_date=${booking.start_date.toISOString()}, returned_at=${returnedAt.toISOString()}, duration=${durationHours} hours`);
+      adjustmentHours = Number(scoreAdjustment);
+      console.log(`[ReturnBoxService] Score adjustment: start=${booking.start_date.toISOString()}, end=${booking.end_date.toISOString()}, returned=${returnedAt.toISOString()}, delta=${adjustmentHours} hours`);
     } catch (scoreError) {
-      console.error(`[ReturnBoxService] Failed to calculate box score:`, scoreError);
-      // Use a default score of 1 hour if calculation fails
-      boxScore = BigInt(1);
-      durationHours = 1;
-      console.warn(`[ReturnBoxService] Using default score of 1 hour due to calculation error`);
+      console.error(`[ReturnBoxService] Failed to calculate score adjustment:`, scoreError);
+      scoreAdjustment = BigInt(0);
+      adjustmentHours = 0;
+      console.warn(`[ReturnBoxService] Using 0 adjustment due to calculation error`);
     }
 
     try {
@@ -153,17 +152,16 @@ export class ReturnBoxService extends BaseService {
           },
         });
 
-        // Update box score based on rental duration (in hours)
-        // Score represents the number of hours the box was rented
-        // Lower scores mean shorter rental periods (better availability)
+        // Adjust box score: add (actual - scheduled) hours
+        // At booking we added scheduled hours; now we correct for actual return time
         await tx.boxes.update({
           where: { id: booking.box_id },
           data: {
-            score: boxScore,
+            score: { increment: scoreAdjustment },
           },
         });
 
-        console.log(`[ReturnBoxService] Updated box score: box_id=${booking.box_id}, score=${durationHours} hours`);
+        console.log(`[ReturnBoxService] Adjusted box score: box_id=${booking.box_id}, increment=${adjustmentHours} hours`);
       }, 'ReturnBox');
 
       console.log(`[ReturnBoxService] Booking status updated to Completed: ${params.bookingId}`);
