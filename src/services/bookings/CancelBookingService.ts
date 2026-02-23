@@ -252,18 +252,85 @@ export class CancelBookingService extends BaseService {
           throw new Error('Payment charge ID not found. Cannot process refund.');
         }
 
-        // Retrieve charge details from Stripe - this confirms the real payment status
         const stripe = this.stripeService.getStripe();
-        const charge = await stripe.charges.retrieve(payment.charge_id);
-        
-        // Calculate available refund amount from Stripe
-        const chargeAmount = charge.amount / 100; // Convert from cents
-        const alreadyRefunded = charge.amount_refunded / 100; // Convert from cents
-        const availableToRefund = chargeAmount - alreadyRefunded;
+        const chargeId = payment.charge_id;
+        const isCharge = chargeId.startsWith('ch_');
+        const isPayment = chargeId.startsWith('py_');
+
+        let chargeAmount: number;
+        let alreadyRefunded: number;
+        let refundParams: { charge?: string; payment_intent?: string; amount: number; reason: 'requested_by_customer'; metadata: Record<string, string> };
+
+        const refundMetadata = {
+          booking_id: bookingId,
+          user_id: userId,
+          cancellation_reason: refundCalc.reason,
+          refund_percentage: refundCalc.refundPercentage.toString(),
+          original_refund_amount: refundCalc.refundAmount.toFixed(2),
+          adjusted_refund_amount: actualRefundAmount.toFixed(2),
+        };
+
+        if (isCharge) {
+          // Charge (ch_): use Charges API
+          const charge = await stripe.charges.retrieve(chargeId);
+          chargeAmount = charge.amount / 100;
+          alreadyRefunded = charge.amount_refunded / 100;
+          refundParams = {
+            charge: chargeId,
+            amount: Math.round(actualRefundAmount * 100),
+            reason: 'requested_by_customer',
+            metadata: refundMetadata,
+          };
+        } else if (isPayment) {
+          // Payment (py_): paginate through all PaymentIntents to find one with this Payment as latest_charge
+          let match: { id: string } | undefined;
+          let startingAfter: string | undefined;
+          const checkMatch = (pi: { id: string; latest_charge?: string | { id?: string } | null }) => {
+            const lc = pi.latest_charge;
+            return (typeof lc === 'string' ? lc : (lc as { id?: string })?.id) === chargeId;
+          };
+          let intents;
+          do {
+            intents = await stripe.paymentIntents.list({
+              limit: 100,
+              ...(startingAfter && { starting_after: startingAfter }),
+            });
+            match = intents.data.find(checkMatch);
+            if (!match && intents.data.length > 0) {
+              startingAfter = intents.data[intents.data.length - 1].id;
+            } else {
+              break;
+            }
+          } while (intents.has_more);
+          if (!match) {
+            throw new Error('Could not find PaymentIntent for Payment (py_). Cannot process refund for this payment method.');
+          }
+          const pi = await stripe.paymentIntents.retrieve(match.id, { expand: ['latest_charge'] });
+          const latestCharge = pi.latest_charge;
+          if (latestCharge && typeof latestCharge === 'object' && 'amount' in latestCharge) {
+            const chargeObj = latestCharge as { amount: number; amount_refunded?: number };
+            chargeAmount = chargeObj.amount / 100;
+            alreadyRefunded = (chargeObj.amount_refunded ?? 0) / 100;
+          } else {
+            chargeAmount = pi.amount / 100;
+            alreadyRefunded = 0;
+          }
+          refundParams = {
+            payment_intent: match.id,
+            amount: Math.round(actualRefundAmount * 100),
+            reason: 'requested_by_customer',
+            metadata: refundMetadata,
+          };
+        } else {
+          throw new Error(`Unsupported Stripe ID format: ${chargeId}. Expected ch_ (Charge) or py_ (Payment).`);
+        }
+
         const paymentStatusInDb = booking.payments.status;
-        
-        console.log(`[CancelBookingService] Checking Stripe charge status:`, {
-          chargeId: payment.charge_id,
+        const availableToRefund = chargeAmount - alreadyRefunded;
+
+        console.log(`[CancelBookingService] Checking Stripe payment status:`, {
+          chargeId,
+          type: isCharge ? 'Charge' : 'Payment',
           chargeAmount,
           alreadyRefundedInStripe: alreadyRefunded,
           availableToRefund,
@@ -273,12 +340,13 @@ export class CancelBookingService extends BaseService {
 
         // Adjust refund amount if it exceeds available amount
         actualRefundAmount = Math.min(refundCalc.refundAmount, availableToRefund);
+        refundParams.amount = Math.round(actualRefundAmount * 100);
+        refundParams.metadata.adjusted_refund_amount = actualRefundAmount.toFixed(2);
         
         if (actualRefundAmount <= 0 || alreadyRefunded >= chargeAmount) {
-          // Stripe confirms charge is already fully refunded
-          // Update DB to match Stripe's status (may be out of sync)
-          console.log(`[CancelBookingService] Stripe confirms charge is already fully refunded (${alreadyRefunded.toFixed(2)} kr of ${chargeAmount.toFixed(2)} kr). DB status: '${paymentStatusInDb}'. Will update DB to match Stripe status.`);
-          refundProcessed = false; // No new refund needed - Stripe already refunded it
+          // Stripe confirms payment is already fully refunded
+          console.log(`[CancelBookingService] Stripe confirms payment is already fully refunded (${alreadyRefunded.toFixed(2)} kr of ${chargeAmount.toFixed(2)} kr). DB status: '${paymentStatusInDb}'. Will update DB to match Stripe status.`);
+          refundProcessed = false;
           actualRefundAmount = 0;
           refundCalc.reason = `Payment was already refunded in Stripe. Booking cancelled and DB status synchronized.`;
         } else {
@@ -286,20 +354,7 @@ export class CancelBookingService extends BaseService {
             console.warn(`[CancelBookingService] Refund amount adjusted from ${refundCalc.refundAmount.toFixed(2)} to ${actualRefundAmount.toFixed(2)} kr (available amount)`);
           }
 
-          // Create refund via Stripe using charge_id directly
-          const refund = await stripe.refunds.create({
-            charge: payment.charge_id,
-            amount: Math.round(actualRefundAmount * 100), // Convert to cents
-            reason: 'requested_by_customer',
-            metadata: {
-              booking_id: bookingId,
-              user_id: userId,
-              cancellation_reason: refundCalc.reason,
-              refund_percentage: refundCalc.refundPercentage.toString(),
-              original_refund_amount: refundCalc.refundAmount.toFixed(2),
-              adjusted_refund_amount: actualRefundAmount.toFixed(2),
-            },
-          });
+          const refund = await stripe.refunds.create(refundParams);
 
           refundProcessed = true;
           stripeRefundId = refund.id;
@@ -311,7 +366,6 @@ export class CancelBookingService extends BaseService {
             status: refund.status,
           });
           
-          // Update refund calculation with actual refunded amount
           if (actualRefundAmount < refundCalc.refundAmount) {
             refundCalc.refundAmount = actualRefundAmount;
             refundCalc.reason = `${refundCalc.reason} Note: Refund adjusted to ${actualRefundAmount.toFixed(2)} kr due to available charge balance.`;
