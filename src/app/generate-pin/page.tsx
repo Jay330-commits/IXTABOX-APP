@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import GuestHeader from '@/components/layouts/GuestHeader';
-import Footer from '@/components/layouts/Footer';
 import { TimePickerField } from '@/components/ui/TimePickerField';
 
 interface PinResponse {
@@ -259,7 +258,6 @@ export default function GeneratePinPage() {
         )}
       </main>
       
-      <Footer />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import GuestHeader from '@/components/layouts/GuestHeader';
 import { calculateBookingDays, calculateBookingTotal } from '@/utils/bookingPrice';
-import Footer from '@/components/layouts/Footer';
 
 type Booking = {
   id: string;
@@ -1067,7 +1066,6 @@ export default function BookingsPageClient() {
         </div>
 
       </main>
-      <Footer />
     </div>
   );
 }

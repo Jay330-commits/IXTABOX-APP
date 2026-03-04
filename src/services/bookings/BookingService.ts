@@ -251,7 +251,7 @@ export class BookingService extends BaseService {
       boxId: bookingData.boxId,
     });
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.executeTransaction(async (tx) => {
       // Update payment with user_id and completed_at (payment is already verified since it exists in DB)
       // Note: user_id should already be set by PaymentProcessingService, but we ensure it's set here too
       const paymentBefore = await tx.payments.findUnique({
@@ -454,7 +454,7 @@ export class BookingService extends BaseService {
         });
         throw dbError;
       }
-    });
+    }, 'BookingService.createBooking');
   }
 
   /**

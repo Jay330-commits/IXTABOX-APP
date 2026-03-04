@@ -74,7 +74,7 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Booking Details */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+      <div className="bg-white/5 rounded-lg p-4">
         <h3 className="text-sm sm:text-base font-semibold text-white mb-3">Booking Summary</h3>
         <div className="space-y-2 text-xs sm:text-sm">
           {locationName && (
@@ -126,7 +126,7 @@ const BookingDetailsSummary: React.FC<BookingDetailsSummaryProps> = ({
 
           {/* Price Breakdown */}
       {days > 0 && (
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+        <div className="bg-white/5 rounded-lg p-4">
           <PriceBreakdown
             pricePerDay={pricePerDay}
             days={days}

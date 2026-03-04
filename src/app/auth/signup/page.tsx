@@ -34,8 +34,7 @@ function SignUpContent() {
           <SignupForm onSubmit={handleCustomerSignup} />   
         </div>
       ) : (
-        <div className="w-full max-w-4xl">
-          
+        <div className="w-full max-w-4xl px-0 sm:px-2">
           <DistributorSignupForm onSubmit={handleDistributorSignup} />
         </div>
       )}

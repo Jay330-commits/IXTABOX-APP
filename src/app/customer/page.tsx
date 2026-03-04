@@ -5,7 +5,6 @@
   import { useAuth } from "@/contexts/AuthContext";
   import { Role } from "@/types/auth";
   import CustomerHeader from "@/components/layouts/CustomerHeader";
-  import Footer from "@/components/layouts/Footer";
   import ReturnBoxModal from "@/components/bookings/ReturnBoxModal";
   import CancelBookingModal from "@/components/bookings/CancelBookingModal";
   import ExtendBookingModal from "@/components/bookings/ExtendBookingModal";
@@ -752,7 +751,6 @@
           />
         )}
 
-        <Footer />
       </div>
     );
   }

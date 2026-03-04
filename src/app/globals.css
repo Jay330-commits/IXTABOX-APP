@@ -26,6 +26,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Hide scrollbar but keep content scrollable (utility class) */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Hide scrollbar on home and support pages – content still scrollable */
 html[data-hide-scrollbar="true"] {
   scrollbar-width: none;
@@ -140,7 +149,9 @@ html[data-hide-scrollbar="true"]::-webkit-scrollbar {
   font-size: 14px !important;
 }
 
-/* Mobile panel: ensure flex layout so LocationDetails scrolls inside, Book Now stays visible */
+/* Mobile panel: flex layout for LocationDetails so Book Now button stays visible at bottom.
+   Used with isMobile sync init + animation forwards (googlemap.tsx) to fix button disappearing
+   on mobile when opening the panel (Vercel, after cache clear). */
 .mobile-panel-content {
   flex: 1;
   min-height: 0;

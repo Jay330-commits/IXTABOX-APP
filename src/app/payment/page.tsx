@@ -6,7 +6,6 @@ import { PaymentIntent, StripeError } from '@stripe/stripe-js';
 import StripeBankPayment from '@/components/payments/StripeBankPayment';
 import GuestHeader from '@/components/layouts/GuestHeader';
 import CustomerHeader from '@/components/layouts/CustomerHeader';
-import Footer from '@/components/layouts/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@/types/auth';
 import BookingDetailsSummary from '@/components/bookings/BookingDetailsSummary';
@@ -373,7 +372,6 @@ function PaymentContent() {
             </div>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -417,7 +415,6 @@ function PaymentContent() {
             </button>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -454,9 +451,131 @@ function PaymentContent() {
       <main className="py-8 sm:py-16 animate-fadeIn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-            {/* Payment Summary & Notifications */}
-            <div className="lg:col-span-1 order-2 lg:order-1">
-              <div className="lg:sticky lg:top-6 space-y-3 sm:space-y-4">
+            {/* Payment Form - first on mobile, right column on desktop */}
+            <div className="lg:col-span-2 order-1 lg:order-2">
+              {clientSecret ? (
+                <StripeBankPayment
+                  amount={amount}
+                  currency={currency}
+                  clientSecret={clientSecret}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  disabled={!customerEmail || !!emailError || !customerEmail.includes('@')}
+                  disabledReason="Please enter your email address in the Contact Information section to receive booking confirmation and continue with payment."
+                />
+              ) : null}
+            </div>
+
+            {/* Contact Information - right below payment on mobile, left sidebar on desktop */}
+            <div className="lg:col-span-1 order-2 lg:order-1 lg:sticky lg:top-6 lg:self-start">
+              <div className="bg-white/5 rounded-lg p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Contact Information</h3>
+                <div className="space-y-2.5 sm:space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Email Address *</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => {
+                          const email = e.target.value;
+                          setCustomerEmail(email);
+                          validateEmail(email);
+                          const currentPaymentIntentId = searchParams.get('payment_intent');
+                          if (currentPaymentIntentId && email && email.includes('@')) {
+                            localStorage.setItem(`payment_email_${currentPaymentIntentId}`, email);
+                          }
+                        }}
+                        onBlur={(e) => validateEmail(e.target.value)}
+                        placeholder="your.email@example.com"
+                        required
+                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
+                          emailError 
+                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
+                            : customerEmail && !emailError
+                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                        }`}
+                      />
+                      {customerEmail && !emailError && (
+                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    {emailError && (
+                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{emailError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Phone Number (optional)</label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => {
+                          setCustomerPhone(e.target.value);
+                          validatePhone(e.target.value);
+                        }}
+                        onBlur={(e) => validatePhone(e.target.value)}
+                        placeholder="+46 70 123 4567"
+                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
+                          phoneError 
+                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
+                            : customerPhone && !phoneError
+                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                        }`}
+                      />
+                      {customerPhone && !phoneError && (
+                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    {phoneError && (
+                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{phoneError}</p>
+                    )}
+                  </div>
+                  <div className="border-t border-white/10 pt-2 mt-2">
+                    <h4 className="text-xs font-medium text-white mb-2">Notification Preferences</h4>
+                    <div className="space-y-2">
+                      <label className="flex items-start gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={emailNotification}
+                          onChange={(e) => setEmailNotification(e.target.checked)}
+                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">Email Confirmation</span>
+                          <p className="text-xs text-gray-400 mt-0.5">Receive booking confirmation via email</p>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={smsNotification}
+                          onChange={(e) => setSmsNotification(e.target.checked)}
+                          disabled={!customerPhone}
+                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">SMS Notifications</span>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {customerPhone ? 'Receive booking reminders via SMS' : 'Add phone number to enable'}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Booking Summary - last on mobile, left sidebar on desktop */}
+            <div className="lg:col-span-1 order-3 lg:order-1 lg:sticky lg:top-6 lg:self-start">
+              <div className="space-y-3 sm:space-y-4">
               {bookingDetails && bookingDetails.pricePerDay && (
                 <BookingDetailsSummary
                   locationName={bookingDetails.locationName}
@@ -475,7 +594,7 @@ function PaymentContent() {
                 />
               )}
               {(!bookingDetails || !bookingDetails.pricePerDay) && (
-                <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4">
+                <div className="bg-white/5 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Booking Summary</h3>
                   <div className="space-y-2 text-xs sm:text-sm">
                     {bookingDetails?.locationName && (
@@ -523,149 +642,12 @@ function PaymentContent() {
                   </div>
                 </div>
               )}
-
-              {/* Contact & Notification Preferences */}
-              <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Contact Information</h3>
-                <div className="space-y-2.5 sm:space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Email Address *</label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={customerEmail}
-                        onChange={(e) => {
-                          const email = e.target.value;
-                          setCustomerEmail(email);
-                          validateEmail(email);
-                          // Store email in localStorage immediately when user types it
-                          // This ensures it's available even if Stripe redirects before handlePaymentSuccess runs
-                          const currentPaymentIntentId = searchParams.get('payment_intent');
-                          if (currentPaymentIntentId && email && email.includes('@')) {
-                            localStorage.setItem(`payment_email_${currentPaymentIntentId}`, email);
-                            console.log('[Payment Page] Email stored:', email, 'for payment:', currentPaymentIntentId);
-                          }
-                        }}
-                        onBlur={(e) => validateEmail(e.target.value)}
-                        placeholder="your.email@example.com"
-                        required
-                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-gray-900 border text-gray-100 placeholder-gray-500 focus:ring-2 transition-all duration-200 ${
-                          emailError 
-                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
-                            : customerEmail && !emailError
-                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
-                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
-                        }`}
-                      />
-                      {customerEmail && !emailError && (
-                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    {emailError && (
-                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{emailError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Phone Number (optional)</label>
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        value={customerPhone}
-                        onChange={(e) => {
-                          setCustomerPhone(e.target.value);
-                          validatePhone(e.target.value);
-                        }}
-                        onBlur={(e) => validatePhone(e.target.value)}
-                        placeholder="+46 70 123 4567"
-                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-gray-900 border text-gray-100 placeholder-gray-500 focus:ring-2 transition-all duration-200 ${
-                          phoneError 
-                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
-                            : customerPhone && !phoneError
-                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
-                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
-                        }`}
-                      />
-                      {customerPhone && !phoneError && (
-                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    {phoneError && (
-                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{phoneError}</p>
-                    )}
-                  </div>
-
-                  <div className="border-t border-white/10 pt-2 mt-2">
-                    <h4 className="text-xs font-medium text-white mb-2">Notification Preferences</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={emailNotification}
-                          onChange={(e) => setEmailNotification(e.target.checked)}
-                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-gray-900 border-white/10 rounded focus:ring-cyan-500 focus:ring-offset-gray-900"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">Email Confirmation</span>
-                          <p className="text-xs text-gray-400 mt-0.5">Receive booking confirmation via email</p>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={smsNotification}
-                          onChange={(e) => setSmsNotification(e.target.checked)}
-                          disabled={!customerPhone}
-                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-gray-900 border-white/10 rounded focus:ring-cyan-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">SMS Notifications</span>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {customerPhone ? 'Receive booking reminders via SMS' : 'Add phone number to enable'}
-                          </p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
               </div>
-              </div>
-            </div>
-
-            {/* Payment Form */}
-            <div className="lg:col-span-2 order-1 lg:order-2">
-              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                <div className="flex items-start gap-2">
-                  <svg className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 16v-4M12 8h.01"/>
-                  </svg>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-cyan-100">
-                      <strong className="font-semibold">Important:</strong> Fill in your contact information to receive booking confirmation and updates.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              {clientSecret ? (
-                <StripeBankPayment
-                  amount={amount}
-                  currency={currency}
-                  clientSecret={clientSecret}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  disabled={!customerEmail || !!emailError || !customerEmail.includes('@')}
-                />
-              ) : null}
             </div>
           </div>
         </div>
       </main>
       
-      <Footer />
     </div>
   );
 }
@@ -681,7 +663,6 @@ export default function PaymentPage() {
             <p className="text-gray-300">Loading payment page...</p>
           </div>
         </main>
-        <Footer />
       </div>
     }>
       <PaymentContent />

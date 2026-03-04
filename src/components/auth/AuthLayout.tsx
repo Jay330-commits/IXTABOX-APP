@@ -1,8 +1,6 @@
 "use client";
 
 import GuestHeader from "@/components/layouts/GuestHeader";
-import Footer from "@/components/layouts/Footer";
-
 interface AuthLayoutProps {
   children: React.ReactNode;
   backgroundImage?: string;
@@ -16,7 +14,7 @@ export default function AuthLayout({
     <>
       <GuestHeader />
       <main
-        className="min-h-screen flex items-center justify-center px-4 py-12 relative bg-image-fill-screen"
+        className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 relative bg-image-fill-screen"
         style={{
           backgroundImage: `url(${backgroundImage})`,
         }}
@@ -29,7 +27,6 @@ export default function AuthLayout({
           {children}
         </div>
       </main>
-      <Footer />
     </>
   );
 }

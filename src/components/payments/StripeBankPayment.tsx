@@ -23,15 +23,18 @@ interface PaymentFormProps {
   onError?: (error: StripeError) => void;
   clientSecret: string;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
-function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecret, disabled = false }: PaymentFormProps) {
+function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecret, disabled = false, disabledReason }: PaymentFormProps) {
   // Extract payment intent ID from client secret (format: pi_xxx_secret_xxx)
   const paymentIntentId = clientSecret.split('_secret_')[0];
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [paymentElementComplete, setPaymentElementComplete] = useState(false);
+  const [addressElementComplete, setAddressElementComplete] = useState(false);
 
   useEffect(() => {
     if (!stripe) {
@@ -82,6 +85,18 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
     setIsLoading(true);
     setMessage(null);
 
+    // Validate payment details before confirming
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setMessage(submitError.message || 'Please complete your payment details.');
+      onError?.(submitError as StripeError);
+      setIsLoading(false);
+      setTimeout(() => {
+        document.getElementById('payment-message')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+      return;
+    }
+
     // Add smooth scroll to top for better mobile UX
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -124,20 +139,23 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
 
   return (
     <form id="payment-form" onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4 transition-all duration-300 hover:border-white/20">
+      <div className="transition-all duration-300">
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs font-bold">1</div>
           Payment Information
         </h3>
-        <PaymentElement 
-          id="payment-element"
-          options={{
-            layout: 'tabs',
-          }}
-        />
+        <div className="p-0">
+          <PaymentElement 
+            id="payment-element"
+            options={{
+              layout: 'tabs',
+            }}
+            onChange={(event) => setPaymentElementComplete(event.complete)}
+          />
+        </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-lg p-3 sm:p-4 transition-all duration-300 hover:border-white/20">
+      <div className="transition-all duration-300 p-0">
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs font-bold">2</div>
           Billing Address
@@ -147,14 +165,24 @@ function PaymentForm({ amount, currency = 'sek', onSuccess, onError, clientSecre
             mode: 'billing',
             allowedCountries: ['SE', 'NO', 'DK', 'FI'],
           }}
+          onChange={(event) => setAddressElementComplete(event.complete)}
         />
       </div>
 
+      {((disabled && disabledReason) || (!paymentElementComplete && !disabled)) && (
+        <p className="text-amber-200/90 text-xs sm:text-sm bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 flex items-start gap-2">
+          <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{disabled ? disabledReason : 'Please complete your payment details (card or selected method) and billing address to continue.'}</span>
+        </p>
+      )}
+
       <button
-        disabled={isLoading || !stripe || !elements || disabled}
+        disabled={isLoading || !stripe || !elements || disabled || !paymentElementComplete || !addressElementComplete}
         id="submit"
         className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_28px_rgba(34,211,238,0.55)] transform hover:scale-[1.02] active:scale-[0.98] text-xs sm:text-sm"
-        title={disabled ? 'Please fill in your email address before proceeding with payment' : ''}
+        title={disabled ? 'Please fill in your email address' : !paymentElementComplete || !addressElementComplete ? 'Please complete your payment details and billing address' : ''}
       >
         <span id="button-text">
           {isLoading ? (
@@ -207,6 +235,7 @@ interface StripeBankPaymentProps {
   onError?: (error: StripeError) => void;
   clientSecret: string;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
 export default function StripeBankPayment({ 
@@ -215,13 +244,14 @@ export default function StripeBankPayment({
   onSuccess, 
   onError, 
   clientSecret,
-  disabled = false
+  disabled = false,
+  disabledReason
 }: StripeBankPaymentProps) {
   const appearance = {
     theme: 'night' as const,
     variables: {
       colorPrimary: '#06b6d4',
-      colorBackground: '#1f2937',
+      colorBackground: '#374151',
       colorText: '#ffffff',
       colorDanger: '#ef4444',
       fontFamily: 'system-ui, sans-serif',
@@ -230,7 +260,7 @@ export default function StripeBankPayment({
     },
     rules: {
       '.Input': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         border: '1px solid rgba(255, 255, 255, 0.2)',
         color: '#ffffff',
       },
@@ -242,14 +272,14 @@ export default function StripeBankPayment({
         color: '#ffffff',
       },
       '.Tab': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(31, 41, 55, 0.8)',
         border: '1px solid rgba(255, 255, 255, 0.2)',
         color: '#ffffff',
         minHeight: '44px',
         fontSize: '14px',
       },
       '.Tab:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(55, 65, 81, 0.9)',
       },
       '.Tab--selected': {
         backgroundColor: '#06b6d4',
@@ -294,7 +324,7 @@ export default function StripeBankPayment({
 
   return (
 
-      <div className="bg-gray-800/50 border border-white/10 rounded-lg p-3 sm:p-4 lg:p-5">
+      <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 lg:p-5">
 
         <Elements options={options} stripe={stripePromise}>
           <PaymentForm 
@@ -304,6 +334,7 @@ export default function StripeBankPayment({
             onError={onError}
             clientSecret={clientSecret}
             disabled={disabled}
+            disabledReason={disabledReason}
           />
         </Elements>
 

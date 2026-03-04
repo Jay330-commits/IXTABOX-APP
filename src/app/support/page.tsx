@@ -1,7 +1,6 @@
 "use client";
 
 import GuestHeader from "@/components/layouts/GuestHeader";
-import Footer from "@/components/layouts/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -238,7 +237,6 @@ export default function SupportPage() {
           </section>
         </FadeInSection>
       </main>
-      <Footer />
     </div>
   );
 }

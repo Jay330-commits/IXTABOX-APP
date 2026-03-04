@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GuestHeader from '@/components/layouts/GuestHeader';
 import CustomerHeader from '@/components/layouts/CustomerHeader';
-import Footer from '@/components/layouts/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@/types/auth';
 
@@ -701,7 +700,6 @@ function PaymentSuccessContent() {
             <p className="text-gray-300">Loading payment confirmation...</p>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -873,7 +871,6 @@ function PaymentSuccessContent() {
         </div>
       </main>
       
-      <Footer />
     </div>
   );
 }
@@ -889,7 +886,6 @@ export default function PaymentSuccess() {
           <p className="text-gray-300">Loading payment confirmation...</p>
         </div>
         </main>
-        <Footer />
       </div>
     }>
       <PaymentSuccessContent />

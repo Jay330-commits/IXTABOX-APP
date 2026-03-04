@@ -2,6 +2,7 @@ import 'server-only';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { logQuery, logError } from '@/lib/db-logger';
 
 type LegacyPrismaClient = PrismaClient & {
   user: PrismaClient['public_users'];
@@ -13,6 +14,39 @@ type LegacyPrismaClient = PrismaClient & {
 
 const globalForPrisma = globalThis as unknown as {
   prisma: LegacyPrismaClient | undefined;
+};
+
+const prismaQueryLogExtension = {
+  query: {
+    $allModels: {
+      async $allOperations(op: { model: string; operation: string; args: unknown; query: (args: unknown) => Promise<unknown> }) {
+        const start = Date.now();
+        const { model, operation, args, query } = op;
+        try {
+          const result = await query(args);
+          const duration = Date.now() - start;
+          logQuery({
+            model,
+            action: operation,
+            query: `${model}.${operation}`,
+            params: args,
+            duration,
+          });
+          return result;
+        } catch (error) {
+          const duration = Date.now() - start;
+          logError({
+            operation: `${model}.${operation}`,
+            error,
+            query: `${model}.${operation}`,
+            params: args,
+            context: 'Prisma query',
+          });
+          throw error;
+        }
+      },
+    },
+  },
 };
 
 function createPrismaClient(): LegacyPrismaClient {
@@ -49,19 +83,21 @@ function createPrismaClient(): LegacyPrismaClient {
   });
   const adapter = new PrismaPg(pool);
 
-  const client = new PrismaClient({
+  const baseClient = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  }) as LegacyPrismaClient;
+  });
+
+  const extendedClient = baseClient.$extends(prismaQueryLogExtension) as LegacyPrismaClient;
 
   // Provide backwards-compatible aliases so existing services can keep using singular names
-  client.user = client.public_users;
-  client.customer = client.customers;
-  client.distributor = client.distributors;
-  client.payment = client.payments;
-  client.stand = client.stands;
+  extendedClient.user = extendedClient.public_users;
+  extendedClient.customer = extendedClient.customers;
+  extendedClient.distributor = extendedClient.distributors;
+  extendedClient.payment = extendedClient.payments;
+  extendedClient.stand = extendedClient.stands;
 
-  return client;
+  return extendedClient;
 }
 
 // Force recreation of Prisma client if PRISMA_FORCE_RECREATE is set

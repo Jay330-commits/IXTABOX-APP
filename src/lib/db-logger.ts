@@ -119,13 +119,13 @@ class DbLogger {
   }
 
   /**
-   * Log a database query operation
+   * Log a database query operation (all queries including params)
    */
   logQuery(log: QueryLog): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
+    if (this.shouldLog(LogLevel.INFO)) {
       const entry: DbLogEntry = {
         timestamp: new Date().toISOString(),
-        level: LogLevel.DEBUG,
+        level: LogLevel.INFO,
         operation: 'QUERY',
         model: log.model,
         action: log.action,

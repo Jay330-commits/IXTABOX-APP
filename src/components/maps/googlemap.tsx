@@ -74,6 +74,14 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [mapZoom, setMapZoom] = useState(12);
+  /**
+   * Initialize isMobile synchronously on first client render.
+   * FIX: Book Now button disappearing on mobile when opening LocationDetails panel.
+   * Previously isMobile defaulted to false and was set in useEffect, so the first render used
+   * desktop layout. On mobile + cache/Vercel this caused the panel (and action bar) to render
+   * with wrong layout; the button would disappear. By initializing with window.innerWidth here,
+   * the first paint uses the correct mobile layout so the button stays visible.
+   */
   const [isMobile, setIsMobile] = useState(
     () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   );
@@ -604,6 +612,8 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
                   ? {
                       display: "flex",
                       flexDirection: "column",
+                      // forwards: keep panel at final position after animation; prevents button
+                      // from disappearing if animation state reverted with cached CSS
                       animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards",
                     }
                   : !fullscreen && !isMobile
