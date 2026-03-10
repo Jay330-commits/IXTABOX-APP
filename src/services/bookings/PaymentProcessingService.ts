@@ -613,6 +613,15 @@ export class PaymentProcessingService {
       // Don't throw - notification failure shouldn't break booking creation
     }
 
+    // Create notification and send email to all admins about the new booking
+    try {
+      await notificationService.createBookingNotificationForAdmins(booking.id, BookingStatus.Confirmed);
+      console.log('Booking notification created for admins');
+    } catch (notificationError) {
+      console.error('Failed to create booking notification for admins:', notificationError instanceof Error ? notificationError.message : String(notificationError));
+      // Don't throw - notification failure shouldn't break booking creation
+    }
+
     // Create notification for the customer about their booking (only if customer user_id exists)
     if (userId) {
       try {
@@ -726,9 +735,8 @@ export class PaymentProcessingService {
       endDate: formatDate(bookingWithDetails.end_date),
       startTime: formatTime(bookingWithDetails.start_date),
       endTime: formatTime(bookingWithDetails.end_date),
-      unlockCode: String(bookingWithDetails.lock_pin),
-      padlockCode: String(bookingWithDetails.lock_pin), // Using same code for now, can be updated later
-      helpUrl: 'https://ixtarent.com/help',
+      // Unlock code not sent here - generated and sent at booking start via cron
+      helpUrl: 'https://ixtarent.com/support',
       bookingsUrl: bookingsUrl,
       chargeId: payment?.charge_id || undefined,
     });

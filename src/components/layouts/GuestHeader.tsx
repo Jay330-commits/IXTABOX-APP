@@ -24,7 +24,6 @@ const navItems: NavItem[] = [
     label: "About", 
     href: "#footer"
   },
-  
   { 
     label: "Support", 
     href: "/support"

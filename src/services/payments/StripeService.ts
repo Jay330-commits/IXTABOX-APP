@@ -48,6 +48,11 @@ export class StripeService extends BaseService {
             automatic_payment_methods: {
               enabled: true,
             },
+            payment_method_options: {
+              card: {
+                request_three_d_secure: 'challenge', // Force 3DS/OTP when supported for stronger authentication
+              },
+            },
             metadata: params.metadata || {},
             payment_method_types: params.paymentMethodTypes,
             customer: params.customerId,

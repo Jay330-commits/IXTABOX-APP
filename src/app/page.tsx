@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import GuestHome from "./guest/page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtarent.com';
 
 export const metadata: Metadata = {
   title: "IXTAbox Rent - Roof Boxes & Extra Car Storage & Back Boxes | Sweden",

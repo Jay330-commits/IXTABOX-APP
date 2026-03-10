@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtarent.com';
 
 export const metadata: Metadata = {
   title: "Rent Roof Boxes & Extra Car Storage - IXTAbox | Browse Locations",

@@ -222,9 +222,8 @@ export async function registerWithSupabase(userData: {
           full_name: userData.fullName,
           phone: userData.phone,
         },
-        // Disable email confirmation if SMTP is not configured
-        // This allows registration to succeed even if email sending fails
-        emailRedirectTo: undefined
+        // Redirect to login page after email confirmation (use site URL for correct domain)
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtarent.com'}/auth/login`
       }
     });
 

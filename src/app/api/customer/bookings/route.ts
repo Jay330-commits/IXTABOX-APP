@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma/prisma';
 import { BookingStatusService } from '@/services/bookings/BookingStatusService';
 import { BookingStatus } from '@prisma/client';
 import { getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
+import { canShowLockPin } from '@/lib/booking-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -467,7 +468,7 @@ export async function GET(request: NextRequest) {
         standDisplayId: booking.boxes.stands.display_id,
         locationId: booking.boxes.stands.location_id,
         locationDisplayId: booking.boxes.stands.locations.display_id,
-        lockPin: booking.lock_pin || null,
+        lockPin: canShowLockPin(booking.start_date, booking.lock_pin) ? (booking.lock_pin ?? null) : null,
         paymentId: booking.payment_id,
         paymentStatus: booking.payments?.status || null,
         chargeId: booking.payments?.charge_id || null,

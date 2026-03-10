@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma/prisma';
 import { BookingStatus, boxmodel } from '@prisma/client';
 import { getSupabaseStoragePublicUrl, getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
+import { canShowLockPin } from '@/lib/booking-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
         pricePerDay: boxPrice,
         deposit: boxDeposit,
         model: booking.boxes.model === boxmodel.Pro_190 ? 'Pro 190' : 'Pro 175',
-        lockPin: booking.lock_pin ? String(booking.lock_pin) : null,
+        lockPin: canShowLockPin(booking.start_date, booking.lock_pin) ? (booking.lock_pin ? String(booking.lock_pin) : null) : null,
         paymentId: booking.payments?.id || null,
         chargeId: booking.payments?.charge_id || null,
         paymentStatus: booking.payments?.status || null,

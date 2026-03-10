@@ -9,9 +9,10 @@ import { useRouter } from "next/navigation";
 interface LoginFormProps {
   onSubmit?: (data: { email: string; password: string }) => void;
   className?: string;
+  redirectTo?: string;
 }
 
-export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) {
+export default function LoginForm({ onSubmit, className = "", redirectTo }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -52,15 +53,14 @@ export default function LoginForm({ onSubmit, className = "" }: LoginFormProps) 
       const result = await login(email, password);
       
       if (result.success) {
-        // The API must provide redirectPath based on user role - no fallbacks
-        if (!result.redirectPath) {
+        // Use redirectTo (e.g. from ?redirect=) if present, otherwise API redirectPath
+        const target = redirectTo || result.redirectPath;
+        if (!target) {
           setError('Login successful but routing failed. Please contact support.');
           setIsLoading(false);
           return;
         }
-        
-        // Navigate immediately - no delay needed as state is already updated
-        router.replace(result.redirectPath as string);
+        router.replace(target);
         // Don't set loading to false here - let the navigation happen
       } else {
         setError(result.message || "Login failed");

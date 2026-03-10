@@ -84,7 +84,8 @@ export class EmailService {
   }
 
   /**
-   * Send booking confirmation email
+   * Send booking confirmation email.
+   * Unlock code is NOT included for security - it is sent separately 15 minutes before booking start.
    */
   async sendBookingConfirmation(params: {
     to: string;
@@ -95,8 +96,8 @@ export class EmailService {
     endDate: string;
     startTime: string;
     endTime: string;
-    unlockCode: string;
-    padlockCode: string;
+    /** @deprecated Unlock code is no longer sent in confirmation - use sendUnlockCodeEmail 15 min before start */
+    unlockCode?: string;
     helpUrl?: string;
     bookingsUrl?: string;
     chargeId?: string;
@@ -108,96 +109,86 @@ export class EmailService {
       .filter(Boolean)
       .join(', ');
 
+    const unlockCodeSection = params.unlockCode
+      ? `1) Igloo lock code to unlock: ${params.unlockCode}\n\n2)`
+      : `1) Your igloo lock code will be sent by email when your booking starts. You can also view it in your bookings at that time.\n\n2)`;
+
     const text = `You have booked: ${boxStand}
 Location: ${params.locationName}
 Date: ${params.startDate} – ${params.endDate}
 Time: ${params.startTime.padStart(11)} ${params.endTime}
 
 Get started with the following steps:
-1) Unlock Code to unlock: ${params.unlockCode}
-2x Padlock for box code: ${params.padlockCode}
+${unlockCodeSection} Take photos before use (30 min) (recommended)
 
-2) Take photos before use (30 min) (recommended)
-
-Need help? ${params.helpUrl || 'https://ixtarent.com/help'}
+Need help? ${params.helpUrl || 'https://ixtarent.com/support'}
 
 ${params.bookingsUrl ? `View your bookings: ${params.bookingsUrl}` : ''}`;
 
+    const unlockCodeHtml = params.unlockCode
+      ? `<p><strong>1) Igloo lock code to unlock:</strong> ${params.unlockCode}</p>
+        <p><strong>2) Take photos before use (30 min)</strong> (recommended)</p>`
+      : `<p><strong>1) Your igloo lock code</strong> will be sent by email when your booking starts. You can also view it in your bookings at that time.</p>
+        <p><strong>2) Take photos before use (30 min)</strong> (recommended)</p>`;
+
     const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #06b6d4; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #ffffff; padding: 20px; }
-    .booking-info { background-color: #f9fafb; padding: 15px; margin: 15px 0; border-radius: 5px; }
-    .info-row { margin: 10px 0; }
-    .info-label { font-weight: bold; color: #6b7280; }
-    .info-value { color: #111827; }
-    .steps { margin: 20px 0; }
-    .step { margin: 15px 0; padding-left: 20px; }
-    .code { font-size: 18px; font-weight: bold; color: #06b6d4; margin: 5px 0; }
-    .help-link { margin-top: 20px; text-align: center; }
-    .help-link a { color: #06b6d4; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Booking Confirmation</h1>
-    </div>
-    <div class="content">
-      <p>You have booked: <strong>${boxStand}</strong></p>
-      
-      <div class="booking-info">
-        <div class="info-row">
-          <span class="info-label">Location:</span>
-          <span class="info-value">${params.locationName}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Date:</span>
-          <span class="info-value">${params.startDate} – ${params.endDate}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time:</span>
-          <span class="info-value">${params.startTime} ${params.endTime}</span>
-        </div>
-      </div>
-
-      <div class="steps">
-        <p><strong>Get started with the following steps:</strong></p>
-        <div class="step">
-          <p><strong>1) Unlock Code to unlock:</strong></p>
-          <div class="code">${params.unlockCode}</div>
-          <p><strong>2x Padlock for box code:</strong></p>
-          <div class="code">${params.padlockCode}</div>
-        </div>
-        <div class="step">
-          <p><strong>2) Take photos before use (30 min) (recommended)</strong></p>
-        </div>
-      </div>
-
-      ${params.bookingsUrl ? `
-      <div style="margin-top: 30px; padding: 20px; background-color: #f0f9ff; border-radius: 5px; text-align: center;">
-        <p style="margin: 0 0 10px 0;"><strong>View Your Bookings</strong></p>
-        <a href="${params.bookingsUrl}" style="display: inline-block; padding: 12px 24px; background-color: #06b6d4; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">View Bookings</a>
-        ${params.chargeId ? `<p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">Payment ID: ${params.chargeId}</p>` : ''}
-      </div>
-      ` : ''}
-      <div class="help-link">
-        <p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/help'}">${params.helpUrl || 'https://ixtarent.com/help'}</a></p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
+<p><strong>Booking Confirmation</strong></p>
+<p>You have booked: <strong>${boxStand}</strong></p>
+<p><strong>Location:</strong> ${params.locationName}</p>
+<p><strong>Date:</strong> ${params.startDate} – ${params.endDate}</p>
+<p><strong>Time:</strong> ${params.startTime} ${params.endTime}</p>
+<p><strong>Get started with the following steps:</strong></p>
+${unlockCodeHtml}
+${params.bookingsUrl ? `<p><a href="${params.bookingsUrl}">View your bookings</a>${params.chargeId ? ` (Payment ID: ${params.chargeId})` : ''}</p>` : ''}
+<p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/support'}">${params.helpUrl || 'https://ixtarent.com/support'}</a></p>`;
 
     return this.sendEmail({
       to: params.to,
       subject: 'Booking Confirmation - IXTArent',
+      text,
+      html,
+    });
+  }
+
+  /**
+   * Send unlock code email at booking start time
+   */
+  async sendUnlockCodeEmail(params: {
+    to: string;
+    locationName: string;
+    boxNumber: string;
+    standNumber: string;
+    startDate: string;
+    startTime: string;
+    unlockCode: string;
+    helpUrl?: string;
+    bookingsUrl?: string;
+  }): Promise<EmailResult> {
+    const boxStand = `Box ${params.boxNumber}, Stand ${params.standNumber}`;
+    const text = `Your Unlock Code - ${params.locationName}
+
+Your booking has started. Here is your igloo lock code:
+
+${boxStand}
+Location: ${params.locationName}
+Start: ${params.startDate} at ${params.startTime}
+
+Unlock code: ${params.unlockCode}
+
+${params.bookingsUrl ? `View your bookings: ${params.bookingsUrl}` : ''}
+Need help? ${params.helpUrl || 'https://ixtarent.com/support'}`;
+
+    const html = `
+<p><strong>Your Unlock Code</strong></p>
+<p>Your booking at <strong>${params.locationName}</strong> has started. Here is your unlock code:</p>
+<p><strong>${boxStand}</strong><br>Start: ${params.startDate} at ${params.startTime}</p>
+<p><strong>Igloo lock code:</strong> ${params.unlockCode}</p>
+${params.bookingsUrl ? `<p><a href="${params.bookingsUrl}">View your bookings</a></p>` : ''}
+<p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/support'}">${params.helpUrl || 'https://ixtarent.com/support'}</a></p>`;
+
+    return this.sendEmail({
+      to: params.to,
+      subject: `Your unlock code - ${params.locationName} - IXTArent`,
       text,
       html,
     });
@@ -241,92 +232,22 @@ Return photos have been recorded:
 
 Thank you for using IXTArent!
 
-Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
+Need help? ${params.helpUrl || 'https://ixtarent.com/support'}`;
 
     const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #10b981; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #ffffff; padding: 20px; }
-    .return-info { background-color: #f0fdf4; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #10b981; }
-    .info-row { margin: 10px 0; }
-    .info-label { font-weight: bold; color: #6b7280; }
-    .info-value { color: #111827; }
-    .deposit-info { background-color: #fef3c7; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #f59e0b; }
-    .photos-section { margin: 20px 0; }
-    .photo-item { margin: 10px 0; padding: 10px; background-color: #f9fafb; border-radius: 5px; }
-    .photo-label { font-weight: bold; color: #06b6d4; }
-    .photo-link { color: #06b6d4; text-decoration: none; word-break: break-all; }
-    .help-link { margin-top: 20px; text-align: center; }
-    .help-link a { color: #06b6d4; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Box Return Confirmation</h1>
-    </div>
-    <div class="content">
-      <p>Your box has been successfully returned!</p>
-      
-      <div class="return-info">
-        <div class="info-row">
-          <span class="info-label">Box & Stand:</span>
-          <span class="info-value">${boxStand}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Location:</span>
-          <span class="info-value">${params.locationName}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Return Date:</span>
-          <span class="info-value">${params.returnDate}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Return Time:</span>
-          <span class="info-value">${params.returnTime}</span>
-        </div>
-      </div>
-
-      ${params.depositReleased 
-        ? `<div class="deposit-info">
-            <p><strong>Your deposit has been released.</strong></p>
-          </div>`
-        : `<div class="deposit-info">
-            <p><strong>Your deposit will be processed shortly.</strong></p>
-          </div>`
-      }
-
-      <div class="photos-section">
-        <p><strong>Return Photos Recorded:</strong></p>
-        <div class="photo-item">
-          <div class="photo-label">Box Front View:</div>
-          <a href="${params.photos.boxFrontView}" class="photo-link" target="_blank">${params.photos.boxFrontView}</a>
-        </div>
-        <div class="photo-item">
-          <div class="photo-label">Box Back View:</div>
-          <a href="${params.photos.boxBackView}" class="photo-link" target="_blank">${params.photos.boxBackView}</a>
-        </div>
-        <div class="photo-item">
-          <div class="photo-label">Closed Stand with Lock:</div>
-          <a href="${params.photos.closedStandLock}" class="photo-link" target="_blank">${params.photos.closedStandLock}</a>
-        </div>
-      </div>
-
-      <p style="margin-top: 20px;">Thank you for using IXTArent!</p>
-
-      <div class="help-link">
-        <p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/help'}">${params.helpUrl || 'https://ixtarent.com/help'}</a></p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
+<p><strong>Box Return Confirmation</strong></p>
+<p>Your box has been successfully returned.</p>
+<p><strong>Box & Stand:</strong> ${boxStand}</p>
+<p><strong>Location:</strong> ${params.locationName}</p>
+<p><strong>Return Date:</strong> ${params.returnDate}</p>
+<p><strong>Return Time:</strong> ${params.returnTime}</p>
+<p>${params.depositReleased ? '<strong>Your deposit has been released.</strong>' : '<strong>Your deposit will be processed shortly.</strong>'}</p>
+<p><strong>Return photos recorded:</strong></p>
+<p>Box Front View: <a href="${params.photos.boxFrontView}">${params.photos.boxFrontView}</a></p>
+<p>Box Back View: <a href="${params.photos.boxBackView}">${params.photos.boxBackView}</a></p>
+<p>Closed Stand with Lock: <a href="${params.photos.closedStandLock}">${params.photos.closedStandLock}</a></p>
+<p>Thank you for using IXTArent!</p>
+<p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/support'}">${params.helpUrl || 'https://ixtarent.com/support'}</a></p>`;
 
     return this.sendEmail({
       to: params.to,
@@ -335,4 +256,61 @@ Need help? ${params.helpUrl || 'https://ixtarent.com/help'}`;
       html,
     });
   }
+
+  /**
+   * Send new booking notification email to distributor (box owner)
+   */
+  async sendBookingNotificationToDistributor(params: {
+    to: string;
+    locationName: string;
+    boxNumber: string;
+    standNumber: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    customerName?: string;
+    customerEmail?: string;
+    helpUrl?: string;
+    dashboardUrl?: string;
+  }): Promise<EmailResult> {
+    const boxStand = `Box ${params.boxNumber}, Stand ${params.standNumber}`;
+    const customerLine = (params.customerName || params.customerEmail)
+      ? `Customer: ${params.customerName || params.customerEmail}${params.customerEmail && params.customerName ? ` (${params.customerEmail})` : ''}`
+      : '';
+
+    const text = `New Booking at Your Location
+
+A new booking has been confirmed:
+
+Location: ${params.locationName}
+${boxStand}
+Start: ${params.startDate} at ${params.startTime}
+End: ${params.endDate} at ${params.endTime}
+${customerLine}
+
+${params.dashboardUrl ? `View in dashboard: ${params.dashboardUrl}` : ''}
+Need help? ${params.helpUrl || 'https://ixtarent.com/support'}`;
+
+    const customerHtml = customerLine ? `<p><strong>Customer:</strong> ${params.customerName || params.customerEmail}${params.customerEmail && params.customerName ? ` (${params.customerEmail})` : ''}</p>` : '';
+
+    const html = `
+<p><strong>New Booking Confirmed</strong></p>
+<p>A new booking has been made at your location.</p>
+<p><strong>Location:</strong> ${params.locationName}</p>
+<p><strong>Box & Stand:</strong> ${boxStand}</p>
+<p><strong>Start:</strong> ${params.startDate} at ${params.startTime}</p>
+<p><strong>End:</strong> ${params.endDate} at ${params.endTime}</p>
+${customerHtml}
+${params.dashboardUrl ? `<p><a href="${params.dashboardUrl}">View in dashboard</a></p>` : ''}
+<p>Need help? <a href="${params.helpUrl || 'https://ixtarent.com/support'}">${params.helpUrl || 'https://ixtarent.com/support'}</a></p>`;
+
+    return this.sendEmail({
+      to: params.to,
+      subject: `New Booking at ${params.locationName} - IXTArent`,
+      text,
+      html,
+    });
+  }
 }
+  

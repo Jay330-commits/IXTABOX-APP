@@ -1,7 +1,6 @@
 import 'server-only';
 import { boxStatus, boxmodel } from '@prisma/client';
 import { BaseService } from '../BaseService';
-import { IglooService } from '../locations/IglooService';
 import { BookingStatusService } from './BookingStatusService';
 import { BookingValidationService } from './BookingValidationService';
 import { BookingAvailabilityService } from './BookingAvailabilityService';
@@ -317,19 +316,9 @@ export class BookingService extends BaseService {
         status: bookingStatus,
       });
 
-      // Generate lock PIN using Igloo API (mandatory)
-      let lockPin: number;
-      try {
-        const iglooService = new IglooService();
-        lockPin = await iglooService.generateAndParseBookingPin(start, end, 'Customer');
-      } catch (pinError) {
-        console.error('Failed to generate lock PIN:', {
-          error: pinError,
-          message: pinError instanceof Error ? pinError.message : String(pinError),
-        });
-        // PIN is mandatory - fail booking creation if PIN generation fails
-        throw new Error(`Failed to generate mandatory lock PIN: ${pinError instanceof Error ? pinError.message : String(pinError)}`);
-      }
+      // Lock PIN: do NOT generate at creation. Use 0 as placeholder.
+      // A cron job generates and stores the real PIN at booking start time for security.
+      const lockPin = 0;
 
       // Calculate box score based on rental duration (in hours)
       // Uses end_date since box hasn't been returned yet
@@ -413,7 +402,7 @@ export class BookingService extends BaseService {
             start_date: start,
             end_date: end,
             status: bookingStatus,
-            lock_pin: lockPin, // Set the mandatory PIN
+            lock_pin: lockPin, // 0 = pending; cron generates real PIN at booking start
             display_id: displayId, // Required non-nullable display_id (YYMMDD + 3-digit sequence)
           },
         });

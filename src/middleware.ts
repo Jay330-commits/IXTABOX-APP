@@ -1,50 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Define protected routes
-// const protectedRoutes = ['/customer', '/distributer', '/admin'];
-// const authRoutes = ['/auth/login', '/auth/signup'];
+const IXTAOWNER_ENABLED = process.env.NEXT_PUBLIC_IXTAOWNER_ENABLED === 'true';
 
-export function middleware() {
-  // const { pathname } = request.nextUrl;
-  
-  // TEMPORARILY DISABLED FOR TESTING - ENABLE THIS BEFORE PRODUCTION!
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // IXTAowner: redirect to home when feature is disabled
+  if (pathname.startsWith('/ixtaowner') && !IXTAOWNER_ENABLED) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   return NextResponse.next();
-  
-  // Check if the route is protected
-  // const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  // const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
-
-  // Get token from cookies or Authorization header
-  // const token = request.cookies.get('auth-token')?.value || 
-  //               request.headers.get('authorization')?.replace('Bearer ', '');
-
-  // If accessing protected route without token, redirect to login
-  // if (isProtectedRoute && !token) {
-  //   return NextResponse.redirect(new URL('/auth/login', request.url));
-  // }
-
-  // If accessing auth routes with valid token, redirect to appropriate dashboard
-  // if (isAuthRoute && token) {
-  //   // Token verification would be implemented here using Supabase
-  //   if (decoded) {
-  //     const redirectPath = decoded.role === 'CUSTOMER' ? '/customer' : 
-  //                         decoded.role === 'DISTRIBUTOR' ? '/distributer' : 
-  //                         decoded.role === 'ADMIN' ? '/admin' : '/';
-  //     return NextResponse.redirect(new URL(redirectPath, request.url));
-  //   }
-  // }
-
-  // If accessing protected route with invalid token, redirect to login
-  // if (isProtectedRoute && token) {
-  //   // Token verification would be implemented here using Supabase
-  //   if (!decoded) {
-  //     const response = NextResponse.redirect(new URL('/auth/login', request.url));
-  //     response.cookies.delete('auth-token');
-  //     return response;
-  //   }
-  // }
-
-  // return NextResponse.next();
 }
 
 export const config = {

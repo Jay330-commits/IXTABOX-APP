@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/prisma/prisma';
 import { NotificationType, BookingStatus } from '@prisma/client';
 import { BaseService } from '../BaseService';
+import { EmailService } from './emailService';
 
 export interface CreateBookingNotificationParams {
   bookingId: string;
@@ -137,6 +138,142 @@ export class NotificationService extends BaseService {
         read: false,
       },
     });
+
+    // Always send email to distributor when a new booking is confirmed
+    if (bookingStatus === BookingStatus.Confirmed) {
+      const distributorEmail = distributor.users?.email;
+      if (distributorEmail) {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+            || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : null)
+            || 'https://ixtarent.com';
+          const dashboardUrl = `${baseUrl}/distributor`;
+
+          const emailService = new EmailService();
+          await emailService.sendBookingNotificationToDistributor({
+            to: distributorEmail,
+            locationName: location.name,
+            boxNumber: box.display_id,
+            standNumber: stand.display_id,
+            startDate: formatDate(bookingWithDetails.start_date),
+            endDate: formatDate(bookingWithDetails.end_date),
+            startTime: formatTime(bookingWithDetails.start_date),
+            endTime: formatTime(bookingWithDetails.end_date),
+            customerName: customer?.full_name || undefined,
+            customerEmail: customer?.email || undefined,
+            dashboardUrl,
+          });
+          console.log('Booking notification email sent to distributor:', distributorEmail);
+        } catch (emailError) {
+          console.error('Failed to send booking email to distributor:', emailError instanceof Error ? emailError.message : String(emailError));
+          // Don't throw - email failure shouldn't break notification creation
+        }
+      } else {
+        console.warn('Distributor has no email - skipping booking notification email for location:', location.name);
+      }
+    }
+  }
+
+  /**
+   * Create notification and send email to all admins when a new booking is confirmed
+   */
+  async createBookingNotificationForAdmins(
+    bookingId: string,
+    bookingStatus: BookingStatus
+  ): Promise<void> {
+    if (bookingStatus !== BookingStatus.Confirmed) return;
+
+    const bookingWithDetails = await prisma.bookings.findUnique({
+      where: { id: bookingId },
+      include: {
+        boxes: {
+          include: {
+            stands: {
+              include: {
+                locations: true,
+              },
+            },
+          },
+        },
+        payments: {
+          include: { users: true },
+        },
+      },
+    });
+
+    if (!bookingWithDetails) return;
+
+    const location = bookingWithDetails.boxes.stands.locations;
+    const box = bookingWithDetails.boxes;
+    const stand = box.stands;
+    const customer = bookingWithDetails.payments?.users ?? null;
+
+    const formatDate = (date: Date): string => {
+      const d = new Date(date);
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    };
+    const formatTime = (date: Date): string => {
+      const d = new Date(date);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+
+    const admins = await prisma.admins.findMany({
+      include: { users: true },
+    });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : null)
+      || 'https://ixtarent.com';
+    const dashboardUrl = `${baseUrl}/admin`;
+
+    const emailService = new EmailService();
+    const emailParams = {
+      locationName: location.name,
+      boxNumber: box.display_id,
+      standNumber: stand.display_id,
+      startDate: formatDate(bookingWithDetails.start_date),
+      endDate: formatDate(bookingWithDetails.end_date),
+      startTime: formatTime(bookingWithDetails.start_date),
+      endTime: formatTime(bookingWithDetails.end_date),
+      customerName: customer?.full_name || undefined,
+      customerEmail: customer?.email || undefined,
+      dashboardUrl,
+    };
+
+    for (const admin of admins) {
+      const adminUserId = admin.user_id;
+      const adminEmail = admin.users?.email;
+
+      try {
+        await prisma.notifications.create({
+          data: {
+            user_id: adminUserId,
+            type: NotificationType.Email,
+            title: 'New Booking Confirmed',
+            message: `A new booking at ${location.name} (Box ${box.display_id}, Stand ${stand.display_id}). ` +
+              `Start: ${formatDate(bookingWithDetails.start_date)} at ${formatTime(bookingWithDetails.start_date)}. ` +
+              (customer ? `Customer: ${customer.full_name || customer.email}` : ''),
+            entity_type: 'booking',
+            entity_id: bookingId,
+            read: false,
+          },
+        });
+      } catch (notifErr) {
+        console.error('Failed to create admin notification:', notifErr);
+      }
+
+      if (adminEmail) {
+        try {
+          await emailService.sendBookingNotificationToDistributor({
+            ...emailParams,
+            to: adminEmail,
+          });
+          console.log('Booking notification email sent to admin:', adminEmail);
+        } catch (emailError) {
+          console.error('Failed to send booking email to admin:', adminEmail, emailError);
+        }
+      }
+    }
   }
 
   /**
@@ -198,11 +335,13 @@ export class NotificationService extends BaseService {
         message = `Your booking at ${location.name} (Box ${box.display_id}, Stand ${stand.display_id}) has been confirmed. ` +
           `Start: ${formatDate(bookingWithDetails.start_date)} at ${formatTime(bookingWithDetails.start_date)}. ` +
           `End: ${formatDate(bookingWithDetails.end_date)} at ${formatTime(bookingWithDetails.end_date)}. ` +
-          `Your lock PIN for SmartLock on Stand is ${bookingWithDetails.lock_pin}.`;
+          `Your unlock code will be sent by email when your booking starts.`;
         break;
       case BookingStatus.Active:
         title = 'Booking Active';
-        message = `Your booking at ${location.name} is now active. Use PIN ${bookingWithDetails.lock_pin} to access your box.`;
+        message = bookingWithDetails.lock_pin && bookingWithDetails.lock_pin > 0
+          ? `Your booking at ${location.name} is now active. Use PIN ${bookingWithDetails.lock_pin} to access your box.`
+          : `Your booking at ${location.name} is now active. Check your email for your unlock code.`;
         break;
       case BookingStatus.Cancelled:
         title = 'Booking Cancelled';

@@ -384,8 +384,7 @@ export default function ReturnBoxModal({
               <li>Open right stand and unlock with the igloo lock</li>
               <li>Demount box from car</li>
               <li>
-                Place box correctly on stand - fixate with straps and leave the 4 digit padlocks in
-                the box
+                Place box correctly on stand - fixate with straps
               </li>
               <li>Clean the box if needed with hose or water</li>
               <li>Take 2 photos of the box front and back</li>

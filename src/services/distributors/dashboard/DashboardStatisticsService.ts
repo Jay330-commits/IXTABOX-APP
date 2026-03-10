@@ -1,6 +1,7 @@
 import 'server-only';
 import { BookingStatus, boxStatus, PaymentStatus, ContractStatus, Prisma, status } from '@prisma/client';
 import { BaseService } from '../../BaseService';
+import { canShowLockPin } from '@/lib/booking-utils';
 import { getSupabaseStorageSignedUrl } from '@/lib/supabase-storage';
 
 export interface DashboardStats {
@@ -64,7 +65,7 @@ export interface BookingInventoryItem {
   paymentId?: string | null;
   chargeId?: string | null;
   returnedAt?: Date | null;
-  lockPin: number;
+  lockPin: number | null;
   compartment?: number | null;
   daysRemaining?: number;
   boxFrontView?: string | null;
@@ -585,7 +586,7 @@ export class DashboardStatisticsService extends BaseService {
             paymentId: booking.payments?.id || null,
             chargeId: booking.payments?.charge_id || null,
             returnedAt: booking.box_returns?.returned_at ?? booking.box_returns?.created_at ?? null,
-            lockPin: booking.lock_pin,
+            lockPin: canShowLockPin(booking.start_date, booking.lock_pin) ? booking.lock_pin : null,
             compartment: booking.boxes.compartment,
             daysRemaining,
             boxFrontView,

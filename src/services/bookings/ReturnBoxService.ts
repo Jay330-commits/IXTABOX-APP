@@ -348,7 +348,7 @@ export class ReturnBoxService extends BaseService {
       steps: [
         'Open right stand and unlock with the igloo lock',
         'Demount box from car',
-        'Place box correctly on stand - fixate with straps and leave the 4 digit padlocks in the box',
+        'Place box correctly on stand - fixate with straps',
         'Clean the box if needed with hose or water',
         'Take 2 photos of the box front and back',
         'Close stand and lock the igloo lock',

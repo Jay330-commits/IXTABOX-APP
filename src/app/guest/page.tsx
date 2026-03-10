@@ -362,7 +362,7 @@ export default function GuestHome() {
 
   const activeStory = TESTIMONIALS[activeTestimonial] ?? TESTIMONIALS[0];
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtabox.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ixtarent.com';
 
   // Structured data for SEO
   const organizationSchema = useMemo(
@@ -487,6 +487,7 @@ export default function GuestHome() {
           </FadeInSection>
         </section>
 
+        {false && (
         <FadeInSection>
           <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16">
             <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-10 shadow-[0_25px_120px_rgba(15,23,42,0.45)] backdrop-blur">
@@ -552,6 +553,7 @@ export default function GuestHome() {
             </div>
           </section>
         </FadeInSection>
+        )}
 
         {/* Map section – when fullscreen, no transform on wrappers so map position:fixed is relative to viewport */}
         <FadeInSection
@@ -726,8 +728,8 @@ export default function GuestHome() {
       <div className="aspect-[9/16] sm:aspect-video">
         <iframe
           className="w-full h-full"
-          src="https://www.youtube.com/embed/ELLwTaNqxgg"
-          title="IXTAbox - ADJUSTING THE HEIGHT - Backbox Tutorials"
+          src="https://www.youtube.com/embed/DuNx8swuGFI"
+          title="IXTAbox - YouTube Shorts"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
@@ -739,6 +741,7 @@ export default function GuestHome() {
         </FadeInSection>
 
 
+        {false && (
         <FadeInSection>
           <section className="px-6 py-16">
             <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/85 via-slate-900/60 to-cyan-900/50 p-10 shadow-[0_25px_120px_rgba(8,97,164,0.25)] backdrop-blur">
@@ -821,6 +824,7 @@ export default function GuestHome() {
             </div>
           </section>
         </FadeInSection>
+        )}
 
         {/* Full-bleed background section - fills viewport (see globals.css .bg-image-fill-screen) */}
         <FadeInSection>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PaymentProcessingService } from '@/services/bookings/PaymentProcessingService';
 import { prisma } from '@/lib/prisma/prisma';
+import { canShowLockPin } from '@/lib/booking-utils';
 import type Stripe from 'stripe';
 
 /**
@@ -133,13 +134,18 @@ export async function GET(
       });
 
       // If payment and booking exist in database, use those details
+      // Only include lockPin when booking has started AND PIN has been generated
       if (payment?.bookings) {
+        const b = payment.bookings;
+        const showPin = canShowLockPin(b.start_date, b.lock_pin);
         booking = {
           ...bookingDetails,
-          id: payment.bookings.id,
-          lockPin: payment.bookings.lock_pin,
-          lock_pin: payment.bookings.lock_pin,
-        } as typeof bookingDetails & { id: string; lockPin: number; lock_pin: number };
+          id: b.id,
+          ...(showPin ? {
+            lockPin: b.lock_pin,
+            lock_pin: b.lock_pin,
+          } : {}),
+        } as typeof bookingDetails & { id: string; lockPin?: number; lock_pin?: number };
       }
     }
 

@@ -81,6 +81,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const locationAutocompleteRefs = useRef<Map<string, google.maps.places.Autocomplete>>(new Map());
   const locationInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const isPlaceSelectionRef = useRef<Set<string>>(new Set());
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const { isLoaded: isMapsLoaded } = useJsApiLoader({
@@ -116,7 +117,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     {
       id: 4,
       title: "Business Locations",
-      description: "Add your business locations and images"
+      description: "Add locations with verified addresses. Photos are optional."
     },
     {
       id: 5,
@@ -213,6 +214,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (place.formatted_address && place.geometry?.location) {
+          isPlaceSelectionRef.current.add(location.id);
           const lat = place.geometry.location.lat();
           const lng = place.geometry.location.lng();
           updateLocation(location.id, {
@@ -220,6 +222,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             lat,
             lng,
           });
+          setTimeout(() => isPlaceSelectionRef.current.delete(location.id), 100);
         }
       });
 
@@ -253,7 +256,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       } else {
         if (!hasValue(formData.companyName)) missingFields.push("Company name");
         if (!hasValue(formData.regNumber)) missingFields.push("Registration number");
-        if (!hasValue(formData.businessAddress)) missingFields.push("Business address");
+        if (!hasValue(formData.businessAddress)) missingFields.push("Official business address");
       }
     }
 
@@ -282,7 +285,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
           missingFields.push(`Location ${index + 1} address`);
         }
         if (loc.lat == null || loc.lng == null) {
-          missingFields.push(`Location ${index + 1} address (select from suggestions)`);
+          missingFields.push(`Location ${index + 1} address (select from Google Maps dropdown)`);
         }
       });
     }
@@ -683,7 +686,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             </div>
             
             <label className="flex flex-col gap-2 text-gray-200">
-              <span className="font-medium">Business Address*</span>
+              <span className="font-medium">Official business address*</span>
               <input
                 className={inputClass}
                 value={formData.businessAddress}
@@ -963,7 +966,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                       <p className="text-white">{formData.regNumber}</p>
                     </div>
                     <div className="md:col-span-2">
-                      <span className="text-gray-400">Address:</span>
+                      <span className="text-gray-400">Official business address:</span>
                       <p className="text-white">{formData.businessAddress}</p>
                     </div>
                     <div>
@@ -1081,7 +1084,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             <div className="text-center mb-4">
               <h2 className="text-xl font-bold text-white mb-1">Business Locations</h2>
               <p className="text-gray-300 text-sm">
-                Add your business locations where IXTAboxes will be available. You can add locations later if needed.
+                Add your business locations where IXTAboxes will be available. Addresses must be selected from Google Maps. Photos are optional and can be added later.
               </p>
             </div>
 
@@ -1127,7 +1130,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                   </label>
 
                   <label className="flex flex-col gap-2 text-gray-200">
-                    <span className="font-medium">Address*</span>
+                    <span className="font-medium">Address* (select from Google Maps)</span>
                     <input
                       ref={(el) => {
                         if (el) {
@@ -1138,18 +1141,28 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                       }}
                       className={inputClass}
                       value={location.address}
-                      onChange={(e) => updateLocation(location.id, { address: e.target.value })}
-                      placeholder="Start typing address and select from suggestions"
+                      onChange={(e) => {
+                        // Clear lat/lng when user types - address must be selected from Google to be valid
+                        if (isPlaceSelectionRef.current.has(location.id)) return;
+                        updateLocation(location.id, {
+                          address: e.target.value,
+                          lat: null,
+                          lng: null,
+                        });
+                      }}
+                      placeholder="Start typing and select an address from the dropdown"
                       required
                       autoComplete="off"
                     />
-                    {location.lat != null && location.lng != null && (
-                      <p className="text-green-400/90 text-xs">✓ Address verified</p>
+                    {location.lat != null && location.lng != null ? (
+                      <p className="text-green-400/90 text-xs">✓ Address verified on Google Maps</p>
+                    ) : (
+                      <p className="text-amber-400/90 text-xs">Select an address from the dropdown to verify</p>
                     )}
                   </label>
 
                   <label className="flex flex-col gap-2 text-gray-200">
-                    <span className="font-medium">Location Image (Optional)</span>
+                    <span className="font-medium">Location Image <span className="text-gray-400 font-normal">(optional, not required)</span></span>
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                       <input
                         type="file"
@@ -1185,7 +1198,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-400 text-xs">Upload a photo of this location (max 5MB)</p>
+                    <p className="text-gray-400 text-xs">Optional. You can add photos later from your dashboard. Max 5MB.</p>
                   </label>
                 </div>
               </div>

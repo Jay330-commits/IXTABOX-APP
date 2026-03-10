@@ -736,8 +736,8 @@ function PaymentSuccessContent() {
           
           <p className="text-sm text-gray-300 mb-6 max-w-2xl mx-auto">
             {extensionCompleted 
-              ? 'Your booking has been extended successfully. Your new lock PIN is shown below. You will receive a confirmation email shortly.'
-              : 'Thank you for your payment. Your booking has been confirmed and you will receive a confirmation email shortly.'}
+              ? 'Your booking has been extended successfully. Your new unlock code will be sent by email when the extension starts. You will receive a confirmation email shortly.'
+              : 'Thank you for your payment. Your booking has been confirmed. Your unlock code will be sent by email when your booking starts.'}
           </p>
           
           {error && (
@@ -797,8 +797,8 @@ function PaymentSuccessContent() {
                 )}
               </div>
 
-              {/* Lock PIN Section - Replaces Email Section */}
-          {paymentIntent && (lockPin || pinLoading || pinError) && (
+              {/* Lock PIN Section - shown for all bookings; PIN only when within 15 min of start */}
+          {paymentIntent && (
                 <div className="mt-4 pt-4 border-t border-white/10">
               {pinLoading ? (
                     <div className="flex items-center justify-center py-3">
@@ -823,18 +823,24 @@ function PaymentSuccessContent() {
               ) : lockPin ? (
                     <div className="space-y-2">
                       <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
-                        <p className="text-sm text-gray-400 mb-1 text-center">Your Lock PIN</p>
+                        <p className="text-sm text-gray-400 mb-1 text-center">Your Unlock Code</p>
                         <p className="text-2xl font-bold text-cyan-400 font-mono tracking-wider">
                           {(lockPin.pin || lockPin.pinCode || lockPin.code || lockPin.unlockCode || 'N/A') as string}
                         </p>
                       </div>
                       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
                         <p className="text-xs text-yellow-200">
-                      <strong>Important:</strong> Save this PIN securely. You&apos;ll need it to access your stand during your booking period.
+                      <strong>Important:</strong> Save this code securely. You&apos;ll need it to access your stand during your booking period.
                     </p>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+                      <p className="text-sm text-gray-300 text-center">
+                        <strong>Unlock code</strong> — Your code will be sent by email and shown here <strong>when your booking starts</strong>. You can also find it in your bookings.
+                      </p>
+                    </div>
+              )}
             </div>
           )}
             </div>
@@ -845,12 +851,12 @@ function PaymentSuccessContent() {
           <div className="mb-4 max-w-2xl mx-auto text-center">
             <p className="text-sm text-gray-300 mb-1">Need help?</p>
             <Link
-              href="https://ixtarent.com/help"
+              href="https://ixtarent.com/support"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-cyan-400 hover:text-cyan-300 underline"
             >
-              https://ixtarent.com/help
+              https://ixtarent.com/support
             </Link>
           </div>
 

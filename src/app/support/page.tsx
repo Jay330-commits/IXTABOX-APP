@@ -102,13 +102,13 @@ export default function SupportPage() {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://ixtabox.com"
+        "item": "https://ixtarent.com"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Support",
-        "item": "https://ixtabox.com/support"
+        "item": "https://ixtarent.com/support"
       }
     ]
   };
