@@ -6,14 +6,13 @@ import path from 'path';
 // Google expects favicon.ico at the root level and will use this for search results
 export async function GET() {
   try {
-    const iconPath = path.join(process.cwd(), 'public', 'images', 'logo', 'titleicon.webp');
+    const iconPath = path.join(process.cwd(), 'public', 'images', 'logo', 'addressbaricon.png');
     
     if (fs.existsSync(iconPath)) {
       const fileBuffer = fs.readFileSync(iconPath);
-      // Serve as webp with proper headers for Google recognition
       return new NextResponse(fileBuffer, {
         headers: {
-          'Content-Type': 'image/webp',
+          'Content-Type': 'image/png',
           'Cache-Control': 'public, max-age=31536000, immutable',
           'Content-Disposition': 'inline; filename="favicon.ico"',
           // Important: Tell Google this is the site icon

@@ -104,16 +104,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/images/logo/titleicon.webp", sizes: "32x32", type: "image/webp" },
-      { url: "/images/logo/titleicon.webp", sizes: "16x16", type: "image/webp" },
+      { url: "/images/logo/addressbaricon.png", sizes: "32x32", type: "image/png" },
+      { url: "/images/logo/addressbaricon.png", sizes: "16x16", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
-    apple: "/images/logo/titleicon.webp",
+    apple: "/images/logo/addressbaricon.png",
     other: [
       {
         rel: "icon",
-        type: "image/webp",
-        url: "/images/logo/titleicon.webp",
+        type: "image/png",
+        url: "/images/logo/addressbaricon.png",
       },
     ],
   },
@@ -144,7 +144,7 @@ export default function RootLayout({
     "url": siteUrl,
     "logo": {
       "@type": "ImageObject",
-      "url": `${siteUrl}/images/logo/titleicon.webp`,
+      "url": `${siteUrl}/images/logo/addressbaricon.png`,
       "width": 192,
       "height": 192
     },
@@ -210,19 +210,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Favicon links for Google search results - multiple sizes - MUST BE FIRST */}
-        {/* Primary favicon - Google will use this */}
-        <link rel="icon" href={`${siteUrl}/favicon.ico`} sizes="any" />
-        <link rel="icon" type="image/webp" sizes="192x192" href={`${siteUrl}/images/logo/titleicon.webp`} />
-        <link rel="icon" type="image/webp" sizes="32x32" href={`${siteUrl}/images/logo/titleicon.webp`} />
-        <link rel="icon" type="image/webp" sizes="16x16" href={`${siteUrl}/images/logo/titleicon.webp`} />
-        <link rel="shortcut icon" href={`${siteUrl}/favicon.ico`} />
-        <link rel="apple-touch-icon" sizes="180x180" href={`${siteUrl}/images/logo/titleicon.webp`} />
-        {/* Explicit site icon for Google and other search engines */}
-        <meta name="msapplication-TileImage" content={`${siteUrl}/images/logo/titleicon.webp`} />
+        {/* Favicon links - use relative paths so tab icon works in dev and production */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/images/logo/addressbaricon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/images/logo/addressbaricon.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/images/logo/addressbaricon.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/images/logo/addressbaricon.png" />
+        <meta name="msapplication-TileImage" content={`${siteUrl}/images/logo/addressbaricon.png`} />
         <meta name="msapplication-TileColor" content="#06b6d4" />
-        {/* Tell Google to use this as the site icon */}
-        <link rel="icon" type="image/webp" href={`${siteUrl}/images/logo/titleicon.webp`} />
         {/* Web App Manifest */}
         <link rel="manifest" href="/manifest.json" />
         {/* Preconnect to external domains for faster loading */}
@@ -247,6 +243,17 @@ export default function RootLayout({
         <AuthProvider>
           {children}
         </AuthProvider>
+        {/* Modal/portal root: fixed overlay so portaled modals (e.g. location details) render above header */}
+        <div
+          id="portal-root"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2147483647,
+            pointerEvents: "none",
+          }}
+          aria-hidden
+        />
       </body>
     </html>
   );

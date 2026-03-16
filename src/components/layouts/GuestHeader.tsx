@@ -5,13 +5,14 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { JSX } from "react";
+import { useLocationModal } from "@/contexts/LocationModalContext";
 
 type NavItem = {
   label: string;
   href: string;
 };
 
-const navItems: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { 
     label: "Book IXTAbox", 
     href: "#map"
@@ -19,6 +20,10 @@ const navItems: NavItem[] = [
   { 
     label: "Your Bookings", 
     href: "/guest/bookings"
+  },
+  { 
+    label: "IXTAowner", 
+    href: "/ixtaowner"
   },
   { 
     label: "About", 
@@ -29,6 +34,10 @@ const navItems: NavItem[] = [
     href: "/support"
   }
 ];
+
+const navItems: NavItem[] = process.env.NEXT_PUBLIC_IXTAOWNER_ENABLED === 'true'
+  ? BASE_NAV_ITEMS
+  : BASE_NAV_ITEMS.filter((item) => item.label !== "IXTAowner");
 
 export default function GuestHeader(): JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -71,14 +80,17 @@ export default function GuestHeader(): JSX.Element {
     return () => observer.disconnect();
   }, []);
 
+  const { isLocationModalOpen } = useLocationModal();
   const containerClasses = useMemo(
     () =>
       `sticky top-0 z-[10000] transition-all duration-500 ${
+        isLocationModalOpen ? "invisible" : ""
+      } ${
         isScrolled 
           ? "bg-gray-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border-b border-white/5" 
           : "bg-gray-900/80 backdrop-blur-md border-b border-white/5"
       }`,
-    [isScrolled]
+    [isScrolled, isLocationModalOpen]
   );
 
   const isActive = (href: string) => {

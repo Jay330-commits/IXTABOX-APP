@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { MapProps } from "../../components/maps/googlemap";
 import GuestHeader from "@/components/layouts/GuestHeader";
+import { LocationModalProvider } from "@/contexts/LocationModalContext";
 import FadeInSection from "@/components/animations/FadeInSection";
 import AnimatedCounter from "@/components/animations/AnimatedCounter";
 // import BookingFilterForm, { type BookingFilter } from "@/components/bookings/BookingFilterForm";
@@ -371,7 +372,7 @@ export default function GuestHome() {
       "@type": "Organization",
       "name": "IXTAbox",
       "url": siteUrl,
-      "logo": `${siteUrl}/images/logo/titleicon.webp`,
+      "logo": `${siteUrl}/images/logo/new.png`,
       "description": "Aerodynamic roof boxes, cargo boxes, and extra car storage rental service across Sweden and the Nordics",
       "sameAs": [],
     }),
@@ -406,6 +407,7 @@ export default function GuestHome() {
   );
 
   return (
+    <LocationModalProvider>
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Structured Data for SEO */}
       <script
@@ -928,5 +930,6 @@ export default function GuestHome() {
       </main>
       <Footer />
     </div>
+    </LocationModalProvider>
   );
 }

@@ -299,7 +299,6 @@ export default function DistributerDashboard() {
         // Fetch dashboard stats
         const statsResponse = await fetch('/api/distributor/dashboard/stats', { headers });
         if (statsResponse.status === 401) {
-          // Unauthorized - redirect immediately
           console.log('Distributor page: Unauthorized (401), redirecting to login');
           router.replace('/auth/login');
           return;
@@ -331,7 +330,6 @@ export default function DistributerDashboard() {
         // Fetch box inventory
         const inventoryResponse = await fetch(inventoryUrl, { headers });
         if (inventoryResponse.status === 401) {
-          // Unauthorized - redirect immediately
           console.log('Distributor page: Unauthorized (401), redirecting to login');
           router.replace('/auth/login');
           return;

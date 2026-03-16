@@ -21,6 +21,10 @@ import {
 import LocationDetails from "../bookings/LocationDetails";
 import LoadingSpinner from "../loading/LoadingSpinner";
 import { scrollToMap } from "@/utils/scrollToMap";
+import { useLocationModal } from "@/contexts/LocationModalContext";
+
+/** 500m logical radius × 50 for visibility on map; actual coverage unchanged */
+const USER_LOCATION_DISPLAY_MULTIPLIER = 50;
 
 export type MapProps = {
   locations: {
@@ -86,6 +90,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     () => (typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   );
   const router = useRouter();
+  const { setLocationModalOpen } = useLocationModal();
   const [exitHintVisible, setExitHintVisible] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
   const routePanelRef = useRef<HTMLDivElement | null>(null);
@@ -162,6 +167,12 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     }
   }, [selectedLocation, isLoaded]);
 
+  // Tell header to lower z-index when location modal is open so modal is never behind header
+  useEffect(() => {
+    setLocationModalOpen(!!selectedLocation);
+    return () => setLocationModalOpen(false);
+  }, [selectedLocation, setLocationModalOpen]);
+
   // Notify parent when fullscreen state changes
   useEffect(() => {
     onFullscreenChange?.(fullscreen);
@@ -190,7 +201,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
     if (!map) return;
 
     map.setOptions({
-      gestureHandling: interactionEnabled ? "greedy" : "none",
+      gestureHandling: interactionEnabled ? "cooperative" : "none",
       draggable: interactionEnabled,
       scrollwheel: interactionEnabled,
       keyboardShortcuts: interactionEnabled,
@@ -487,6 +498,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
   const handleCloseFullscreen = useCallback(() => {
     setFullscreen(false);
     setInteractionEnabled(false);
+    setSelectedLocation(null);
     setDirections(null);
     setRoutePanelOpen(false);
     onFullscreenChange?.(false);
@@ -589,42 +601,57 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {selectedLocation &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[99999] flex min-h-[100dvh]" aria-modal="true" role="dialog">
-            {/* Full-viewport backdrop – portal ensures this is above Benefits and any stacking context */}
+          <div
+            className="fixed inset-0 flex min-h-[100dvh] bg-transparent"
+            style={
+              {
+                pointerEvents: "auto",
+                zIndex: 2147483647,
+                isolation: "isolate",
+              } as CSSProperties
+            }
+            aria-modal="true"
+            role="dialog"
+          >
+            {/* Backdrop – click closes */}
             <div
               className="absolute inset-0 bg-black/50"
               onClick={() => setSelectedLocation(null)}
               aria-hidden
             />
 
-            {/* Panel: above backdrop, full height on desktop so no empty space below */}
+            {/* Panel: on desktop starts below header (96px) so "Location name / Address" is never covered */}
             <div
               className={`
-                absolute bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
+                absolute left-0 bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
                 ${fullscreen
-                  ? `absolute ${isMobile ? "left-0 right-0 bottom-0 rounded-t-xl border-t border-x h-[85dvh] min-h-0 overflow-hidden" : "left-0 top-[80px] w-1/2 max-w-[600px] border-r border"}`
+                  ? `${isMobile ? "right-0 top-0 bottom-0 rounded-t-xl border-t border-x h-[85dvh] min-h-0 overflow-hidden" : "top-0 bottom-0 w-1/2 max-w-[600px] border-r border"}`
                   : isMobile
-                    ? "absolute left-0 right-0 bottom-4 top-auto h-[85dvh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
-                    : "absolute left-0 top-[80px] right-auto w-1/2 max-w-[420px] border-r border rounded-r-xl bottom-0"}
+                    ? "left-0 right-0 bottom-4 top-auto h-[85dvh] min-h-0 rounded-t-xl border-t border-x border-slate-600/30 overflow-hidden"
+                    : "top-0 bottom-0 w-1/2 max-w-[420px] border-r border rounded-r-xl"}
               `}
               style={{
                 ...(isMobile
                   ? {
+                      top: "auto",
+                      bottom: 16,
+                      height: "85dvh",
+                      minHeight: 0,
                       display: "flex",
                       flexDirection: "column",
-                      // forwards: keep panel at final position after animation; prevents button
-                      // from disappearing if animation state reverted with cached CSS
                       animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards",
                     }
-                  : !fullscreen && !isMobile
-                    ? { top: 80, bottom: 0, height: "calc(100vh - 80px)", minHeight: "calc(100vh - 80px)" }
-                    : fullscreen && !isMobile
-                      ? { height: "calc(100vh - 80px)" }
-                      : {}),
+                  : {
+                      top: 96,
+                      height: "calc(100vh - 96px)",
+                      minHeight: "calc(100vh - 96px)",
+                    }),
                 transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
                 willChange: "transform",
               }}
             >
+              {/* Extra top padding so location name + address sit clearly below site header (h-20) */}
+              {!isMobile && <div className="flex-shrink-0 h-6 bg-slate-800" aria-hidden />}
               {isMobile ? (
                 <div className="mobile-panel-content flex-1 min-h-0" style={{ display: "flex", flexDirection: "column" }}>
                   <LocationDetails
@@ -672,57 +699,25 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               )}
             </div>
           </div>,
-          document.body
+          (document.getElementById("portal-root") ?? document.body)
         )}
-
-      {!interactionEnabled && !fullscreen && (
-        <div
-          onDoubleClick={() => {
-            setInteractionEnabled(true);
-            setFullscreen(true);
-            onFullscreenChange?.(true);
-            setTimeout(() => {
-              if (mapRef.current && computedBounds) {
-                fitBoundsWithMaxZoom(mapRef.current, computedBounds);
-              }
-            }, 100);
-          }}
-          onTouchStart={(e) => {
-            const now = Date.now();
-            if (now - lastTapRef.current < 300) {
-              e.preventDefault();
-              setInteractionEnabled(true);
-              setFullscreen(true);
-              onFullscreenChange?.(true);
-            }
-            lastTapRef.current = now;
-          }}
-          title="Double‑click to enable map"
-          className="absolute inset-0 z-[1] flex items-center justify-center select-none cursor-zoom-in"
-          style={{ background: "transparent" }}
-        >
-          <span className="rounded-full bg-black/50 text-white text-xs px-3 py-1 border border-white/20">
-            Double‑click to enable map
-          </span>
-        </div>
-      )}
 
       {fullscreen && (
         <div className="fixed right-4 z-[10000] flex flex-col gap-2" style={{ top: "100px", bottom: "20px" }}>
           <button
             type="button"
             onClick={handleLocate}
-            className="rounded-lg bg-cyan-600/95 backdrop-blur-sm text-white text-xs px-4 py-2 border border-white/20 hover:bg-cyan-500 shadow-lg whitespace-nowrap"
+            className="rounded-xl bg-cyan-600/95 backdrop-blur-sm text-white text-sm font-medium px-4 py-2.5 border border-cyan-500/30 hover:bg-cyan-500 hover:border-cyan-400/50 shadow-lg shadow-cyan-500/20 whitespace-nowrap transition-all duration-200"
           >
             Use my location
           </button>
           <button
             type="button"
             onClick={handleCloseFullscreen}
-            className="rounded-lg bg-black/80 backdrop-blur-sm text-white text-xs px-4 py-2 border border-white/20 hover:bg-black/90 shadow-lg whitespace-nowrap"
-            title="Exit fullscreen"
+            className="rounded-xl bg-slate-800/95 backdrop-blur-sm text-white text-sm font-medium px-4 py-2.5 border border-white/20 hover:bg-slate-700 hover:border-white/30 shadow-lg whitespace-nowrap transition-all duration-200"
+            title="Close map"
           >
-            Close
+            Close map
           </button>
         </div>
       )}
@@ -730,11 +725,19 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {fullscreen && exitHintVisible && !isMobile && (
         <div className="pointer-events-none fixed inset-x-0 top-[96px] z-[10000] flex justify-center">
           <div className="rounded-full border border-white/20 bg-black/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.3em] text-white/80 shadow-lg">
-            Press Esc or tap Close to leave the map
+            Press Esc or tap Close map
           </div>
         </div>
       )}
 
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: interactionEnabled ? "auto" : "none",
+        }}
+      >
       <GoogleMap
         onLoad={handleMapLoad}
         onUnmount={handleMapUnmount}
@@ -748,7 +751,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
           mapTypeControl: false,
           fullscreenControl: false,
           zoomControl: interactionEnabled,
-          gestureHandling: interactionEnabled ? "greedy" : "none",
+          gestureHandling: interactionEnabled ? "cooperative" : "none",
+          draggable: interactionEnabled,
+          scrollwheel: interactionEnabled,
         }}
       >
         {locations.map((location) => {
@@ -786,19 +791,79 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
             />
             <Circle
               center={userLocation}
-              radius={60}
+              radius={500 * USER_LOCATION_DISPLAY_MULTIPLIER}
               options={{
                 fillColor: "#06b6d4",
-                fillOpacity: 0.2,
+                fillOpacity: 0.25,
                 strokeColor: "#06b6d4",
-                strokeOpacity: 0.6,
-                strokeWeight: 2,
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
               }}
             />
           </>
         )}
         {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: true }} />}
       </GoogleMap>
+      </div>
+
+      {/* Lock overlay – renders on top of map when closed; must be after map in DOM */}
+      {!interactionEnabled && !fullscreen && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Double-tap to open map"
+          onDoubleClick={() => {
+            setInteractionEnabled(true);
+            setFullscreen(true);
+            onFullscreenChange?.(true);
+            setTimeout(() => {
+              if (mapRef.current && computedBounds) {
+                fitBoundsWithMaxZoom(mapRef.current, computedBounds);
+              }
+            }, 100);
+          }}
+          onTouchStart={(e) => {
+            const now = Date.now();
+            if (now - lastTapRef.current < 500) {
+              e.preventDefault();
+              setInteractionEnabled(true);
+              setFullscreen(true);
+              onFullscreenChange?.(true);
+              setTimeout(() => {
+                if (mapRef.current && computedBounds) {
+                  fitBoundsWithMaxZoom(mapRef.current, computedBounds);
+                }
+              }, 100);
+            }
+            lastTapRef.current = now;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setInteractionEnabled(true);
+              setFullscreen(true);
+              onFullscreenChange?.(true);
+              setTimeout(() => {
+                if (mapRef.current && computedBounds) {
+                  fitBoundsWithMaxZoom(mapRef.current, computedBounds);
+                }
+              }, 100);
+            }
+          }}
+          title="Double‑tap to open map"
+          className="absolute inset-0 z-[9998] flex items-center justify-center select-none cursor-pointer"
+          style={{
+            background: "rgba(0,0,0,0.5)",
+            pointerEvents: "auto",
+            touchAction: "manipulation",
+          }}
+        >
+          <div className="rounded-2xl bg-slate-900/95 border-2 border-cyan-500/40 px-6 py-4 text-center shadow-2xl shadow-black/50 max-w-[280px]">
+            <p className="text-white font-semibold text-base mb-1">Tap map twice to open</p>
+            <p className="text-cyan-200/90 text-sm">or double‑click on desktop</p>
+          </div>
+        </div>
+      )}
 
       {fullscreen && directions && (
         <button

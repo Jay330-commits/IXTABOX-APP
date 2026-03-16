@@ -1,0 +1,34 @@
+C:\programming_projects\React\ixtabox-app
+├── C:\programming_projects\React\ixtabox-app\auto-fill-distributor.mjs
+├── C:\programming_projects\React\ixtabox-app\BUCKET_IMAGES_DEBUG.md
+├── C:\programming_projects\React\ixtabox-app\ENVIRONMENT_SETUP.md
+├── C:\programming_projects\React\ixtabox-app\eslint.config.mjs
+├── C:\programming_projects\React\ixtabox-app\folder-structure.txt
+├── C:\programming_projects\React\ixtabox-app\ideas.md
+├── C:\programming_projects\React\ixtabox-app\INVOICE_INV-002_JANUARY_2026.md
+├── C:\programming_projects\React\ixtabox-app\MARKER_COLOR_CHANGES.md
+├── C:\programming_projects\React\ixtabox-app\MONTHLY_INVOICES_2025.csv
+├── C:\programming_projects\React\ixtabox-app\next-env.d.ts
+├── C:\programming_projects\React\ixtabox-app\next.config.ts
+├── C:\programming_projects\React\ixtabox-app\node_modules
+├── C:\programming_projects\React\ixtabox-app\npx
+├── C:\programming_projects\React\ixtabox-app\package-lock.json
+├── C:\programming_projects\React\ixtabox-app\package.json
+├── C:\programming_projects\React\ixtabox-app\postcss.config.mjs
+├── C:\programming_projects\React\ixtabox-app\prisma-studio.config.ts
+├── C:\programming_projects\React\ixtabox-app\prisma.config.ts
+├── C:\programming_projects\React\ixtabox-app\public
+├── C:\programming_projects\React\ixtabox-app\README.md
+├── C:\programming_projects\React\ixtabox-app\REMAINING_WORK_ESTIMATE.csv
+├── C:\programming_projects\React\ixtabox-app\SCHEMA_FIXES_NEEDED.md
+├── C:\programming_projects\React\ixtabox-app\scripts
+├── C:\programming_projects\React\ixtabox-app\SECURITY_IMAGE_ACCESS.md
+├── C:\programming_projects\React\ixtabox-app\SEO_IMPROVEMENTS.md
+├── C:\programming_projects\React\ixtabox-app\src
+├── C:\programming_projects\React\ixtabox-app\test-prisma-connection.js
+├── C:\programming_projects\React\ixtabox-app\tsconfig.json
+├── C:\programming_projects\React\ixtabox-app\tsconfig.tsbuildinfo
+└── C:\programming_projects\React\ixtabox-app\vercel.json
+
+directory: 4 file: 26
+

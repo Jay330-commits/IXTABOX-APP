@@ -198,6 +198,76 @@ export class UserService extends BaseService {
   }
 
   /**
+   * Link a Supabase auth user into public.users with IXTAOWNER role
+   * Does not create the ixtaowners profile record (handled by IxtaownerService)
+   */
+  async linkAuthUserAsIxtaowner(params: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+  }): Promise<User> {
+    try {
+      const phoneValue = params.phone?.trim() || null;
+
+      try {
+        const user = await this.prisma.public_users.upsert({
+          where: { id: params.id },
+          update: {
+            full_name: params.fullName,
+            email: params.email,
+            phone: phoneValue,
+            role: Role.Ixtaowner,
+          },
+          create: {
+            id: params.id,
+            full_name: params.fullName,
+            email: params.email,
+            phone: phoneValue,
+            role: Role.Ixtaowner,
+          },
+        });
+
+        return user;
+      } catch (enumError: unknown) {
+        const error = enumError as Error;
+        if (error?.message?.includes('type') && error?.message?.includes('does not exist')) {
+          const escapedId = params.id.replace(/'/g, "''");
+          const escapedFullName = params.fullName.replace(/'/g, "''");
+          const escapedEmail = params.email.replace(/'/g, "''");
+          const escapedPhone = phoneValue ? phoneValue.replace(/'/g, "''") : null;
+          const sqlPhoneValue = escapedPhone ? `'${escapedPhone}'` : 'NULL';
+
+          await this.prisma.$executeRawUnsafe(`
+            INSERT INTO public.users (id, full_name, email, phone, role, created_at, updated_at)
+            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'Ixtaowner'::public."Role", NOW(), NOW())
+            ON CONFLICT (id) 
+            DO UPDATE SET 
+              full_name = EXCLUDED.full_name,
+              email = EXCLUDED.email,
+              phone = EXCLUDED.phone,
+              role = EXCLUDED.role,
+              updated_at = NOW()
+          `);
+
+          const user = await this.prisma.public_users.findUnique({
+            where: { id: params.id },
+          });
+
+          if (!user) {
+            throw new Error('Failed to create ixtaowner user record');
+          }
+
+          return user;
+        }
+        throw enumError;
+      }
+    } catch (error) {
+      this.handleError(error, 'UserService.linkAuthUserAsIxtaowner');
+    }
+  }
+
+  /**
    * Create a new user with related records
    * Note: This method is for creating users directly in Prisma.
    * For Supabase auth users, use linkAuthUserAsCustomer or linkAuthUserAsDistributor instead.
