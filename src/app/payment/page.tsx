@@ -466,182 +466,180 @@ function PaymentContent() {
               ) : null}
             </div>
 
-            {/* Contact Information - right below payment on mobile, left sidebar on desktop */}
-            <div className="lg:col-span-1 order-2 lg:order-1 lg:sticky lg:top-6 lg:self-start">
-              <div className="bg-white/5 rounded-lg p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Contact Information</h3>
-                <div className="space-y-2.5 sm:space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Email Address *</label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={customerEmail}
-                        onChange={(e) => {
-                          const email = e.target.value;
-                          setCustomerEmail(email);
-                          validateEmail(email);
-                          const currentPaymentIntentId = searchParams.get('payment_intent');
-                          if (currentPaymentIntentId && email && email.includes('@')) {
-                            localStorage.setItem(`payment_email_${currentPaymentIntentId}`, email);
-                          }
-                        }}
-                        onBlur={(e) => validateEmail(e.target.value)}
-                        placeholder="your.email@example.com"
-                        required
-                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
-                          emailError 
-                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
-                            : customerEmail && !emailError
-                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
-                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
-                        }`}
-                      />
-                      {customerEmail && !emailError && (
-                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    {emailError && (
-                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{emailError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Phone Number (optional)</label>
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        value={customerPhone}
-                        onChange={(e) => {
-                          setCustomerPhone(e.target.value);
-                          validatePhone(e.target.value);
-                        }}
-                        onBlur={(e) => validatePhone(e.target.value)}
-                        placeholder="+46 70 123 4567"
-                        className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
-                          phoneError 
-                            ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500' 
-                            : customerPhone && !phoneError
-                            ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
-                            : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
-                        }`}
-                      />
-                      {customerPhone && !phoneError && (
-                        <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    {phoneError && (
-                      <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{phoneError}</p>
-                    )}
-                  </div>
-                  <div className="border-t border-white/10 pt-2 mt-2">
-                    <h4 className="text-xs font-medium text-white mb-2">Notification Preferences</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={emailNotification}
-                          onChange={(e) => setEmailNotification(e.target.checked)}
-                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">Email Confirmation</span>
-                          <p className="text-xs text-gray-400 mt-0.5">Receive booking confirmation via email</p>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={smsNotification}
-                          onChange={(e) => setSmsNotification(e.target.checked)}
-                          disabled={!customerPhone}
-                          className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">SMS Notifications</span>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {customerPhone ? 'Receive booking reminders via SMS' : 'Add phone number to enable'}
-                          </p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Booking Summary - last on mobile, left sidebar on desktop */}
-            <div className="lg:col-span-1 order-3 lg:order-1 lg:sticky lg:top-6 lg:self-start">
-              <div className="space-y-3 sm:space-y-4">
-              {bookingDetails && bookingDetails.pricePerDay && (
-                <BookingDetailsSummary
-                  locationName={bookingDetails.locationName}
-                  standId={bookingDetails.standId}
-                  standName={bookingDetails.standName}
-                  modelId={bookingDetails.modelId}
-                  modelName={bookingDetails.modelName}
-                  startDate={bookingDetails.startDate}
-                  endDate={bookingDetails.endDate}
-                  startTime={bookingDetails.startTime}
-                  endTime={bookingDetails.endTime}
-                  pricePerDay={bookingDetails.pricePerDay || 300}
-                  deposit={bookingDetails.deposit || 0}
-                  currency={currency}
-                  totalAmount={amount}
-                />
-              )}
-              {(!bookingDetails || !bookingDetails.pricePerDay) && (
+            {/* Sidebar - below payment on mobile, left column on desktop (single sticky container) */}
+            <div className="lg:col-span-1 order-2 lg:order-1 lg:self-start">
+              <div className="space-y-3 sm:space-y-4 lg:sticky lg:top-6">
                 <div className="bg-white/5 rounded-lg p-3 sm:p-4">
-                  <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Booking Summary</h3>
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    {bookingDetails?.locationName && (
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="text-gray-400 flex-shrink-0">Location:</span>
-                        <span className="text-white text-right font-medium">{bookingDetails.locationName}</span>
+                  <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Contact Information</h3>
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Email Address *</label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={customerEmail}
+                          onChange={(e) => {
+                            const email = e.target.value;
+                            setCustomerEmail(email);
+                            validateEmail(email);
+                            const currentPaymentIntentId = searchParams.get('payment_intent');
+                            if (currentPaymentIntentId && email && email.includes('@')) {
+                              localStorage.setItem(`payment_email_${currentPaymentIntentId}`, email);
+                            }
+                          }}
+                          onBlur={(e) => validateEmail(e.target.value)}
+                          placeholder="your.email@example.com"
+                          required
+                          className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
+                            emailError
+                              ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500'
+                              : customerEmail && !emailError
+                              ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                              : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                          }`}
+                        />
+                        {customerEmail && !emailError && (
+                          <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
-                    )}
-                    {bookingDetails?.modelId && (
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="text-gray-400 flex-shrink-0">Model:</span>
-                        <span className="text-white text-right font-medium capitalize">{bookingDetails.modelId}</span>
+                      {emailError && (
+                        <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{emailError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Phone Number (optional)</label>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={customerPhone}
+                          onChange={(e) => {
+                            setCustomerPhone(e.target.value);
+                            validatePhone(e.target.value);
+                          }}
+                          onBlur={(e) => validatePhone(e.target.value)}
+                          placeholder="+46 70 123 4567"
+                          className={`w-full px-2.5 py-1.5 text-xs rounded-md bg-white/10 border border-white/20 text-gray-100 placeholder-gray-400 focus:ring-2 transition-all duration-200 ${
+                            phoneError
+                              ? 'border-red-500/50 focus:ring-red-500/60 focus:border-red-500'
+                              : customerPhone && !phoneError
+                              ? 'border-green-500/50 focus:ring-green-500/60 focus:border-green-500'
+                              : 'border-white/10 focus:ring-cyan-500/60 focus:border-cyan-500'
+                          }`}
+                        />
+                        {customerPhone && !phoneError && (
+                          <svg className="absolute right-2 top-1.5 w-4 h-4 text-green-400 animate-scaleIn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
-                    )}
-                    {bookingDetails?.compartment && (
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="text-gray-400 flex-shrink-0">Compartment:</span>
-                        <span className="text-white text-right font-medium">C{bookingDetails.compartment}</span>
-                      </div>
-                    )}
-                    {(bookingDetails?.startDate || bookingDetails?.endDate) && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="text-gray-400 flex-shrink-0">Start:</span>
-                          <span className="text-white text-right font-medium">
-                            {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
-                            {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="text-gray-400 flex-shrink-0">End:</span>
-                          <span className="text-white text-right font-medium">
-                            {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
-                            {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                      {phoneError && (
+                        <p className="text-red-400 text-xs mt-0.5 animate-slideDown">{phoneError}</p>
+                      )}
+                    </div>
                     <div className="border-t border-white/10 pt-2 mt-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white font-semibold text-sm">Total:</span>
-                        <span className="text-cyan-400 text-base sm:text-lg font-bold">{amount.toFixed(2)} {currency.toUpperCase()}</span>
+                      <h4 className="text-xs font-medium text-white mb-2">Notification Preferences</h4>
+                      <div className="space-y-2">
+                        <label className="flex items-start gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={emailNotification}
+                            onChange={(e) => setEmailNotification(e.target.checked)}
+                            className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">Email Confirmation</span>
+                            <p className="text-xs text-gray-400 mt-0.5">Receive booking confirmation via email</p>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={smsNotification}
+                            onChange={(e) => setSmsNotification(e.target.checked)}
+                            disabled={!customerPhone}
+                            className="mt-0.5 w-3.5 h-3.5 text-cyan-500 bg-white/10 border-white/20 rounded focus:ring-cyan-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-medium text-white group-hover:text-cyan-400 transition-colors block">SMS Notifications</span>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {customerPhone ? 'Receive booking reminders via SMS' : 'Add phone number to enable'}
+                            </p>
+                          </div>
+                        </label>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+
+                {bookingDetails && bookingDetails.pricePerDay && (
+                  <BookingDetailsSummary
+                    locationName={bookingDetails.locationName}
+                    standId={bookingDetails.standId}
+                    standName={bookingDetails.standName}
+                    modelId={bookingDetails.modelId}
+                    modelName={bookingDetails.modelName}
+                    startDate={bookingDetails.startDate}
+                    endDate={bookingDetails.endDate}
+                    startTime={bookingDetails.startTime}
+                    endTime={bookingDetails.endTime}
+                    pricePerDay={bookingDetails.pricePerDay || 300}
+                    deposit={bookingDetails.deposit || 0}
+                    currency={currency}
+                    totalAmount={amount}
+                  />
+                )}
+
+                {(!bookingDetails || !bookingDetails.pricePerDay) && (
+                  <div className="bg-white/5 rounded-lg p-3 sm:p-4">
+                    <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Booking Summary</h3>
+                    <div className="space-y-2 text-xs sm:text-sm">
+                      {bookingDetails?.locationName && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 flex-shrink-0">Location:</span>
+                          <span className="text-white text-right font-medium">{bookingDetails.locationName}</span>
+                        </div>
+                      )}
+                      {bookingDetails?.modelId && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 flex-shrink-0">Model:</span>
+                          <span className="text-white text-right font-medium capitalize">{bookingDetails.modelId}</span>
+                        </div>
+                      )}
+                      {bookingDetails?.compartment && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 flex-shrink-0">Compartment:</span>
+                          <span className="text-white text-right font-medium">C{bookingDetails.compartment}</span>
+                        </div>
+                      )}
+                      {(bookingDetails?.startDate || bookingDetails?.endDate) && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-gray-400 flex-shrink-0">Start:</span>
+                            <span className="text-white text-right font-medium">
+                              {bookingDetails.startDate ? new Date(bookingDetails.startDate).toLocaleDateString() : '—'}
+                              {bookingDetails.startTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.startTime}</span>}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-gray-400 flex-shrink-0">End:</span>
+                            <span className="text-white text-right font-medium">
+                              {bookingDetails.endDate ? new Date(bookingDetails.endDate).toLocaleDateString() : '—'}
+                              {bookingDetails.endTime && <span className="block text-xs text-gray-400 mt-0.5">{bookingDetails.endTime}</span>}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="border-t border-white/10 pt-2 mt-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold text-sm">Total:</span>
+                          <span className="text-cyan-400 text-base sm:text-lg font-bold">{amount.toFixed(2)} {currency.toUpperCase()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

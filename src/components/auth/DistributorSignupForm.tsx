@@ -53,6 +53,7 @@ interface DistributorSignupFormProps {
 }
 
 export default function DistributorSignupForm({ onSubmit, className = "" }: DistributorSignupFormProps) {
+  const isIxtaownerEnabled = process.env.NEXT_PUBLIC_IXTAOWNER_ENABLED === "true";
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormData>({
     contractType: '',
@@ -421,6 +422,39 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
     // Otherwise, call the API
     setIsLoading(true);
     try {
+      const isIxtaowner = formData.contractType === "IxtaboxOwner";
+
+      if (isIxtaowner) {
+        const response = await fetch('/api/auth/register/ixtaowner', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName: formData.fullName.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            password: formData.password,
+            address: formData.validatedAddress.trim(),
+            locationName: 'IXTAowner location',
+            lat: formData.addressLat,
+            lng: formData.addressLng,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setError(data.message || 'Registration failed. Please try again.');
+          return;
+        }
+
+        setSuccess(true);
+        setTimeout(() => {
+          window.location.href = '/auth/login?registered=ixtaowner';
+        }, 3000);
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -535,25 +569,19 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       case 0:
         return (
           <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Choose Your Business Model</h2>
-              <p className="text-gray-300 text-sm">Select the business model that best fits your needs</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 w-full pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4 w-full pt-3">
               {businessModels.map((model) => {
                 const isSelected = formData.contractType === model.id;
-                const isDisabled = model.id === 'IxtaboxOwner';
+                const isDisabled = model.id === "IxtaboxOwner" && !isIxtaownerEnabled;
                 return (
                   <div
                     key={model.id}
                     onClick={() => {
-                      if (!isDisabled) {
-                        handleChange("contractType", model.id);
-                      }
+                      if (isDisabled) return;
+                      handleChange("contractType", model.id);
                     }}
                     aria-disabled={isDisabled}
-                    className={`border rounded-lg p-3 sm:p-4 md:p-6 transition-all relative flex flex-col min-h-0 touch-manipulation ${
+                    className={`border rounded-lg p-2.5 sm:p-3 md:p-4 transition-all relative flex flex-col min-h-0 touch-manipulation ${
                       isDisabled
                         ? 'opacity-60 cursor-not-allowed bg-white/5 border-white/10'
                         : isSelected
@@ -570,23 +598,23 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                         </span>
                       </div>
                     )}
-                    {model.id === 'IxtaboxOwner' && (
+                    {isDisabled && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <span className="bg-amber-500/90 text-white text-xs font-bold px-3 py-1 rounded-full">
-                          Coming soon
+                        <span className="bg-white/10 text-gray-200 text-xs font-bold px-3 py-1 rounded-full border border-white/15">
+                          COMING SOON
                         </span>
                       </div>
                     )}
 
-                    <div className="mb-4">
-                      <h3 className="text-lg md:text-xl font-semibold mb-1 text-cyan-300">{model.title}</h3>
-                      <p className="text-xl md:text-2xl font-bold text-white mb-2">{model.price}</p>
-                      <p className="text-gray-300 text-sm md:text-base min-h-[3.5rem]">{model.description}</p>
+                    <div className="mb-3">
+                      <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-1 text-cyan-300">{model.title}</h3>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1.5">{model.price}</p>
+                      <p className="text-gray-300 text-xs sm:text-sm md:text-base">{model.description}</p>
                     </div>
 
-                    <ul className="space-y-2 mb-5 flex-1">
+                    <ul className="space-y-1.5 sm:space-y-2 mb-4 flex-1">
                       {model.features.map((feature, index) => (
-                        <li key={index} className="flex items-center text-sm md:text-base text-gray-300">
+                        <li key={index} className="flex items-center text-xs sm:text-sm md:text-base text-gray-300">
                           <svg
                             className="w-4 h-4 mr-2 text-green-400"
                             fill="none"
@@ -605,7 +633,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                       ))}
                     </ul>
 
-                    <div className={`w-full py-3 px-4 rounded-md font-medium text-center transition-colors min-h-[44px] flex items-center justify-center ${
+                    <div className={`w-full py-2.5 px-3 rounded-md font-medium text-center transition-colors min-h-[40px] flex items-center justify-center text-sm ${
                       isDisabled
                         ? 'bg-white/10 text-gray-300 border border-white/20'
                         : isSelected
@@ -614,7 +642,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
                         ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-400/40 hover:bg-cyan-600/30'
                         : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
                     }`}>
-                      {isDisabled ? 'Coming soon' : isSelected ? 'Selected' : 'Select ' + model.title}
+                      {isSelected ? 'Selected' : 'Select ' + model.title}
                     </div>
                   </div>
                 );
@@ -628,12 +656,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         if (formData.contractType === "IxtaboxOwner") {
           return (
             <div className="space-y-4">
-              <div className="text-center mb-4">
-                <h2 className="text-xl font-bold text-white mb-1">Your address</h2>
-                <p className="text-gray-300 text-sm">
-                  Choose your address from the suggestions so we can show your Ixtabox on the map.
-                </p>
-              </div>
               <label className="flex flex-col gap-2 text-gray-200">
                 <span className="font-medium">Address*</span>
                 <input
@@ -657,11 +679,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         }
         return (
           <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Company Information</h2>
-              <p className="text-gray-300 text-sm">Tell us about your business</p>
-            </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex flex-col gap-2 text-gray-200">
                 <span className="font-medium">Company Name*</span>
@@ -712,10 +729,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         if (formData.contractType === "IxtaboxOwner") {
           return (
             <div className="space-y-4">
-              <div className="text-center mb-4">
-                <h2 className="text-xl font-bold text-white mb-1">Your details</h2>
-                <p className="text-gray-300 text-sm">Contact information for your Ixtabox owner account</p>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-2 text-gray-200">
                   <span className="font-medium">Full Name*</span>
@@ -756,11 +769,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
         }
         return (
           <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Business Details</h2>
-              <p className="text-gray-300 text-sm">Share your business background</p>
-            </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex flex-col gap-2 text-gray-200">
                 <span className="font-medium">Full Name*</span>
@@ -861,11 +869,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       case 3:
         return (
           <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Partnership Goals</h2>
-              <p className="text-gray-300 text-sm">Help us understand your needs</p>
-            </div>
-            
             <label className="flex flex-col gap-2 text-gray-200">
               <span className="font-medium">Expected Monthly Bookings*</span>
               <select
@@ -900,7 +903,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             </div>
             
             <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-lg p-4">
-              <h3 className="text-base font-semibold text-white mb-2">Partner Benefits</h3>
               <ul className="space-y-1 text-sm text-gray-300">
                 <li className="flex items-center space-x-2">
                   <span className="text-cyan-400">✓</span>
@@ -926,15 +928,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       case 5:
         return (
           <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Review & Submit</h2>
-              <p className="text-gray-300 text-sm">Review your information before submitting</p>
-            </div>
-            
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-              <h3 className="text-base font-semibold text-white mb-3">
-                {formData.contractType === "IxtaboxOwner" ? "Your details" : "Company Information"}
-              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 {formData.contractType === "IxtaboxOwner" ? (
                   <>
@@ -1007,7 +1001,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             {/* Locations Review */}
             {formData.locations.length > 0 && (
               <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                <h3 className="text-base font-semibold text-white mb-3">Business Locations ({formData.locations.length})</h3>
                 <div className="space-y-3">
                   {formData.locations.map((location, index) => (
                     <div key={location.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
@@ -1081,13 +1074,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
       case 4:
         return (
           <div className="space-y-6">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white mb-1">Business Locations</h2>
-              <p className="text-gray-300 text-sm">
-                Add your business locations where IXTAboxes will be available. Addresses must be selected from Google Maps. Photos are optional and can be added later.
-              </p>
-            </div>
-
             {formData.locations.length === 0 && (
               <div className="text-center py-8 sm:py-10 border-2 border-dashed border-white/20 rounded-lg px-4">
                 <p className="text-gray-400 mb-4">No locations added yet</p>
@@ -1104,7 +1090,7 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
             {formData.locations.map((location, index) => (
               <div key={location.id} className="border border-white/10 rounded-lg p-4 sm:p-4 bg-white/5">
                 <div className="flex justify-between items-center mb-4 gap-2">
-                  <h3 className="text-base sm:text-lg font-semibold text-white">Location {index + 1}</h3>
+                  <span className="text-sm sm:text-base font-semibold text-white">Location {index + 1}</span>
                   <button
                     type="button"
                     onClick={() => removeLocation(location.id)}
@@ -1226,10 +1212,6 @@ export default function DistributorSignupForm({ onSubmit, className = "" }: Dist
 
   return (
     <div className={`w-full max-w-5xl mx-auto bg-gray-900/90 rounded-xl p-4 sm:p-6 md:p-8 shadow-2xl shadow-black/60 ${className}`}>
-      <h1 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 text-center">
-        Become a Partner
-      </h1>
-
       {error && (
         <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm break-words">
           {error}

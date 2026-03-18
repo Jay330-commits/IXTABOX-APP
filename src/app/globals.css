@@ -39,6 +39,27 @@ body {
   min-width: 0;
 }
 
+/* Pages that mount GuestHeader (now fixed) reserve space for it */
+body[data-has-guest-header="true"] {
+  padding-top: 5rem; /* h-20 */
+}
+
+/* Keep anchored scroll positions correct with a fixed header */
+:root {
+  scroll-padding-top: 5rem;
+}
+
+/* Google Places Autocomplete dropdown: keep on-screen and above fixed headers */
+.pac-container {
+  z-index: 2147483000 !important;
+  max-width: calc(100vw - 1rem) !important;
+}
+
+.pac-container,
+.pac-item {
+  box-sizing: border-box;
+}
+
 /* Hide scrollbar but keep content scrollable (utility class) */
 .scrollbar-hide {
   scrollbar-width: none;

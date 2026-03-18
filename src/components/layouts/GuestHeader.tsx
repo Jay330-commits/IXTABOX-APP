@@ -48,6 +48,15 @@ export default function GuestHeader(): JSX.Element {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
+    // Ensures pages that mount GuestHeader reserve space for it.
+    // This keeps the header visually fixed during scroll without content jumping under it.
+    document.body.dataset.hasGuestHeader = "true";
+    return () => {
+      delete document.body.dataset.hasGuestHeader;
+    };
+  }, []);
+
+  useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 20);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -83,7 +92,7 @@ export default function GuestHeader(): JSX.Element {
   const { isLocationModalOpen } = useLocationModal();
   const containerClasses = useMemo(
     () =>
-      `sticky top-0 z-[10000] transition-all duration-500 ${
+      `fixed top-0 left-0 right-0 z-[10000] transition-all duration-500 ${
         isLocationModalOpen ? "invisible" : ""
       } ${
         isScrolled 
