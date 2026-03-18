@@ -34,8 +34,6 @@ export type MapProps = {
     name: string;
     address: string;
     status: "available" | "maintenance" | "inactive";
-    /** true when this location belongs to an IXTAowner (not a distributor) */
-    isIxtaowner?: boolean;
     availableBoxes: {
       classic: number;
       pro: number;
@@ -759,46 +757,22 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
         }}
       >
         {locations.map((location) => {
-          // IXTAowner locations are displayed as vague-area circles instead of pin markers
-          if (location.isIxtaowner) {
-            return (
-              <Circle
-                key={location.id}
-                center={{ lat: location.lat, lng: location.lng }}
-                radius={500 * USER_LOCATION_DISPLAY_MULTIPLIER}
-                options={{
-                  fillColor: "#f59e0b",
-                  fillOpacity: 0.2,
-                  strokeColor: "#f59e0b",
-                  strokeOpacity: 0.9,
-                  strokeWeight: 4,
-                  clickable: true,
-                }}
-                onClick={() => {
-                  scrollToMap();
-                  setTimeout(() => {
-                    setSelectedLocation(location);
-                  }, 150);
-                }}
-              />
-            );
-          }
-
           const icon = location.isFullyBooked ? markerIcons.fullyBooked : markerIcons.available;
           return (
             <Marker
-              key={location.id}
-              position={{ lat: location.lat, lng: location.lng }}
+            key={location.id}
+            position={{ lat: location.lat, lng: location.lng }}
               icon={icon}
-              onClick={(e) => {
-                e.domEvent.stopPropagation();
-                scrollToMap();
-                setTimeout(() => {
-                  setSelectedLocation(location);
-                }, 150);
-              }}
-              title={location.name}
-            />
+            onClick={(e) => {
+              e.domEvent.stopPropagation();
+              scrollToMap();
+              // Open location details after a short delay to allow scroll to complete
+              setTimeout(() => {
+                setSelectedLocation(location);
+              }, 150);
+            }}
+            title={location.name}
+          />
           );
         })}
         {userLocation && (

@@ -7,17 +7,6 @@ import { LocationService } from '@/services/locations/LocationService';
 
 export async function POST(request: NextRequest) {
   try {
-    if (process.env.NEXT_PUBLIC_IXTAOWNER_ENABLED !== 'true') {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'IXTAowner is not available yet.',
-          error: 'IXTAOWNER_DISABLED',
-        },
-        { status: 503 }
-      );
-    }
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       return NextResponse.json(
         {

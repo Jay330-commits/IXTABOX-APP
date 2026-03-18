@@ -466,9 +466,9 @@ function PaymentContent() {
               ) : null}
             </div>
 
-            {/* Sidebar - below payment on mobile, left column on desktop (single sticky container) */}
-            <div className="lg:col-span-1 order-2 lg:order-1 lg:self-start">
-              <div className="space-y-3 sm:space-y-4 lg:sticky lg:top-6">
+            {/* Sidebar (contact + summary) - single sticky container to prevent overlap */}
+            <div className="lg:col-span-1 order-2 lg:order-1 lg:sticky lg:top-6 lg:self-start">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="bg-white/5 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Contact Information</h3>
                   <div className="space-y-2.5 sm:space-y-3">

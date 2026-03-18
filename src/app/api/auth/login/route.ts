@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
           customers: { select: { id: true } },
           distributors: { select: { id: true } },
           admins: { select: { id: true } },
-          ixtaowners: { select: { id: true } },
         },
       });
     } catch (dbError: unknown) {
@@ -120,7 +119,6 @@ export async function POST(request: NextRequest) {
             customers: { select: { id: true } },
             distributors: { select: { id: true } },
             admins: { select: { id: true } },
-            ixtaowners: { select: { id: true } },
           },
         });
       }
@@ -139,8 +137,6 @@ export async function POST(request: NextRequest) {
         return '/distributor';
       } else if (role === Role.Admin) {
         return '/admin';
-      } else if (role === Role.Ixtaowner) {
-        return '/ixtaowner';
       } else if (role === Role.Guest) {
         return '/guest';
       }
@@ -153,8 +149,6 @@ export async function POST(request: NextRequest) {
         return '/distributor';
       } else if (roleStr === 'Admin') {
         return '/admin';
-      } else if (roleStr === 'Ixtaowner') {
-        return '/ixtaowner';
       } else if (roleStr === 'Guest') {
         return '/guest';
       }
@@ -172,8 +166,7 @@ export async function POST(request: NextRequest) {
         'Guest': 'GUEST',
         'Customer': 'CUSTOMER',
         'Distributor': 'DISTRIBUTOR',
-        'Admin': 'ADMIN',
-        'Ixtaowner': 'IXTAOWNER',
+        'Admin': 'ADMIN'
       };
       const clientRole = roleMap[String(user.role)] || 'GUEST';
       

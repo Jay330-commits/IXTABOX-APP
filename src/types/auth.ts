@@ -4,8 +4,7 @@ export enum Role {
   GUEST = 'GUEST',
   CUSTOMER = 'CUSTOMER',
   DISTRIBUTOR = 'DISTRIBUTOR',
-  ADMIN = 'ADMIN',
-  IXTAOWNER = 'IXTAOWNER',
+  ADMIN = 'ADMIN'
 }
 
 export interface User {

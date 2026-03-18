@@ -10,8 +10,6 @@ type ApiLocation = {
   name: string;
   address: string;
   status: 'available' | 'maintenance' | 'inactive';
-  /** true when this location belongs to an IXTAowner (not a distributor) */
-  isIxtaowner?: boolean;
   availableBoxes: {
     classic: number;
     pro: number;
@@ -182,7 +180,6 @@ export async function GET() {
           name: location.name,
           address: location.address ?? 'Address not available',
           status: statusMap[location.status ?? status.Available],
-          isIxtaowner: !!location.ixtaowner_id,
           availableBoxes: {
             classic: classicCount,
             pro: proCount,

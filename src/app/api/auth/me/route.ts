@@ -96,7 +96,6 @@ export async function GET(request: NextRequest) {
           customers: true,
           distributors: true,
           admins: true,
-          ixtaowners: true,
         },
       });
     } catch (dbError: unknown) {
@@ -152,7 +151,6 @@ export async function GET(request: NextRequest) {
             customers: true,
             distributors: true,
             admins: true,
-            ixtaowners: true,
           },
         });
       }
@@ -165,8 +163,7 @@ export async function GET(request: NextRequest) {
         'Guest': 'GUEST',
         'Customer': 'CUSTOMER',
         'Distributor': 'DISTRIBUTOR',
-        'Admin': 'ADMIN',
-        'Ixtaowner': 'IXTAOWNER',
+        'Admin': 'ADMIN'
       };
       const clientRole = roleMap[user.role] || 'GUEST';
 

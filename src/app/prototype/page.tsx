@@ -210,7 +210,7 @@ export default function IxtaownerPage() {
           </div>
           <FadeInSection className="relative z-20 mx-auto max-w-5xl px-6 py-24 text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 border border-amber-400/30 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-amber-200">
-              Live
+              Coming soon
             </span>
             <h1 className="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
               IXTAowner
