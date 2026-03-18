@@ -41,6 +41,10 @@ const STAT_METRICS = [
   },
 ] as const;
 
+// Feature flags: keep marketing counters + testimonials hidden unless explicitly enabled.
+const SHOW_STAT_METRICS = false;
+const SHOW_CUSTOMER_STORIES = false;
+
 const JOURNEY_STEPS = [
   {
     icon: "",
@@ -489,7 +493,7 @@ export default function GuestHome() {
           </FadeInSection>
         </section>
 
-        {false && (
+        {SHOW_STAT_METRICS && (
         <FadeInSection>
           <section className="mx-auto max-w-6xl px-3 sm:px-6 py-8 sm:py-16">
             <div className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-10 shadow-[0_25px_120px_rgba(15,23,42,0.45)] backdrop-blur">
@@ -743,7 +747,7 @@ export default function GuestHome() {
         </FadeInSection>
 
 
-        {false && (
+        {SHOW_CUSTOMER_STORIES && (
         <FadeInSection>
           <section className="px-6 py-16">
             <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/85 via-slate-900/60 to-cyan-900/50 p-10 shadow-[0_25px_120px_rgba(8,97,164,0.25)] backdrop-blur">
