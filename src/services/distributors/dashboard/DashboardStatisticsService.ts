@@ -457,8 +457,9 @@ export class DashboardStatisticsService extends BaseService {
             return null;
           }
 
-          // Filter by location if provided
-          if (filters?.locationId && booking.boxes.stands.locations.id !== filters.locationId) {
+          // Filter by location if provided (stands can be nullable)
+          const bookingLocationId = booking.boxes.stands?.locations?.id ?? null;
+          if (filters?.locationId && bookingLocationId !== filters.locationId) {
             return null;
           }
 
@@ -565,13 +566,18 @@ export class DashboardStatisticsService extends BaseService {
             }
           }
 
+          // Prisma relations can be nullable; if stands/locations are missing,
+          // skip this booking item to satisfy TS and avoid returning broken rows.
+          const stand = booking.boxes.stands;
+          if (!stand?.locations) return null;
+
           return {
             bookingId: booking.id,
             bookingDisplayId: booking.display_id,
             boxId: booking.boxes.display_id,
             boxType: booking.boxes.model || 'Unknown',
-            location: booking.boxes.stands.locations.name,
-            stand: booking.boxes.stands.name,
+            location: stand.locations.name,
+            stand: stand.name,
             customer: booking.payments?.users?.full_name || booking.payments?.users?.email || 'Unknown',
             customerEmail: booking.payments?.users?.email,
             customerPhone: booking.payments?.users?.phone ?? undefined,
@@ -678,7 +684,8 @@ export class DashboardStatisticsService extends BaseService {
 
         return boxes.map((box) => {
           const booking = box.bookings[0];
-          const location = box.stands.locations.name;
+          // Prisma relations can be nullable.
+          const location: string = box.stands?.locations?.name ?? 'Unknown Location';
 
           let duration: string | undefined;
           let revenue: number | undefined;

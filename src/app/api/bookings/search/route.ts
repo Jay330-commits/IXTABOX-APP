@@ -16,7 +16,7 @@ async function formatBookingForGuestDisplay(booking: {
   lock_pin: number | null;
   created_at: Date;
   boxes: {
-    stand_id: string;
+    stand_id: string | null;
     model: string;
     display_id: string;
     price: unknown;
@@ -28,7 +28,7 @@ async function formatBookingForGuestDisplay(booking: {
         name: string;
         address: string | null;
       };
-    };
+    } | null;
   };
   box_id: string;
   payments?: { id: string; charge_id: string; amount: unknown; status: string | null } | null;
@@ -92,16 +92,16 @@ async function formatBookingForGuestDisplay(booking: {
     closedStandLock = r2 && !r2.includes('/storage/v1/object/public/') ? r2 : null;
   }
 
-  const location = booking.boxes.stands.locations;
-  const address = location.address || location.name || 'Unknown Location';
+  const location = booking.boxes.stands?.locations;
+  const address = location?.address || location?.name || 'Unknown Location';
 
   return {
     id: booking.id,
-    location: location.name,
-    locationAddress: location.address || location.name || null,
-    locationId: location.id,
-    standId: booking.boxes.stand_id,
-    standDisplayId: booking.boxes.stands.display_id,
+    location: location?.name ?? null,
+    locationAddress: location?.address || location?.name || null,
+    locationId: location?.id ?? null,
+    standId: booking.boxes.stand_id ?? null,
+    standDisplayId: booking.boxes.stands?.display_id ?? null,
     boxId: booking.box_id,
     boxDisplayId: booking.boxes.display_id,
     address,

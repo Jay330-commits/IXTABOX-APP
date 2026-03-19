@@ -61,9 +61,11 @@ export async function GET(request: NextRequest) {
       status: box.status,
       compartment: box.compartment,
       stand_id: box.stand_id,
-      stand_name: box.stands.name,
-      location_name: box.stands.locations.name,
-      location_id: box.stands.locations.id,
+      // `stands` relation can be nullable depending on query/seed/state.
+      // Use fallbacks to satisfy TS build checks.
+      stand_name: box.stands?.name ?? 'Unknown Stand',
+      location_name: box.stands?.locations?.name ?? 'Unknown Location',
+      location_id: box.stands?.locations?.id ?? null,
     }));
 
     return NextResponse.json({ success: true, data: formattedBoxes });

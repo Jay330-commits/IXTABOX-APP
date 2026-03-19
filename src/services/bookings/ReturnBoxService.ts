@@ -175,9 +175,13 @@ export class ReturnBoxService extends BaseService {
       // Send return confirmation email
       if (userEmail) {
         try {
-          const locationName = booking.boxes.stands.locations.name || 'Unknown Location';
+          // Prisma relations can be nullable depending on include/select and DB state.
+          const stand = booking.boxes.stands;
+          const location = stand?.locations;
+
+          const locationName = location?.name || 'Unknown Location';
           const boxDisplayId = booking.boxes.display_id || 'N/A';
-          const standName = booking.boxes.stands.name || 'N/A';
+          const standName = stand?.name || 'N/A';
 
           await this.emailService.sendBoxReturnConfirmation({
             to: userEmail,

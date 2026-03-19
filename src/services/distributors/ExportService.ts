@@ -46,8 +46,8 @@ export class ExportService extends BaseService {
             box.display_id,
             box.model || 'Unknown',
             box.status || 'available',
-            box.stands.locations.name,
-            box.stands.name,
+            box.stands?.locations?.name ?? 'Unknown Location',
+            box.stands?.name ?? 'Unknown Stand',
           ]);
 
           const csvContent = [

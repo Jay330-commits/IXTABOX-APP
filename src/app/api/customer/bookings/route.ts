@@ -453,8 +453,9 @@ export async function GET(request: NextRequest) {
       const formattedBooking = {
         id: booking.id,
         bookingDisplayId: booking.display_id,
-        location: booking.boxes.stands.locations.name || 'Unknown Location',
-        locationAddress: booking.boxes.stands.locations.address || null,
+        // Prisma relations can be nullable; guard to satisfy build type checks.
+        location: booking.boxes.stands?.locations?.name || 'Unknown Location',
+        locationAddress: booking.boxes.stands?.locations?.address || booking.boxes.stands?.locations?.name || null,
         date: booking.start_date.toISOString().split('T')[0],
         status: finalStatus, // Use DB status if Cancelled/Completed, otherwise calculated
         amount: totalAmount, // Total amount including extensions
@@ -465,9 +466,9 @@ export async function GET(request: NextRequest) {
         boxId: booking.box_id,
         boxDisplayId: booking.boxes.display_id,
         standId: booking.boxes.stand_id,
-        standDisplayId: booking.boxes.stands.display_id,
-        locationId: booking.boxes.stands.location_id,
-        locationDisplayId: booking.boxes.stands.locations.display_id,
+        standDisplayId: booking.boxes.stands?.display_id || null,
+        locationId: booking.boxes.stands?.location_id || null,
+        locationDisplayId: booking.boxes.stands?.locations?.display_id || null,
         lockPin: canShowLockPin(booking.start_date, booking.lock_pin) ? (booking.lock_pin ?? null) : null,
         paymentId: booking.payment_id,
         paymentStatus: booking.payments?.status || null,

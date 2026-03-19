@@ -182,14 +182,20 @@ export async function POST(request: NextRequest) {
 
       return {
         id: booking.id,
-        location: booking.boxes.stands.locations.name,
-        locationAddress: booking.boxes.stands.locations.address || booking.boxes.stands.locations.name || null,
-        locationId: booking.boxes.stands.locations.id,
+        location: booking.boxes.stands?.locations?.name ?? null,
+        locationAddress:
+          booking.boxes.stands?.locations?.address ??
+          booking.boxes.stands?.locations?.name ??
+          null,
+        locationId: booking.boxes.stands?.locations?.id ?? null,
         standId: booking.boxes.stand_id,
-        standDisplayId: booking.boxes.stands.display_id,
+        standDisplayId: booking.boxes.stands?.display_id ?? null,
         boxId: booking.box_id,
         boxDisplayId: booking.boxes.display_id,
-        address: booking.boxes.stands.locations.address || booking.boxes.stands.locations.name || 'Unknown Location',
+        address:
+          booking.boxes.stands?.locations?.address ??
+          booking.boxes.stands?.locations?.name ??
+          'Unknown Location',
         startDate: booking.start_date.toISOString(),
         endDate: booking.end_date.toISOString(),
         date: booking.start_date.toISOString(), // For compatibility

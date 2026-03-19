@@ -67,11 +67,15 @@ export class NotificationService extends BaseService {
       throw new Error(`Booking ${bookingId} not found for notification`);
     }
 
-    const location = bookingWithDetails.boxes.stands.locations;
+    const stand = bookingWithDetails.boxes.stands;
+    if (!stand || !stand.locations) {
+      throw new Error(`Booking ${bookingId} is missing stand/location relation for notification`);
+    }
+
+    const location = stand.locations;
     const distributor = location.distributors;
-    const distributorUserId = distributor.user_id;
+    const distributorUserId = distributor?.user_id;
     const box = bookingWithDetails.boxes;
-    const stand = box.stands;
     const customer = bookingWithDetails.payments.users;
 
     if (!distributorUserId) {
@@ -203,9 +207,11 @@ export class NotificationService extends BaseService {
 
     if (!bookingWithDetails) return;
 
-    const location = bookingWithDetails.boxes.stands.locations;
+    const stand = bookingWithDetails.boxes.stands;
+    if (!stand || !stand.locations) return;
+
+    const location = stand.locations;
     const box = bookingWithDetails.boxes;
-    const stand = box.stands;
     const customer = bookingWithDetails.payments?.users ?? null;
 
     const formatDate = (date: Date): string => {
@@ -305,9 +311,13 @@ export class NotificationService extends BaseService {
       throw new Error(`Booking ${bookingId} not found for notification`);
     }
 
-    const location = bookingWithDetails.boxes.stands.locations;
+    const stand = bookingWithDetails.boxes.stands;
+    if (!stand || !stand.locations) {
+      throw new Error(`Booking ${bookingId} is missing stand/location relation for notification`);
+    }
+
+    const location = stand.locations;
     const box = bookingWithDetails.boxes;
-    const stand = box.stands;
 
     // Format dates for notification message
     const formatDate = (date: Date): string => {

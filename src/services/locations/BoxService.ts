@@ -216,7 +216,7 @@ export class BoxService extends BaseService {
           boxId: updatedBox.id,
           displayId: updatedBox.display_id,
           oldStandId: currentBox.stand_id,
-          oldStandName: currentBox.stands.name,
+          oldStandName: currentBox.stands?.name ?? 'Unknown Stand',
           newStandId: newStandId,
           newStandName: newStand.name,
         });

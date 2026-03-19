@@ -263,6 +263,7 @@ export class BoxInventoryService extends BaseService {
         }
 
         const currentBooking = box.bookings[0];
+        const stand = box.stands;
 
         return {
           id: box.id,
@@ -271,9 +272,9 @@ export class BoxInventoryService extends BaseService {
           serialNumber: box.display_id,
           status: box.status || 'available',
           condition: 'excellent', // Would come from condition field
-          currentLocation: box.stands.locations.name,
-          standId: box.stands.id,
-          standName: box.stands.name,
+          currentLocation: stand?.locations?.name ?? 'Unknown Location',
+          standId: stand?.id ?? box.stand_id ?? 'unknown-stand',
+          standName: stand?.name ?? 'Unknown Stand',
           currentBooking: currentBooking
             ? {
                 customerEmail: currentBooking.payments?.users?.email || 'Unknown',
@@ -412,8 +413,8 @@ export class BoxInventoryService extends BaseService {
         return boxes.map((box) => ({
           boxId: box.id,
           boxDisplayId: box.display_id,
-          standName: box.stands.name,
-          location: box.stands.locations.name,
+          standName: box.stands?.name ?? 'Unknown Stand',
+          location: box.stands?.locations?.name ?? 'Unknown Location',
           status: box.status || 'maintenance',
         }));
       },

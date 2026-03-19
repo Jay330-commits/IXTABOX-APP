@@ -80,9 +80,18 @@ export async function GET(request: NextRequest) {
           data: { lock_pin: lockPin },
         });
 
-        const location = booking.boxes.stands.locations;
         const box = booking.boxes;
         const stand = box.stands;
+        const location = stand?.locations;
+        if (!stand || !location) {
+          // Prisma relations can be nullable; if missing, skip sending unlock email for safety.
+          console.warn('[Cron] Missing stand/locations for booking, skipping:', {
+            bookingId: booking.id,
+            hasStand: !!stand,
+            hasLocation: !!location,
+          });
+          continue;
+        }
         const bookingsUrl = booking.payments?.charge_id
           ? `${baseUrl}/guest/bookings?email=${encodeURIComponent(email)}&chargeId=${encodeURIComponent(booking.payments.charge_id)}`
           : `${baseUrl}/guest/bookings?email=${encodeURIComponent(email)}`;

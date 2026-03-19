@@ -130,38 +130,58 @@ export class DistributorBookingService extends BaseService {
           },
         });
 
-        return bookings.map((booking) => {
+        return bookings.reduce<DistributorBooking[]>((acc, booking) => {
           const extCount = booking.extensions?.length ?? 0;
           const firstExt = extCount
-            ? [...(booking.extensions ?? [])].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
+            ? [...(booking.extensions ?? [])].sort(
+                (a, b) =>
+                  new Date(a.created_at).getTime() -
+                  new Date(b.created_at).getTime()
+              )[0]
             : null;
-          return {
+
+          // stand_id should always exist for boxes returned from the distributor's location filter,
+          // but Prisma types it as nullable. Skip rows without a stand_id.
+          const standId = booking.boxes.stand_id;
+          if (!standId) return acc;
+
+          acc.push({
             id: booking.id,
             boxId: booking.boxes.id,
             boxDisplayId: booking.boxes.display_id,
-            standId: booking.boxes.stands.id,
-            standName: booking.boxes.stands.name,
-            location: booking.boxes.stands.locations.name,
+            standId,
+            standName: booking.boxes.stands?.name ?? 'Unknown Stand',
+            location:
+              booking.boxes.stands?.locations?.name ?? 'Unknown Location',
             customerEmail: booking.payments?.users?.email || 'Unknown',
             startDate: new Date(booking.start_date).toLocaleDateString(),
             endDate: new Date(booking.end_date).toLocaleDateString(),
             status: booking.status || 'unknown',
-            revenue: booking.payments?.amount ? Number(booking.payments.amount) : 0,
+            revenue: booking.payments?.amount
+              ? Number(booking.payments.amount)
+              : 0,
             extensionCount: extCount,
-            originalEndDate: firstExt ? new Date(firstExt.previous_end_date).toLocaleDateString() : undefined,
-            extensions: booking.extensions?.map((ext) => ({
-              id: ext.id,
-              previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),
-              newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
-              previousLockPin: ext.previous_lock_pin,
-              newLockPin: ext.new_lock_pin,
-              additionalDays: ext.additional_days,
-              additionalCost: Number(ext.additional_cost),
-              createdAt: new Date(ext.created_at).toLocaleDateString(),
-              boxStatusAtExtension: ext.box_status_at_extension || undefined,
-            })) || [],
-          };
-        });
+            originalEndDate: firstExt
+              ? new Date(firstExt.previous_end_date).toLocaleDateString()
+              : undefined,
+            extensions:
+              booking.extensions?.map((ext) => ({
+                id: ext.id,
+                previousEndDate: new Date(
+                  ext.previous_end_date
+                ).toLocaleDateString(),
+                newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
+                previousLockPin: ext.previous_lock_pin,
+                newLockPin: ext.new_lock_pin,
+                additionalDays: ext.additional_days,
+                additionalCost: Number(ext.additional_cost),
+                createdAt: new Date(ext.created_at).toLocaleDateString(),
+                boxStatusAtExtension: ext.box_status_at_extension || undefined,
+              })) || [],
+          });
+
+          return acc;
+        }, []);
       },
       'DistributorBookingService.getBookingsByDistributor',
       { distributorId, filters }
@@ -257,37 +277,56 @@ export class DistributorBookingService extends BaseService {
           },
         });
 
-        return bookings.map((booking) => ({
-          id: booking.id,
-          boxId: booking.boxes.id,
-          boxDisplayId: booking.boxes.display_id,
-          standId: booking.boxes.stands.id,
-          standName: booking.boxes.stands.name,
-          location: booking.boxes.stands.locations.name,
-          customerEmail: booking.payments?.users?.email || 'Unknown',
-          startDate: new Date(booking.start_date).toLocaleDateString(),
-          endDate: new Date(booking.end_date).toLocaleDateString(),
-          status: booking.status || 'unknown',
-          revenue: booking.payments?.amount ? Number(booking.payments.amount) : 0,
-          extensionCount: booking.extensions?.length ?? 0,
-          originalEndDate: (() => {
-            const exts = booking.extensions;
-            if (!exts?.length) return undefined;
-            const first = [...exts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-            return first ? new Date(first.previous_end_date).toLocaleDateString() : undefined;
-          })(),
-          extensions: booking.extensions?.map((ext) => ({
-            id: ext.id,
-            previousEndDate: new Date(ext.previous_end_date).toLocaleDateString(),
-            newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
-            previousLockPin: ext.previous_lock_pin,
-            newLockPin: ext.new_lock_pin,
-            additionalDays: ext.additional_days,
-            additionalCost: Number(ext.additional_cost),
-            createdAt: new Date(ext.created_at).toLocaleDateString(),
-            boxStatusAtExtension: ext.box_status_at_extension || undefined,
-          })) || [],
-        }));
+        return bookings.reduce<DistributorBooking[]>((acc, booking) => {
+          const standId = booking.boxes.stand_id;
+          if (!standId) return acc;
+
+          acc.push({
+            id: booking.id,
+            boxId: booking.boxes.id,
+            boxDisplayId: booking.boxes.display_id,
+            standId,
+            standName: booking.boxes.stands?.name ?? 'Unknown Stand',
+            location:
+              booking.boxes.stands?.locations?.name ?? 'Unknown Location',
+            customerEmail: booking.payments?.users?.email || 'Unknown',
+            startDate: new Date(booking.start_date).toLocaleDateString(),
+            endDate: new Date(booking.end_date).toLocaleDateString(),
+            status: booking.status || 'unknown',
+            revenue: booking.payments?.amount
+              ? Number(booking.payments.amount)
+              : 0,
+            extensionCount: booking.extensions?.length ?? 0,
+            originalEndDate: (() => {
+              const exts = booking.extensions;
+              if (!exts?.length) return undefined;
+              const first = [...exts].sort(
+                (a, b) =>
+                  new Date(a.created_at).getTime() -
+                  new Date(b.created_at).getTime()
+              )[0];
+              return first
+                ? new Date(first.previous_end_date).toLocaleDateString()
+                : undefined;
+            })(),
+            extensions:
+              booking.extensions?.map((ext) => ({
+                id: ext.id,
+                previousEndDate: new Date(
+                  ext.previous_end_date
+                ).toLocaleDateString(),
+                newEndDate: new Date(ext.new_end_date).toLocaleDateString(),
+                previousLockPin: ext.previous_lock_pin,
+                newLockPin: ext.new_lock_pin,
+                additionalDays: ext.additional_days,
+                additionalCost: Number(ext.additional_cost),
+                createdAt: new Date(ext.created_at).toLocaleDateString(),
+                boxStatusAtExtension: ext.box_status_at_extension || undefined,
+              })) || [],
+          });
+
+          return acc;
+        }, []);
       },
       'DistributorBookingService.getBookingsByStand',
       { standId, filters }
@@ -362,6 +401,11 @@ export class DistributorBookingService extends BaseService {
 
         if (!box) {
           throw new Error(`Box with id ${boxId} not found`);
+        }
+
+        // Prisma relation is nullable in types; enforce required relation at runtime.
+        if (!box.stands || !box.stands.locations) {
+          throw new Error(`Box ${boxId} is missing stand/location relationship`);
         }
 
         return {

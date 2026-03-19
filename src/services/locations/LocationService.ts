@@ -258,7 +258,7 @@ export class LocationService extends BaseService {
           locationId: updatedLocation.id,
           displayId: updatedLocation.display_id,
           oldDistributorId: currentLocation.distributor_id,
-          oldDistributorName: currentLocation.distributors.company_name,
+          oldDistributorName: currentLocation.distributors?.company_name ?? 'Unknown Distributor',
           newDistributorId: newDistributorId,
           newDistributorName: newDistributor.company_name,
         });

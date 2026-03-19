@@ -174,6 +174,10 @@ async function fetchAllActiveBoxes(
 function groupBoxesByStand(boxes: BoxWithStand[]): Record<string, StandGroup> {
   return boxes.reduce(
     (acc, box) => {
+      // Prisma relations can be nullable even when we filter by `stands`.
+      // Skip boxes without a stand to keep the API response stable.
+      if (!box.stands) return acc;
+
       const standId = box.stands.id;
       if (!acc[standId]) {
         acc[standId] = {

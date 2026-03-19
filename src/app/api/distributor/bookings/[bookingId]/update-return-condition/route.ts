@@ -65,7 +65,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    if (booking.boxes.stands.locations.distributor_id !== dbUser.distributors.id) {
+    const distributorId =
+      booking.boxes.stands?.locations?.distributor_id ?? null;
+    if (!distributorId || distributorId !== dbUser.distributors.id) {
       return NextResponse.json(
         { error: 'Access denied. Booking does not belong to your locations' },
         { status: 403 }

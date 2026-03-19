@@ -1,5 +1,4 @@
 import 'server-only';
-import type { ixtaowners as Ixtaowner } from '@prisma/client';
 import { BaseService } from '../BaseService';
 
 export interface CreateIxtaownerData {
@@ -11,7 +10,7 @@ export class IxtaownerService extends BaseService {
   /**
    * Create an ixtaowner profile linked to a user
    */
-  async createIxtaowner(data: CreateIxtaownerData): Promise<Ixtaowner> {
+  async createIxtaowner(data: CreateIxtaownerData) {
     return await this.logOperation(
       'CREATE_IXTAOWNER',
       async () => {

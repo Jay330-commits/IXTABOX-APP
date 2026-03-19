@@ -686,7 +686,23 @@ export class PaymentProcessingService {
 
     const box = bookingWithDetails.boxes;
     const stand = box.stands;
+
+    // Prisma relations can be nullable depending on seed/data and query includes.
+    // If stands is missing, skip the email rather than crashing the build.
+    if (!stand) {
+      console.warn('[PaymentProcessingService] Missing stand for booking email:', {
+        bookingId,
+      });
+      return;
+    }
+
     const location = stand.locations;
+    if (!location) {
+      console.warn('[PaymentProcessingService] Missing location for booking email:', {
+        bookingId,
+      });
+      return;
+    }
 
     // Get payment charge_id for the booking link
     const payment = await prisma.payments.findFirst({

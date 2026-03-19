@@ -153,9 +153,9 @@ export class DistributorNotificationService extends BaseService {
         return boxes.map((box) => ({
           boxId: box.id,
           boxDisplayId: box.display_id,
-          standName: box.stands.name,
-          location: box.stands.locations.name,
-          message: `Box ${box.display_id} requires maintenance at ${box.stands.name}`,
+          standName: box.stands?.name ?? 'Unknown Stand',
+          location: box.stands?.locations?.name ?? 'Unknown Location',
+          message: `Box ${box.display_id} requires maintenance at ${box.stands?.name ?? 'Unknown Stand'}`,
         }));
       },
       'DistributorNotificationService.getMaintenanceNotifications',

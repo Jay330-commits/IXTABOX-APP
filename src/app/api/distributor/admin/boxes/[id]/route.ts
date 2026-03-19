@@ -52,7 +52,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Box not found' }, { status: 404 });
     }
 
-    if (box.stands.locations.distributor_id !== user.distributors.id) {
+    // Prisma relations can be nullable.
+    const distributorId = box.stands?.locations?.distributor_id;
+    if (!distributorId || distributorId !== user.distributors.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -147,7 +149,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Box not found' }, { status: 404 });
     }
 
-    if (box.stands.locations.distributor_id !== user.distributors.id) {
+    // Prisma relations can be nullable.
+    const distributorId = box.stands?.locations?.distributor_id;
+    if (!distributorId || distributorId !== user.distributors.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

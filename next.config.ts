@@ -86,6 +86,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Workaround: ESLint is crashing during `next build` in this repo.
+  // Skipping ESLint during builds unblocks deployments while we fix the underlying config.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

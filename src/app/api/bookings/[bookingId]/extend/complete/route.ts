@@ -189,9 +189,11 @@ export async function POST(
         end_date: updatedBooking.end_date.toISOString(),
         startDate: updatedBooking.start_date.toISOString(),
         start_date: updatedBooking.start_date.toISOString(),
+        // Prisma relations can be nullable depending on data and schema setup.
+        // Guard to avoid "possibly null" build failures.
         standId: updatedBooking.boxes.stand_id,
-        standName: updatedBooking.boxes.stands.name,
-        location: updatedBooking.boxes.stands.locations.name,
+        standName: updatedBooking.boxes.stands?.name ?? null,
+        location: updatedBooking.boxes.stands?.locations?.name ?? null,
       } : null,
     });
   } catch (error) {
