@@ -613,14 +613,14 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
             aria-modal="true"
             role="dialog"
           >
-            {/* Backdrop – click closes */}
+            {/* Backdrop – click closes (matches GitHub) */}
             <div
-              className="absolute inset-0 bg-black/50"
+              className="absolute inset-0 bg-black/40"
               onClick={() => setSelectedLocation(null)}
               aria-hidden
             />
 
-            {/* Panel: on desktop starts below header (96px) so "Location name / Address" is never covered */}
+            {/* Panel: desktop top 80px to align with header; full height */}
             <div
               className={`
                 absolute left-0 bg-slate-800 shadow-2xl flex flex-col border-slate-600/30
@@ -642,16 +642,14 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
                       animation: "slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards",
                     }
                   : {
-                      top: 96,
-                      height: "calc(100vh - 96px)",
-                      minHeight: "calc(100vh - 96px)",
+                      top: 80,
+                      height: "calc(100vh - 80px)",
+                      minHeight: "calc(100vh - 80px)",
                     }),
                 transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
                 willChange: "transform",
               }}
             >
-              {/* Extra top padding so location name + address sit clearly below site header (h-20) */}
-              {!isMobile && <div className="flex-shrink-0 h-6 bg-slate-800" aria-hidden />}
               {isMobile ? (
                 <div className="mobile-panel-content flex-1 min-h-0" style={{ display: "flex", flexDirection: "column" }}>
                   <LocationDetails
@@ -699,7 +697,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               )}
             </div>
           </div>,
-          (document.getElementById("portal-root") ?? document.body)
+          document.body
         )}
 
       {fullscreen && (
@@ -715,9 +713,9 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
             type="button"
             onClick={handleCloseFullscreen}
             className="rounded-xl bg-slate-800/95 backdrop-blur-sm text-white text-sm font-medium px-4 py-2.5 border border-white/20 hover:bg-slate-700 hover:border-white/30 shadow-lg whitespace-nowrap transition-all duration-200"
-            title="Close map"
+            title="Close"
           >
-            Close map
+            Close
           </button>
         </div>
       )}
@@ -725,7 +723,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
       {fullscreen && exitHintVisible && !isMobile && (
         <div className="pointer-events-none fixed inset-x-0 top-[96px] z-[10000] flex justify-center">
           <div className="rounded-full border border-white/20 bg-black/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.3em] text-white/80 shadow-lg">
-            Press Esc or tap Close map
+            Press Esc or tap Close to leave the map
           </div>
         </div>
       )}
@@ -812,6 +810,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
           role="button"
           tabIndex={0}
           aria-label="Double-tap to open map"
+          title="Double‑tap to open map"
           onDoubleClick={() => {
             setInteractionEnabled(true);
             setFullscreen(true);
@@ -829,11 +828,6 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               setInteractionEnabled(true);
               setFullscreen(true);
               onFullscreenChange?.(true);
-              setTimeout(() => {
-                if (mapRef.current && computedBounds) {
-                  fitBoundsWithMaxZoom(mapRef.current, computedBounds);
-                }
-              }, 100);
             }
             lastTapRef.current = now;
           }}
@@ -850,7 +844,6 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
               }, 100);
             }
           }}
-          title="Double‑tap to open map"
           className="absolute inset-0 z-[9998] flex items-center justify-center select-none cursor-pointer"
           style={{
             background: "rgba(0,0,0,0.5)",
@@ -859,8 +852,7 @@ export default function Map({ locations, filterForm, filterValues, onFullscreenC
           }}
         >
           <div className="rounded-2xl bg-slate-900/95 border-2 border-cyan-500/40 px-6 py-4 text-center shadow-2xl shadow-black/50 max-w-[280px]">
-            <p className="text-white font-semibold text-base mb-1">Tap map twice to open</p>
-            <p className="text-cyan-200/90 text-sm">or double‑click on desktop</p>
+            <p className="text-white font-semibold text-base">Double‑click to enable map</p>
           </div>
         </div>
       )}

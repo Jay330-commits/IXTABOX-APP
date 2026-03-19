@@ -505,20 +505,20 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0">
-      {/* Header Section - Always visible */}
-      <div className="bg-slate-800/98 border-b border-white/5 flex-shrink-0 w-full backdrop-blur-xl" style={{ position: 'relative', zIndex: 1000 }}>
-        <div className="px-4 py-3.5">
-          <div className="flex items-start justify-between gap-3">
+      {/* Header Section - Always visible (matches GitHub) */}
+      <div className="bg-slate-800 border-b border-slate-600/30 flex-shrink-0 w-full" style={{ position: 'relative', zIndex: 1000 }}>
+        <div className="p-3">
+          <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-semibold text-white truncate">{location.name}</h2>
-                <span className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getStatusTextColor()}`}>
+              <div className="flex items-center justify-between w-full mb-1">
+                <h2 className="text-lg font-bold text-white truncate drop-shadow-sm">{location.name}</h2>
+                <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusTextColor()}`}>
                   {getDisplayStatus()}
                 </span>
               </div>
               {location.address && (
-                <p className="text-xs text-slate-400 truncate mt-1 flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p className="text-xs text-gray-300 truncate flex items-center gap-1">
+                  <svg className="w-3 h-3 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
@@ -528,7 +528,7 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex-shrink-0 text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-200 p-1.5 rounded-lg active:scale-95"
               aria-label="Close"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -540,17 +540,20 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       </div>
 
       {/* Tabs - Always visible */}
-      <div className="flex-shrink-0 bg-slate-800/95 border-b border-white/5 z-[10001]">
-        <div className="flex gap-2 p-2">
+      <div className="flex-shrink-0 bg-slate-700/50 border-b border-slate-600/30">
+        <div className="flex">
           <button
             onClick={() => setActiveTab('dates')}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-all duration-200 relative ${
               activeTab === 'dates'
-                ? 'text-white bg-cyan-600'
-                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                ? 'text-cyan-400 bg-slate-700/40'
+                : 'text-gray-300 hover:text-white hover:bg-slate-700/20'
             }`}
           >
-            Select Dates
+            <span className="relative z-10">Select Dates</span>
+            {activeTab === 'dates' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-cyan-500 shadow-lg shadow-cyan-400/50" />
+            )}
           </button>
           <button
             onClick={() => {
@@ -561,31 +564,38 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               setActiveTab('model');
             }}
             disabled={!startDate || !endDate || !startTime || !endTime}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-all duration-200 relative ${
               activeTab === 'model'
-                ? 'text-white bg-cyan-600'
+                ? 'text-cyan-400 bg-slate-700/40'
                 : (!startDate || !endDate || !startTime || !endTime)
-                ? 'text-slate-500 cursor-not-allowed'
-                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                ? 'text-gray-600 cursor-not-allowed opacity-50'
+                : 'text-gray-300 hover:text-white hover:bg-slate-700/20'
             }`}
           >
-            Select Model
+            <span className="relative z-10">Select Model</span>
+            {activeTab === 'model' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-cyan-500 shadow-lg shadow-cyan-400/50" />
+            )}
           </button>
         </div>
+        {/* Show selected date range and model when dates are chosen */}
         {startDate && endDate && (
-          <div className="px-3 py-2 border-t border-white/5 bg-slate-900/30">
-            <p className="text-center text-xs text-slate-400">
-              <span className="text-white font-medium">{formatDateForDisplay(startDate)}</span>
-              <span className="mx-1.5 text-slate-500">at</span>
-              <span className="text-white font-medium">{formatTimeForDisplay(startTime)}</span>
-              <span className="mx-1.5 text-slate-500">→</span>
-              <span className="text-white font-medium">{formatDateForDisplay(endDate)}</span>
-              <span className="mx-1.5 text-slate-500">at</span>
-              <span className="text-white font-medium">{formatTimeForDisplay(endTime)}</span>
+          <div className="px-3 py-2 border-t border-slate-700/20">
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-300 flex-wrap">
+              <span className="text-gray-400">Selected:</span>
+              <span className="font-medium text-white">
+                {formatDateForDisplay(startDate)} {formatTimeForDisplay(startTime)}
+              </span>
+              <span className="text-gray-500">→</span>
+              <span className="font-medium text-white">
+                {formatDateForDisplay(endDate)} {formatTimeForDisplay(endTime)}
+              </span>
               {days > 0 && (
-                <span className="ml-2 text-cyan-300/90">({days} {days === 1 ? 'day' : 'days'})</span>
+                <span className="text-gray-400 ml-2">
+                  ({days} {days === 1 ? 'day' : 'days'})
+                </span>
               )}
-            </p>
+            </div>
           </div>
         )}
       </div>
@@ -619,23 +629,28 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             
             {/* Date Inputs Overlay */}
             {activeTab === 'dates' && (
-              <div className="absolute inset-0 flex items-center justify-center p-4 z-10 overflow-auto">
-                <div className="w-full max-w-sm mx-auto grid grid-cols-2 gap-4">
-                  <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-4 border border-white/10 shadow-xl space-y-3">
-                    <label className="block text-xs font-medium text-slate-300">Start</label>
+              <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-2">
+                  <div className="bg-slate-800/85 rounded-lg p-3 border border-white/10 space-y-2">
+                    <label className="block text-xs font-medium text-white mb-1.5">Start</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => {
                         const dateValue = e.target.value;
                         setStartDate(dateValue);
+                        // Automatically open time picker dropdown after date selection
                         if (dateValue && startTimeRef.current) {
-                          setTimeout(() => { startTimeRef.current?.focus(); startTimeRef.current?.click(); }, 150);
+                          setTimeout(() => {
+                            startTimeRef.current?.focus();
+                            // Try to open the dropdown by clicking on it
+                            startTimeRef.current?.click();
+                          }, 150);
                         }
                       }}
                       min={getMinDateTimeFromNow().split('T')[0]}
-                      className={`block w-full px-3 py-2.5 text-sm rounded-xl text-white bg-slate-900/70 border focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all ${
-                        startDate && !startTime ? 'border-amber-500/50' : 'border-white/15'
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-slate-800/80 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                        startDate && !startTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
                       }`}
                     />
                     <div>
@@ -648,12 +663,15 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         }`}
                       />
                       {startDate && !startTime && (
-                        <p className="mt-1.5 text-xs text-amber-400">Select start time</p>
+                        <p className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>Please select a start time</span>
+                        </p>
                       )}
                     </div>
                   </div>
-                  <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-4 border border-white/10 shadow-xl space-y-3">
-                    <label className="block text-xs font-medium text-slate-300">End</label>
+                  <div className="bg-slate-800/85 rounded-lg p-3 border border-white/10 space-y-2">
+                    <label className="block text-xs font-medium text-white mb-1.5">End</label>
                     <input
                       type="date"
                       value={endDate}
@@ -663,15 +681,22 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         if (date && startDate && startTime && endTime) {
                           const startDateTime = new Date(`${startDate}T${startTime}`);
                           const endDateTime = new Date(`${date}T${endTime}`);
-                          if (endDateTime <= startDateTime) alert('End date and time must be after start.');
+                          if (endDateTime <= startDateTime) {
+                            alert('End date and time must be after start date and time.');
+                          }
                         }
+                        // Automatically open time picker dropdown after date selection
                         if (date && endTimeRef.current) {
-                          setTimeout(() => { endTimeRef.current?.focus(); endTimeRef.current?.click(); }, 150);
+                          setTimeout(() => {
+                            endTimeRef.current?.focus();
+                            // Try to open the dropdown by clicking on it
+                            endTimeRef.current?.click();
+                          }, 150);
                         }
                       }}
                       min={startDate || getMinDateTimeFromNow().split('T')[0]}
-                      className={`block w-full px-3 py-2.5 text-sm rounded-xl text-white bg-slate-900/70 border focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none transition-all ${
-                        endDate && !endTime ? 'border-amber-500/50' : 'border-white/15'
+                      className={`block w-full px-3 py-2 text-sm border rounded-lg text-white bg-slate-800/80 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200 ${
+                        endDate && !endTime ? 'border-yellow-500/50 border-2' : 'border-white/20'
                       }`}
                     />
                     <div>
@@ -694,7 +719,10 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                         }`}
                       />
                       {endDate && !endTime && (
-                        <p className="mt-1.5 text-xs text-amber-400">Select end time</p>
+                        <p className="mt-1 text-xs text-yellow-400 flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>Please select an end time</span>
+                        </p>
                       )}
                     </div>
                   </div>
@@ -704,8 +732,8 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
             
             {/* Model Selection Overlay */}
             {activeTab === 'model' && startDate && endDate && (
-              <div className="absolute inset-0 flex items-center justify-center p-4 z-10 overflow-auto">
-                <div className="w-full max-w-sm mx-auto grid grid-cols-2 gap-3">
+              <div className="absolute inset-0 flex items-center justify-center p-3 z-10">
+                <div className="w-full max-w-md mx-auto grid grid-cols-2 gap-2">
                   {[
                     { id: 'pro_175', name: 'IXTAbox Pro 175', dimension: '175 cm' },
                     { id: 'pro_190', name: 'IXTAbox Pro 190', dimension: '190 cm' },
@@ -721,19 +749,19 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                     return (
                       <label
                         key={model.id}
-                        className={`relative flex flex-col p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer
+                        className={`relative flex flex-col p-3 rounded-lg transition-all duration-200 cursor-pointer
                           ${isSelected 
-                            ? 'bg-slate-800/95 border-cyan-500 shadow-lg shadow-cyan-500/20'
+                            ? 'bg-slate-800/90 border-2 border-cyan-400 shadow-lg shadow-cyan-500/40'
                             : modelBooked
-                            ? 'bg-slate-800/70 border-white/10 cursor-not-allowed opacity-70'
-                            : 'bg-slate-800/90 border-white/10 hover:border-cyan-500/40 hover:bg-slate-800/95'
+                            ? 'bg-slate-800/85 cursor-not-allowed border border-white/10'
+                            : 'bg-slate-800/85 border border-white/10 hover:bg-slate-800/90 hover:ring-1 hover:ring-cyan-500/30'
                           }`}
                       >
                         <input
                           type="radio"
                           name="model"
                           value={model.id}
-                          checked={selectedModel === model.id}
+                          checked={isSelected}
                           onChange={(e) => {
                             setSelectedModel(normalizeModelId(e.target.value));
                           }}
@@ -761,22 +789,22 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
                             />
                           </div>
                         </div>
-                        <div className="flex flex-col items-center gap-1 mt-1">
-                          <span className="text-sm font-semibold text-center text-white">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm font-semibold text-center break-words text-white">
                             {model.name}
                           </span>
                           {modelBooked && nextAvailableDate ? (
-                            <span className="text-xs text-center text-amber-400">
-                              From {formatDateForDisplay(nextAvailableDate)}
+                            <span className="text-xs text-center font-medium leading-tight break-words px-1 text-yellow-400">
+                              Available from: {formatDateForDisplay(nextAvailableDate)}
                             </span>
                           ) : modelAvailable ? (
-                            <span className="text-xs text-center text-emerald-400 font-medium">
-                              Available
+                            <span className="text-xs text-center font-medium leading-tight break-words px-1 text-green-400">
+                              Available now
                             </span>
                           ) : null}
                         </div>
                         {isSelected && (
-                          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center">
+                          <div className="absolute top-2 right-2 bg-cyan-400/90 rounded-full p-1.5 shadow-md">
                             <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -789,14 +817,13 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               </div>
             )}
             
-        {/* Availability bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-slate-900/90 px-3 py-2.5 text-center z-10 border-t border-white/5">
-          <div className="flex items-center justify-center gap-5 text-xs">
-            <span className="text-slate-400">Pro 175: <span className="font-semibold text-white">{location.availableBoxes.classic}</span></span>
-            <span className="text-slate-500">|</span>
-            <span className="text-slate-400">Pro 190: <span className="font-semibold text-white">{location.availableBoxes.pro}</span></span>
-            <span className="text-slate-500">|</span>
-            <span className="text-emerald-400/90 font-medium">{location.availableBoxes.total} available</span>
+        {/* Availability Details Overlay - Bottom of content area */}
+        <div className="absolute bottom-0 left-0 right-0 bg-slate-800/88 px-2 py-1.5 text-center z-10">
+          <div className="flex items-center justify-center gap-3 text-[10px] text-white flex-wrap">
+            <span>Pro 175: <span className="font-bold">{location.availableBoxes.classic}</span></span>
+            <span>Pro 190: <span className="font-bold">{location.availableBoxes.pro}</span></span>
+            <span>Total: <span className="font-bold">{location.availableBoxes.total}</span></span>
+            <span>Available: <span className="font-bold text-emerald-400">{location.availableBoxes.total}</span></span>
           </div>
         </div>
       </div>
@@ -804,15 +831,19 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
       {/* Box Selection - Hidden, runs in background */}
       {/* Action Section - Always visible at bottom, not part of scroll */}
       <div
-        className="flex-shrink-0 px-4 py-3 border-t border-white/5 bg-slate-800/98 z-20"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        className="flex-shrink-0 px-3 py-2.5 border-t border-slate-600/30 bg-slate-800"
+        style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
       >
+          {/* Show total price when dates are selected, always visible */}
           {startDate && endDate && (
-            <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/5">
-              <span className="text-sm text-slate-400">
-                {days} {days === 1 ? 'day' : 'days'} × {formatPrice(pricePerDay)}
-              </span>
+            <div className="mb-2 text-center p-2 rounded-lg bg-slate-800/85">
+              <span className="text-xs font-medium text-gray-400">Total: </span>
               <span className="text-lg font-bold text-cyan-400">{formatPrice(totalPrice)}</span>
+              {days > 0 && (
+                <span className="text-xs text-gray-400 ml-2">
+                  ({days} {days === 1 ? 'day' : 'days'} × {formatPrice(pricePerDay)})
+                </span>
+              )}
             </div>
           )}
           <button
@@ -890,16 +921,22 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
               loadingBoxes ||
               isBooking
             }
-            className={`w-full py-3 px-4 rounded-xl text-sm font-semibold text-white border transition-all
+            className={`w-full py-2.5 px-4 border border-transparent rounded-lg text-sm font-semibold text-white transition-all duration-200
               ${
                 location.status !== 'maintenance' && 
                 location.status !== 'inactive' &&
-                startDate && endDate && startTime && endTime && selectedModel && selectedBox &&
-                isTimeOrderValid && !loadingBoxes
-                  ? 'bg-cyan-600 hover:bg-cyan-500 border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-2 focus:ring-offset-slate-800 active:scale-[0.99]'
-                  : 'bg-slate-600 border-slate-500/50 cursor-not-allowed opacity-60'
+                startDate && 
+                endDate && 
+                startTime && 
+                endTime && 
+                selectedModel && 
+                selectedBox &&
+                isTimeOrderValid &&
+                !loadingBoxes
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 focus:ring-2 focus:ring-cyan-500/50 active:scale-[0.98] shadow-lg shadow-cyan-500/20'
+                  : 'bg-gray-600/50 cursor-not-allowed opacity-60'
               }
-              focus:outline-none`}
+              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800`}
           >
             {isBooking
               ? 'Processing...'
@@ -931,4 +968,3 @@ const LocationDetails: React.FC<LocationDetailsProps> = ({
 };
 
 export default LocationDetails;
-

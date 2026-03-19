@@ -289,9 +289,9 @@ function IxtaownerMapContent({
             type="button"
             onClick={handleCloseFullscreen}
             className="rounded-xl bg-slate-800/95 backdrop-blur-sm text-white text-sm font-medium px-4 py-2.5 border border-white/20 hover:bg-slate-700 hover:border-white/30 shadow-lg whitespace-nowrap transition-all duration-200"
-            title="Close map"
+            title="Close"
           >
-            Close map
+            Close
           </button>
         </div>
       )}
@@ -372,6 +372,7 @@ function IxtaownerMapContent({
           role="button"
           tabIndex={0}
           aria-label="Double-tap to open map"
+          title="Double‑tap to open map"
           onDoubleClick={handleEnableMap}
           onTouchStart={(e) => {
             const now = Date.now();
@@ -387,7 +388,6 @@ function IxtaownerMapContent({
               handleEnableMap();
             }
           }}
-          title="Double‑tap to open map"
           className="absolute inset-0 z-[9998] flex items-center justify-center select-none cursor-pointer"
           style={{
             background: "rgba(0,0,0,0.5)",
@@ -396,8 +396,7 @@ function IxtaownerMapContent({
           }}
         >
           <div className="rounded-2xl bg-slate-900/95 border-2 border-cyan-500/40 px-6 py-4 text-center shadow-2xl shadow-black/50 max-w-[280px]">
-            <p className="text-white font-semibold text-base mb-1">Tap map twice to open</p>
-            <p className="text-cyan-200/90 text-sm">or double‑click on desktop</p>
+            <p className="text-white font-semibold text-base">Double‑click to enable map</p>
           </div>
         </div>
       )}
@@ -639,7 +638,7 @@ function IxtaownerMapContent({
           </div>
           </div>
         </>,
-        document.getElementById("portal-root") ?? document.body
+        document.body
       )}
 
     </div>
