@@ -14,26 +14,43 @@ export class IxtaownerService extends BaseService {
     return await this.logOperation(
       'CREATE_IXTAOWNER',
       async () => {
-        const existing = await this.prisma.ixtaowners.findUnique({
-          where: { user_id: data.userId },
-        });
+        // Use raw SQL here because the generated Prisma client in this environment
+        // does not expose an `ixtaowners` delegate, while the table may still exist.
+        const existing = await this.prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id
+          FROM "public"."ixtaowners"
+          WHERE user_id = ${data.userId}::uuid
+          LIMIT 1
+        `;
 
-        if (existing) {
+        if (existing.length > 0) {
           throw new Error('Ixtaowner already exists for this user');
         }
 
-        const ixtaowner = await this.prisma.ixtaowners.create({
-          data: {
-            user_id: data.userId,
-            legal_name: data.legalName,
-            verified: false,
-          },
-          include: {
-            users: true,
-          },
+        const inserted = await this.prisma.$queryRaw<
+          Array<{
+            id: string;
+            user_id: string;
+            legal_name: string;
+            verified: boolean;
+            created_at: Date | null;
+            updated_at: Date | null;
+          }>
+        >`
+          INSERT INTO "public"."ixtaowners" (user_id, legal_name, verified)
+          VALUES (${data.userId}::uuid, ${data.legalName}, false)
+          RETURNING id, user_id, legal_name, verified, created_at, updated_at
+        `;
+
+        const ixtaowner = inserted[0];
+        const user = await this.prisma.public_users.findUnique({
+          where: { id: data.userId },
         });
 
-        return ixtaowner;
+        return {
+          ...ixtaowner,
+          users: user,
+        };
       },
       'IxtaownerService.createIxtaowner',
       { userId: data.userId }
