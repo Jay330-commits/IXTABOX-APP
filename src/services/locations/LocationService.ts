@@ -500,19 +500,32 @@ export class LocationService extends BaseService {
               not: status.Inactive,
             },
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            status: true,
+            coordinates: true,
+            image: true,
             stands: {
-              include: {
+              select: {
+                id: true,
                 boxes: {
                   where: {
                     status: boxStatus.Active,
                   },
-                  include: {
+                  select: {
+                    id: true,
+                    model: true,
+                    status: true,
                     bookings: {
                       where: {
                         status: {
                           in: [BookingStatus.Upcoming, BookingStatus.Active],
                         },
+                      },
+                      select: {
+                        end_date: true,
                       },
                     },
                   },

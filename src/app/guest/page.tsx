@@ -426,8 +426,10 @@ export default function GuestHome() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
       />
-      <GuestHeader />
-      <main className="">
+      <div className="fixed top-0 left-0 right-0 z-[10000]">
+        <GuestHeader />
+      </div>
+      <main className="pt-20">
         {/* Hero with background image - fills entire viewport */}
         <section
           className="relative flex items-center justify-center overflow-hidden animate-fadeIn min-h-screen"

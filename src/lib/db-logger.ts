@@ -31,6 +31,8 @@ export interface DbLogEntry {
   query?: string;
   params?: unknown;
   error?: string;
+  prismaCode?: string;
+  prismaMeta?: unknown;
   userId?: string;
   context?: string;
   metadata?: Record<string, unknown>;
@@ -141,6 +143,10 @@ class DbLogger {
    * Log a database error
    */
   logError(log: ErrorLog): void {
+    const prismaCode =
+      typeof (log.error as any)?.code === 'string' ? ((log.error as any).code as string) : undefined;
+    const prismaMeta = (log.error as any)?.meta;
+
     const entry: DbLogEntry = {
       timestamp: new Date().toISOString(),
       level: LogLevel.ERROR,
@@ -149,6 +155,8 @@ class DbLogger {
       params: log.params,
       context: log.context,
       error: this.formatError(log.error),
+      prismaCode,
+      prismaMeta,
     };
     // Fire and forget - don't await to avoid blocking
     this.writeLog(entry).catch(() => {
@@ -369,6 +377,8 @@ class DbLogger {
     if (entry.duration !== undefined) parts.push(`[Duration: ${entry.duration}ms]`);
     if (entry.context) parts.push(`[Context: ${entry.context}]`);
     if (entry.error) parts.push(`[Error: ${entry.error}]`);
+    if (entry.prismaCode) parts.push(`[PrismaCode: ${entry.prismaCode}]`);
+    if (entry.prismaMeta !== undefined) parts.push(`[PrismaMeta: ${JSON.stringify(entry.prismaMeta)}]`);
 
     if (entry.metadata && Object.keys(entry.metadata).length > 0) {
       parts.push(`[Metadata: ${JSON.stringify(entry.metadata)}]`);

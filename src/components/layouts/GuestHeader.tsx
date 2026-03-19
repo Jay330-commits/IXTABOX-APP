@@ -83,8 +83,9 @@ export default function GuestHeader(): JSX.Element {
   const { isLocationModalOpen } = useLocationModal();
   const containerClasses = useMemo(
     () =>
-      `sticky top-0 z-[10000] transition-all duration-500 ${
-        isLocationModalOpen ? "invisible" : ""
+      `sticky top-0 transition-all duration-500 ${
+        // Keep header visible during booking modal; only lower stacking so modal sits above it.
+        isLocationModalOpen ? "z-[1000]" : "z-[10000]"
       } ${
         isScrolled 
           ? "bg-gray-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] border-b border-white/5" 
