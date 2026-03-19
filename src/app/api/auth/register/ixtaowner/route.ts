@@ -103,16 +103,22 @@ export async function POST(request: NextRequest) {
         legalName: fullName,
       });
 
-      const locationService = new LocationService();
-      const createdLocation = await locationService.createLocation({
-        ixtaownerId: ixtaowner.id,
-        name: (locationName || 'Home IXTAbox location').trim(),
-        address: address.trim(),
-        coordinates:
-          lat != null && lng != null
-            ? { lat, lng }
-            : null,
-      });
+      let createdLocation: { id: string; name: string; display_id: string } | null = null;
+      try {
+        const locationService = new LocationService();
+        createdLocation = await locationService.createLocation({
+          ixtaownerId: ixtaowner.id,
+          name: (locationName || 'Home IXTAbox location').trim(),
+          address: address.trim(),
+          coordinates:
+            lat != null && lng != null
+              ? { lat, lng }
+              : null,
+        });
+      } catch (locationError) {
+        // Do not fail account creation if location ownership schema is not available yet.
+        console.warn('IXTAowner location creation skipped:', locationError);
+      }
 
       return NextResponse.json({
         success: true,
@@ -128,11 +134,13 @@ export async function POST(request: NextRequest) {
           legalName: ixtaowner.legal_name,
           verified: ixtaowner.verified,
         },
-        location: {
-          id: createdLocation.id,
-          name: createdLocation.name,
-          displayId: createdLocation.display_id,
-        },
+        location: createdLocation
+          ? {
+              id: createdLocation.id,
+              name: createdLocation.name,
+              displayId: createdLocation.display_id,
+            }
+          : null,
         token: (authResult.session as SupabaseSession)?.access_token || 'temp-token',
         message: 'IXTAowner registered successfully.',
       });

@@ -15,7 +15,7 @@ export async function GET(
       );
     }
 
-    const stand = await prisma.stand.findUnique({
+    const stand = await prisma.stands.findUnique({
       where: { id },
       include: {
         locations: {

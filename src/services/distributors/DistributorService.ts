@@ -43,7 +43,7 @@ export class DistributorService extends BaseService {
       'CREATE_DISTRIBUTOR',
       async () => {
         // Check if distributor already exists for this user
-        const existingDistributor = await this.prisma.distributor.findUnique({
+        const existingDistributor = await this.prisma.distributors.findUnique({
           where: { user_id: data.userId },
         });
 
@@ -68,7 +68,7 @@ export class DistributorService extends BaseService {
         };
 
         // Create distributor record
-        const distributor = await this.prisma.distributor.create({
+        const distributor = await this.prisma.distributors.create({
           data: {
             user_id: data.userId,
             company_name: data.companyName,
@@ -101,7 +101,7 @@ export class DistributorService extends BaseService {
    */
   async findByUserId(userId: string): Promise<Distributor | null> {
     try {
-      return await this.prisma.distributor.findUnique({
+      return await this.prisma.distributors.findUnique({
         where: { user_id: userId },
         include: {
           users: true,
@@ -117,7 +117,7 @@ export class DistributorService extends BaseService {
    */
   async findById(distributorId: string): Promise<Distributor | null> {
     try {
-      return await this.prisma.distributor.findUnique({
+      return await this.prisma.distributors.findUnique({
         where: { id: distributorId },
         include: {
           users: true,
@@ -171,7 +171,7 @@ export class DistributorService extends BaseService {
         if (data.contractType !== undefined) prismaData.contract_type = data.contractType;
         if (data.active !== undefined) prismaData.active = data.active;
 
-        return await this.prisma.distributor.update({
+        return await this.prisma.distributors.update({
           where: { id: distributorId },
           data: prismaData,
           include: {
@@ -189,7 +189,7 @@ export class DistributorService extends BaseService {
    */
   async getAllDistributors(skip = 0, take = 10): Promise<Distributor[]> {
     try {
-      return await this.prisma.distributor.findMany({
+      return await this.prisma.distributors.findMany({
         skip,
         take,
         include: {
@@ -207,7 +207,7 @@ export class DistributorService extends BaseService {
    */
   async getActiveDistributors(): Promise<Distributor[]> {
     try {
-      return await this.prisma.distributor.findMany({
+      return await this.prisma.distributors.findMany({
         where: { active: true },
         include: {
           users: true,
@@ -226,7 +226,7 @@ export class DistributorService extends BaseService {
     return await this.logOperation(
       'DEACTIVATE_DISTRIBUTOR',
       async () => {
-        return await this.prisma.distributor.update({
+        return await this.prisma.distributors.update({
           where: { id: distributorId },
           data: { active: false },
           include: {
@@ -246,7 +246,7 @@ export class DistributorService extends BaseService {
     return await this.logOperation(
       'ACTIVATE_DISTRIBUTOR',
       async () => {
-        return await this.prisma.distributor.update({
+        return await this.prisma.distributors.update({
           where: { id: distributorId },
           data: { active: true },
           include: {

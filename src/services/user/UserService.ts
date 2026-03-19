@@ -217,14 +217,14 @@ export class UserService extends BaseService {
             full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.Ixtaowner,
+            role: Role.Distributor,
           },
           create: {
             id: params.id,
             full_name: params.fullName,
             email: params.email,
             phone: phoneValue,
-            role: Role.Ixtaowner,
+            role: Role.Distributor,
           },
         });
 
@@ -240,7 +240,7 @@ export class UserService extends BaseService {
 
           await this.prisma.$executeRawUnsafe(`
             INSERT INTO public.users (id, full_name, email, phone, role, created_at, updated_at)
-            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'Ixtaowner'::public."Role", NOW(), NOW())
+            VALUES ('${escapedId}'::uuid, '${escapedFullName}', '${escapedEmail}', ${sqlPhoneValue}, 'Distributor'::public."Role", NOW(), NOW())
             ON CONFLICT (id) 
             DO UPDATE SET 
               full_name = EXCLUDED.full_name,

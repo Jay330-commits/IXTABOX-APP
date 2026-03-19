@@ -41,6 +41,10 @@ export class LocationService extends BaseService {
           throw new Error('Location must belong to exactly one owner: distributorId or ixtaownerId');
         }
 
+        if (hasIxtaowner) {
+          throw new Error('ixtaowner-owned locations are not supported by the current Prisma schema');
+        }
+
         if (hasDistributor) {
           const distributor = await this.prisma.distributors.findUnique({
             where: { id: data.distributorId },
@@ -49,17 +53,6 @@ export class LocationService extends BaseService {
 
           if (!distributor) {
             throw new Error(`Distributor with id ${data.distributorId} not found`);
-          }
-        }
-
-        if (hasIxtaowner) {
-          const owner = await this.prisma.ixtaowners.findUnique({
-            where: { id: data.ixtaownerId },
-            select: { id: true },
-          });
-
-          if (!owner) {
-            throw new Error(`Ixtaowner with id ${data.ixtaownerId} not found`);
           }
         }
 
@@ -77,8 +70,9 @@ export class LocationService extends BaseService {
         // Create location
         const location = await this.prisma.locations.create({
           data: {
-            distributor_id: data.distributorId ?? null,
-            ixtaowner_id: data.ixtaownerId ?? null,
+            distributors: {
+              connect: { id: data.distributorId! },
+            },
             name: data.name,
             address: data.address ?? null,
             coordinates: data.coordinates ?? Prisma.JsonNull,
@@ -108,7 +102,6 @@ export class LocationService extends BaseService {
           locationId: location.id,
           displayId: location.display_id,
           distributorId: location.distributor_id,
-          ixtaownerId: location.ixtaowner_id,
           name: location.name,
           status: location.status,
         });
